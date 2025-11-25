@@ -32,24 +32,51 @@ export default function Signup() {
   };
 
   const continueWithGoogle = async () => {
-    setGoogleLoading(true);
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: "habibiswipe://phone-link",
-      },
-    });
-    setGoogleLoading(false);
+    try {
+      setGoogleLoading(true);
 
-    if (error) {
-      Alert.alert("Error", error.message);
-      return;
-    }
+      // Use Supabase OAuth for Google Sign-In
+      // The redirectTo is your app's deep link scheme
+      // Supabase will use its callback URL when talking to Google
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error("Supabase URL not configured");
+      }
 
-    if (data?.url) {
-      await Linking.openURL(data.url);
-    } else {
-      Alert.alert("Check your browser", "Continue in the browser to finish signing in.");
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: "habibiswipe://",
+          // The actual redirect URI sent to Google will be: ${supabaseUrl}/auth/v1/callback
+          // Make sure this URL is added to Google OAuth authorized redirect URIs
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.url) {
+        // Open the OAuth URL in browser
+        await Linking.openURL(data.url);
+        Alert.alert(
+          "Continue in Browser",
+          "Please complete the sign-in process in your browser, then return to the app."
+        );
+      }
+    } catch (error: any) {
+      const errorMessage = error.message || "Failed to sign in with Google";
+      
+      if (errorMessage.includes("redirect_uri_mismatch")) {
+        Alert.alert(
+          "Configuration Error",
+          `Redirect URI mismatch. Please add this URL to Google OAuth settings:\n\n${process.env.EXPO_PUBLIC_SUPABASE_URL}/auth/v1/callback\n\nAlso add it to Supabase Dashboard > Authentication > URL Configuration > Redirect URLs`
+        );
+      } else {
+        Alert.alert("Error", errorMessage);
+      }
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -83,15 +110,16 @@ export default function Signup() {
         We&apos;ll send a 6-digit code to verify your email.
       </Text>
 
-      <Pressable
-        className="bg-white/10 p-4 rounded-2xl items-center mb-6 border border-white/20"
+      {/* <Pressable
+        className="bg-white p-4 rounded-2xl items-center mb-6 flex-row justify-center gap-2"
         onPress={continueWithGoogle}
         disabled={googleLoading}
       >
-        <Text className="text-white font-semibold">
-          {googleLoading ? "Opening Google..." : "Continue with Google"}
+        <Text className="text-2xl">🔍</Text>
+        <Text className="text-gray-900 font-semibold text-base">
+          {googleLoading ? "Signing in..." : "Continue with Google"}
         </Text>
-      </Pressable>
+      </Pressable> */}
 
       <Pressable onPress={() => router.push("/(auth)/login")}>
         <Text className="text-white/70 text-center">

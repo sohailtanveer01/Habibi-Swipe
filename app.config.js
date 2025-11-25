@@ -3,8 +3,17 @@ export default {
       name: "Habibi Swipe",
       slug: "habibi-swipe",
       scheme: "habibiswipe",
-      plugins: ["expo-router"],
+      plugins: [
+        "expo-router",
+        [
+          "@react-native-google-signin/google-signin",
+          {
+            iosUrlScheme: "com.googleusercontent.apps.6761114646-9ajjmjpnv04elnb0hhokmb2hc00mrnef",
+          },
+        ],
+      ],
       ios: {
+        bundleIdentifier: "com.habibiswipe.app",
         usesIcloudStorage: true,
         infoPlist: {
           NSPhotoLibraryUsageDescription:
