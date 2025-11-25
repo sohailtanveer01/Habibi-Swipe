@@ -2,6 +2,7 @@ export default {
     expo: {
       name: "Habibi Swipe",
       slug: "habibi-swipe",
+      scheme: "habibiswipe",
       plugins: ["expo-router"],
       ios: {
         usesIcloudStorage: true,

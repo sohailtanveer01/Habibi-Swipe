@@ -11,39 +11,80 @@ export default function OnboardingDone() {
 
   const finish = async () => {
     const user = (await supabase.auth.getUser()).data.user;
-    if (!user) return;
-
-    setSaving(true);
-
-    // Build PostGIS geography point if location exists
-    const locationPoint = data.location
-      ? `SRID=4326;POINT(${data.location.lon} ${data.location.lat})`
-      : null;
-
-    const { error } = await supabase.from("users").upsert({
-      id: user.id,
-      name: data.name,
-      gender: data.gender,
-      dob: data.dob,
-      intent: data.intent,
-      education: data.education,
-      profession: data.profession,
-      religion: data.religion,
-      bio: data.bio,
-      photos: data.photos,
-      location: locationPoint,
-      verified: false,
-      last_active_at: new Date().toISOString(),
-    });
-
-    setSaving(false);
-
-    if (error) {
-      alert(error.message);
+    if (!user) {
+      alert("Please log in to complete your profile.");
       return;
     }
 
-    router.replace("/swipe");
+    setSaving(true);
+
+    try {
+      // Upload any local photo URIs that haven't been uploaded yet
+      const uploadedPhotos: string[] = [];
+      
+      for (const photo of data.photos) {
+        // Check if it's already a URL (uploaded) or a local URI (needs upload)
+        if (photo.startsWith('http://') || photo.startsWith('https://')) {
+          uploadedPhotos.push(photo);
+        } else {
+          // It's a local URI - upload it
+          try {
+            const ext = photo.split(".").pop() || "jpg";
+            const filePath = `${user.id}/${Date.now()}.${ext}`;
+
+            const res = await fetch(photo);
+            const blob = await res.arrayBuffer();
+
+            const { error: uploadError } = await supabase.storage
+              .from("profile-photos")
+              .upload(filePath, blob, { contentType: `image/${ext}` });
+
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage
+              .from("profile-photos")
+              .getPublicUrl(filePath);
+
+            uploadedPhotos.push(urlData.publicUrl);
+          } catch (e: any) {
+            console.error("Error uploading photo:", e);
+            // Continue with other photos even if one fails
+          }
+        }
+      }
+
+      // Build PostGIS geography point if location exists
+      const locationPoint = data.location
+        ? `SRID=4326;POINT(${data.location.lon} ${data.location.lat})`
+        : null;
+
+      const { error } = await supabase.from("users").upsert({
+        id: user.id,
+        name: data.name,
+        gender: data.gender,
+        dob: data.dob,
+        intent: data.intent,
+        education: data.education,
+        profession: data.profession,
+        religion: data.religion,
+        bio: data.bio,
+        photos: uploadedPhotos,
+        location: locationPoint,
+        verified: false,
+        last_active_at: new Date().toISOString(),
+      });
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      router.replace("/swipe");
+    } catch (e: any) {
+      alert(e.message || "Failed to save profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

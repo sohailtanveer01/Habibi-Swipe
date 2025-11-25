@@ -6,7 +6,7 @@ export default function MainLayout() {
       <Tabs.Screen name="swipe" options={{ title: "Swipe" }} />
       <Tabs.Screen name="matches" options={{ title: "Matches" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
-      <Tabs.Screen name="paywall" options={{ title: "Premium" }} />
+      <Tabs.Screen name="paywall" options={{ href: null }} />
     </Tabs>
   );
 }

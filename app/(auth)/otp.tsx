@@ -14,8 +14,31 @@ export default function OTP() {
       token: code,
       type: "sms",
     });
-    if (error) return alert(error.message);
-    router.replace("/(auth)/onboarding");
+    
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    // Check if user has completed onboarding
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("id, name, photos")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profile && profile.name && profile.photos?.length > 0) {
+        // User has completed onboarding
+        router.replace("/(main)/swipe");
+      } else {
+        // User needs to complete onboarding
+        router.replace("/(auth)/onboarding/step1-basic");
+      }
+    } else {
+      router.replace("/(auth)/onboarding/step1-basic");
+    }
   };
 
   return (
