@@ -5,22 +5,22 @@ import { useRouter } from "expo-router";
 
 export default function Login() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const loginWithEmail = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please enter both email and password.");
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) {
+      Alert.alert("Error", "Please enter your email address.");
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
+    const { error } = await supabase.auth.signInWithOtp({
+      email: trimmed,
+      options: { shouldCreateUser: false }, // Don't create user on login, only signup
     });
 
     setLoading(false);
@@ -30,7 +30,8 @@ export default function Login() {
       return;
     }
 
-    router.replace("/(main)/swipe");
+    // Navigate to email OTP verification screen
+    router.push({ pathname: "/(auth)/email-otp", params: { email: trimmed } });
   };
 
   const sendOtp = async () => {
@@ -88,26 +89,19 @@ export default function Login() {
             autoComplete="email"
           />
 
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor="#777"
-            className="bg-white/10 text-white p-4 rounded-2xl mb-4"
-            onChangeText={setPassword}
-            value={password}
-            secureTextEntry
-            autoCapitalize="none"
-            autoComplete="password"
-          />
-
           <Pressable
             className="bg-pink-500 p-4 rounded-2xl items-center mb-4"
             onPress={loginWithEmail}
             disabled={loading}
           >
             <Text className="text-white font-semibold">
-              {loading ? "Logging in..." : "Log In"}
+              {loading ? "Sending code..." : "Send Login Code"}
             </Text>
           </Pressable>
+
+          <Text className="text-white/50 text-center mb-4 text-sm">
+            We&apos;ll send a 6-digit code to verify your email.
+          </Text>
         </>
       ) : (
         <>

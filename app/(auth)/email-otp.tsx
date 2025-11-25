@@ -38,11 +38,30 @@ export default function EmailOTP() {
       return;
     }
 
-    router.replace("/(auth)/phone-optional");
+    // Check if user has completed onboarding
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("id, name, photos")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profile && profile.name && profile.photos?.length > 0) {
+        // User has completed onboarding - go to main app
+        router.replace("/(main)/swipe");
+      } else {
+        // User needs to complete onboarding (new signup)
+        router.replace("/(auth)/phone-optional");
+      }
+    } else {
+      router.replace("/(auth)/phone-optional");
+    }
   };
 
   const resend = async () => {
     setResending(true);
+    // Resend OTP - allow user creation in case it's a signup flow
     const { error } = await supabase.auth.signInWithOtp({
       email: emailAddress,
       options: { shouldCreateUser: true },
