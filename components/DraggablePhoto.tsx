@@ -185,7 +185,7 @@ export default function DraggablePhoto({
           <Pressable
             onPress={onPress}
             onLongPress={onLongPress}
-            disabled={uploading || isDragging || !photo || photo.trim() === ""}
+            disabled={Boolean(uploading || isDragging || (photo && photo.trim() !== ""))}
             className="aspect-square rounded-2xl border-2 border-dashed border-white/30 bg-white/5 items-center justify-center overflow-hidden"
           >
             {photo && photo.trim() !== "" ? (

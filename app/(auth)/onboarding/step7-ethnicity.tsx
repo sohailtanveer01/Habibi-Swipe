@@ -75,7 +75,7 @@ export default function Step7Ethnicity() {
       ethnicity,
       nationality,
     }));
-    router.push("/onboarding/step8-preferences");
+    router.push("/onboarding/step8-background");
   };
 
   return (
