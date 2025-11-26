@@ -56,7 +56,11 @@ export default function DraggableProfilePhoto({
 
   const findTargetIndex = (x: number, y: number): number | null => {
     "worklet";
-    for (let i = 0; i < 10; i++) {
+    let closestIndex: number | null = null;
+    let closestDistance = Infinity;
+    
+    // Check all 6 slots
+    for (let i = 0; i < 6; i++) {
       const pos = layoutPositions[i];
       if (pos) {
         const centerX = pos.x + pos.width / 2;
@@ -64,12 +68,15 @@ export default function DraggableProfilePhoto({
         const distance = Math.sqrt(
           Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)
         );
-        if (distance < Math.max(pos.width, pos.height) / 2) {
-          return i;
+        // Use a larger threshold for grid layout
+        const threshold = Math.max(pos.width, pos.height) * 0.6;
+        if (distance < threshold && distance < closestDistance) {
+          closestDistance = distance;
+          closestIndex = i;
         }
       }
     }
-    return null;
+    return closestIndex;
   };
 
   const panGesture = Gesture.Pan()
@@ -166,16 +173,17 @@ export default function DraggableProfilePhoto({
   });
 
   return (
-    <View className="mr-3 relative" onLayout={onLayout}>
+    <View className="relative w-full" onLayout={onLayout}>
       <GestureDetector gesture={panGesture}>
         <Animated.View style={animatedStyle}>
           <Pressable
             onLongPress={onLongPress}
-            className="relative"
+            className="relative w-full aspect-square"
           >
             <Image
               source={{ uri: photo }}
-              className="w-24 h-32 rounded-xl"
+              className="w-full h-full rounded-xl"
+              resizeMode="cover"
             />
             {isMainPhoto && (
               <View className="absolute top-1 left-1 bg-pink-500 px-2 py-1 rounded-full">

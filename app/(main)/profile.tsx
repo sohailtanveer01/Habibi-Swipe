@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, Image, FlatList, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, Image, Alert, ActivityIndicator } from "react-native";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import DraggableProfilePhoto from "@/components/DraggableProfilePhoto";
 
 async function uploadPhoto(uri: string, userId: string) {
   const ext = uri.split(".").pop() || "jpg";
@@ -28,7 +27,8 @@ async function uploadPhoto(uri: string, userId: string) {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [editing, setEditing] = useState(false);
+  const [editingSection, setEditingSection] = useState<string | null>(null); // 'photos' | 'about' | 'marriage' | 'bio' | null
+  const [editingField, setEditingField] = useState<string | null>(null); // 'name' | 'height' | 'maritalStatus' | 'children' | 'gender' | 'dob' | null
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -117,12 +117,8 @@ export default function ProfileScreen() {
 
       setSaving(true);
 
-      // Build PostGIS geography point if location exists
-      const locationPoint = profile?.location
-        ? `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`
-        : null;
-
-      const { error } = await supabase.from("users").upsert({
+      // Build update payload - only include location if it's valid
+      const updatePayload: any = {
         id: user.id,
         name: `${firstName.trim()} ${lastName.trim()}`.trim(), // Combined for backward compatibility
         first_name: firstName.trim(),
@@ -139,13 +135,24 @@ export default function ProfileScreen() {
         religion: religion.trim(),
         bio: bio.trim(),
         photos,
-        location: locationPoint,
         last_active_at: new Date().toISOString(),
-      });
+      };
+
+      // Only include location if it exists and is valid
+      if (profile?.location && 
+          typeof profile.location === 'object' &&
+          typeof profile.location.lon === 'number' &&
+          typeof profile.location.lat === 'number' &&
+          !isNaN(profile.location.lon) &&
+          !isNaN(profile.location.lat)) {
+        updatePayload.location = `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`;
+      }
+
+      const { error } = await supabase.from("users").upsert(updatePayload);
 
       if (error) throw error;
 
-      setEditing(false);
+      setEditingSection(null);
       await loadProfile();
       Alert.alert("Success", "Profile updated!");
     } catch (e: any) {
@@ -155,7 +162,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const pickImage = async () => {
+  const pickImage = async (targetIndex?: number) => {
     try {
       const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
       let hasPermission = status === 'granted';
@@ -178,8 +185,7 @@ export default function ProfileScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsMultipleSelection: true,
-        selectionLimit: remainingSlots,
+        allowsMultipleSelection: false,
         quality: 0.8,
       });
 
@@ -191,12 +197,66 @@ export default function ProfileScreen() {
       if (!user) return;
 
       setUploading(true);
-      const uploadPromises = result.assets.map((asset) =>
-        uploadPhoto(asset.uri, user.id)
-      );
+      const url = await uploadPhoto(result.assets[0].uri, user.id);
 
-      const urls = await Promise.all(uploadPromises);
-      setPhotos([...photos, ...urls]);
+      // Insert at specific index or append
+      if (targetIndex !== undefined) {
+        const newPhotos = [...photos];
+        newPhotos.splice(targetIndex, 0, url);
+        setPhotos(newPhotos);
+        
+        // Auto-save after upload
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const locationPoint = profile?.location && 
+            typeof profile.location === 'object' &&
+            typeof profile.location.lon === 'number' &&
+            typeof profile.location.lat === 'number' &&
+            !isNaN(profile.location.lon) &&
+            !isNaN(profile.location.lat)
+            ? `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`
+            : null;
+
+          const updatePayload: any = {
+            id: user.id,
+            photos: newPhotos,
+            last_active_at: new Date().toISOString(),
+          };
+
+          if (locationPoint) {
+            updatePayload.location = locationPoint;
+          }
+
+          await supabase.from("users").upsert(updatePayload);
+        }
+      } else {
+        setPhotos([...photos, url]);
+        
+        // Auto-save after upload
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const locationPoint = profile?.location && 
+            typeof profile.location === 'object' &&
+            typeof profile.location.lon === 'number' &&
+            typeof profile.location.lat === 'number' &&
+            !isNaN(profile.location.lon) &&
+            !isNaN(profile.location.lat)
+            ? `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`
+            : null;
+
+          const updatePayload: any = {
+            id: user.id,
+            photos: [...photos, url],
+            last_active_at: new Date().toISOString(),
+          };
+
+          if (locationPoint) {
+            updatePayload.location = locationPoint;
+          }
+
+          await supabase.from("users").upsert(updatePayload);
+        }
+      }
     } catch (e: any) {
       Alert.alert("Error", e.message || "Failed to upload photos.");
     } finally {
@@ -204,38 +264,40 @@ export default function ProfileScreen() {
     }
   };
 
-  const removePhoto = (url: string) => {
+  const removePhoto = async (url: string) => {
     if (photos.length <= 1) {
       Alert.alert("Cannot Remove", "You must have at least 1 photo in your profile.");
       return;
     }
-    setPhotos(photos.filter((p) => p !== url));
-  };
-
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-  const [hoverTargetIndex, setHoverTargetIndex] = useState<number | null>(null);
-  const [layoutPositions, setLayoutPositions] = useState<{ [key: number]: { x: number; y: number; width: number; height: number } }>({});
-
-  const handleReorder = (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex || toIndex === null) return;
-    
-    // Remove the dragged photo from its current position
-    const newPhotos = [...photos];
-    const [draggedPhoto] = newPhotos.splice(fromIndex, 1);
-    
-    // Insert it at the target position (other photos will automatically shift)
-    newPhotos.splice(toIndex, 0, draggedPhoto);
-    
+    const newPhotos = photos.filter((p) => p !== url);
     setPhotos(newPhotos);
+    
+    // Auto-save after removal
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const locationPoint = profile?.location && 
+        typeof profile.location === 'object' &&
+        typeof profile.location.lon === 'number' &&
+        typeof profile.location.lat === 'number' &&
+        !isNaN(profile.location.lon) &&
+        !isNaN(profile.location.lat)
+        ? `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`
+        : null;
+
+      const updatePayload: any = {
+        id: user.id,
+        photos: newPhotos,
+        last_active_at: new Date().toISOString(),
+      };
+
+      if (locationPoint) {
+        updatePayload.location = locationPoint;
+      }
+
+      await supabase.from("users").upsert(updatePayload);
+    }
   };
 
-  const onPhotoLayout = (index: number, event: any) => {
-    const { x, y, width, height } = event.nativeEvent.layout;
-    setLayoutPositions((prev) => ({
-      ...prev,
-      [index]: { x, y, width, height },
-    }));
-  };
 
   const handleLogout = async () => {
     Alert.alert(
@@ -286,299 +348,425 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {/* Edit Button */}
-        <View className="flex-row justify-end mb-6">
-          {!editing ? (
-            <Pressable
-              className="bg-pink-500 px-4 py-2 rounded-full"
-              onPress={() => setEditing(true)}
-            >
-              <Text className="text-white font-semibold">Edit</Text>
-            </Pressable>
-          ) : (
-            <View className="flex-row gap-2">
+        {/* Photos Card */}
+        <View className="bg-white/5 rounded-2xl border border-white/10 p-5 mb-4">
+          <Text className="text-white text-xl font-semibold mb-4">Photos</Text>
+          {photos.length < 6 && (
+            <View className="bg-pink-500/20 border border-pink-500/30 rounded-xl p-3 mb-3">
+              <Text className="text-pink-400 text-sm font-medium text-center">
+                Add {6 - photos.length} more photo{6 - photos.length > 1 ? 's' : ''} to fully complete your profile
+              </Text>
+            </View>
+          )}
+          <View className="flex-row flex-wrap gap-3 justify-between">
+            {Array.from({ length: 6 }).map((_, index) => {
+              const photo = photos[index];
+              const isEmpty = !photo;
+              
+              return isEmpty ? (
+                <View
+                  key={`empty-${index}`}
+                  className="w-[30%] aspect-square"
+                >
+                  <Pressable
+                    onPress={() => pickImage(index)}
+                    disabled={uploading}
+                    className="w-full h-full rounded-xl bg-white/5 items-center justify-center border-2 border-dashed border-white/30"
+                  >
+                    {uploading ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <>
+                        <Text className="text-white/50 text-3xl mb-1">+</Text>
+                        <Text className="text-white/50 text-xs text-center">
+                          {index === 0 ? "Main Photo" : `Photo ${index + 1}`}
+                        </Text>
+                      </>
+                    )}
+                  </Pressable>
+                </View>
+              ) : (
+                <View key={`photo-${index}`} className="w-[30%] aspect-square relative">
+                  <Image
+                    source={{ uri: photo }}
+                    className="w-full h-full rounded-xl"
+                    resizeMode="cover"
+                  />
+                  {index === 0 && (
+                    <View className="absolute top-1 left-1 bg-pink-500 px-2 py-1 rounded-full">
+                      <Text className="text-white text-xs font-bold">Main</Text>
+                    </View>
+                  )}
+                  <Pressable
+                    className="absolute top-1 right-1 bg-red-500 w-6 h-6 rounded-full items-center justify-center"
+                    onPress={() => removePhoto(photo)}
+                  >
+                    <Text className="text-white text-xs">×</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* About You Card */}
+        <View className="bg-white/10 rounded-2xl border border-white/10 p-5 mb-4">
+          <Text className="text-white text-xl font-semibold mb-5">About You</Text>
+          
+          {/* Name Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'name' ? null : 'name')}
+            className="flex-row items-center justify-between py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center flex-1">
+              <Text className="text-xl mr-3">👤</Text>
+              <Text className="text-white/80 text-base">Name</Text>
+            </View>
+            {editingField === 'name' ? (
+              <View className="items-end">
+                <TextInput
+                  className="bg-white/20 text-white px-3 py-1.5 rounded-lg text-right min-w-[120] mb-2"
+                  placeholder="First Name"
+                  placeholderTextColor="#999"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  autoCapitalize="words"
+                  autoFocus
+                />
+                <TextInput
+                  className="bg-white/20 text-white px-3 py-1.5 rounded-lg text-right min-w-[120]"
+                  placeholder="Last Name"
+                  placeholderTextColor="#999"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  autoCapitalize="words"
+                />
+              </View>
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-white text-base mr-2">
+                  {firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || "Not set"}
+                </Text>
+                <Text className="text-white/40 text-lg">›</Text>
+              </View>
+            )}
+          </Pressable>
+
+          {/* Height Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'height' ? null : 'height')}
+            className="flex-row items-center justify-between py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center flex-1">
+              <Text className="text-xl mr-3">📏</Text>
+              <Text className="text-white/80 text-base">Height</Text>
+            </View>
+            {editingField === 'height' ? (
+              <TextInput
+                className="bg-white/20 text-white px-3 py-1.5 rounded-lg text-right min-w-[120]"
+                placeholder="5'10 or 178 cm"
+                placeholderTextColor="#999"
+                value={height}
+                onChangeText={setHeight}
+                autoFocus
+              />
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-white text-base mr-2">{height || "Not set"}</Text>
+                <Text className="text-white/40 text-lg">›</Text>
+              </View>
+            )}
+          </Pressable>
+
+          {/* Marital Status Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'maritalStatus' ? null : 'maritalStatus')}
+            className="py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">💍</Text>
+                <Text className="text-white/80 text-base">Marital Status</Text>
+              </View>
+              {editingField !== 'maritalStatus' && (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2 capitalize">{maritalStatus || "Not set"}</Text>
+                  <Text className="text-white/40 text-lg">›</Text>
+                </View>
+              )}
+            </View>
+            {editingField === 'maritalStatus' && (
+              <View className="flex-row gap-2 flex-wrap ml-10">
+                {["single", "divorced", "widowed", "separated"].map((status) => (
+                  <Pressable
+                    key={status}
+                    onPress={() => {
+                      setMaritalStatus(status);
+                      setEditingField(null);
+                    }}
+                    className={`px-3 py-1.5 rounded-full ${
+                      maritalStatus === status ? "bg-pink-500" : "bg-white/20"
+                    }`}
+                  >
+                    <Text className="text-white text-sm capitalize">{status}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </Pressable>
+
+          {/* Children Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'children' ? null : 'children')}
+            className="py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">👶</Text>
+                <Text className="text-white/80 text-base">Children</Text>
+              </View>
+              {editingField !== 'children' && (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2">
+                    {hasChildren === null ? "Not set" : hasChildren ? "Yes" : "No"}
+                  </Text>
+                  <Text className="text-white/40 text-lg">›</Text>
+                </View>
+              )}
+            </View>
+            {editingField === 'children' && (
+              <View className="flex-row gap-2 ml-10">
+                {[
+                  { value: true, label: "Yes" },
+                  { value: false, label: "No" },
+                ].map((option) => (
+                  <Pressable
+                    key={option.label}
+                    onPress={() => {
+                      setHasChildren(option.value);
+                      setEditingField(null);
+                    }}
+                    className={`flex-1 px-3 py-2 rounded-full ${
+                      hasChildren === option.value ? "bg-pink-500" : "bg-white/20"
+                    }`}
+                  >
+                    <Text className="text-white text-center text-sm font-semibold">{option.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </Pressable>
+
+          {/* Gender Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'gender' ? null : 'gender')}
+            className="py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">⚧️</Text>
+                <Text className="text-white/80 text-base">Gender</Text>
+              </View>
+              {editingField !== 'gender' && (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2 capitalize">{gender || "Not set"}</Text>
+                  <Text className="text-white/40 text-lg">›</Text>
+                </View>
+              )}
+            </View>
+            {editingField === 'gender' && (
+              <View className="flex-row gap-2 ml-10">
+                {["male", "female"].map((g) => (
+                  <Pressable
+                    key={g}
+                    onPress={() => {
+                      setGender(g);
+                      setEditingField(null);
+                    }}
+                    className={`px-3 py-1.5 rounded-full ${
+                      gender === g ? "bg-pink-500" : "bg-white/20"
+                    }`}
+                  >
+                    <Text className="text-white text-sm capitalize">{g}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </Pressable>
+
+          {/* Date of Birth Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'dob' ? null : 'dob')}
+            className="flex-row items-center justify-between py-3"
+          >
+            <View className="flex-row items-center flex-1">
+              <Text className="text-xl mr-3">📅</Text>
+              <Text className="text-white/80 text-base">Date of Birth</Text>
+            </View>
+            {editingField === 'dob' ? (
+              <TextInput
+                className="bg-white/20 text-white px-3 py-1.5 rounded-lg text-right min-w-[120]"
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#999"
+                value={dob}
+                onChangeText={setDob}
+                autoFocus
+              />
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-white text-base mr-2">{dob || "Not set"}</Text>
+                <Text className="text-white/40 text-lg">›</Text>
+              </View>
+            )}
+          </Pressable>
+          {/* Save button for text inputs */}
+          {(editingField === 'name' || editingField === 'height' || editingField === 'dob') && (
+            <View className="flex-row gap-3 mt-4">
               <Pressable
-                className="bg-white/10 px-4 py-2 rounded-full"
+                className="flex-1 bg-white/10 px-4 py-2 rounded-xl"
                 onPress={() => {
-                  setEditing(false);
-                  loadProfile(); // Reset to original values
+                  setEditingField(null);
+                  loadProfile();
                 }}
               >
-                <Text className="text-white font-semibold">Cancel</Text>
+                <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
               </Pressable>
               <Pressable
-                className="bg-pink-500 px-4 py-2 rounded-full"
-                onPress={handleSave}
+                className="flex-1 bg-pink-500 px-4 py-2 rounded-xl"
+                onPress={async () => {
+                  await handleSave();
+                  setEditingField(null);
+                }}
                 disabled={saving}
               >
                 {saving ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text className="text-white font-semibold">Save</Text>
+                  <Text className="text-white font-semibold text-center text-sm">Save</Text>
                 )}
               </Pressable>
             </View>
           )}
         </View>
 
-        {/* Photos Section */}
-        <View className="mb-6">
-          <Text className="text-white text-xl font-semibold mb-3">Photos</Text>
-          <Text className="text-white/60 text-sm mb-3">
-            {editing ? "Long press and drag to reorder. First photo is your main profile picture." : ""}
-          </Text>
-          <FlatList
-            data={photos}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item, index) => `${item}-${index}`}
-            renderItem={({ item, index }) => (
-              <DraggableProfilePhoto
-                photo={item}
-                index={index}
-                isMainPhoto={index === 0}
-                isDragging={draggingIndex === index}
-                onLayout={(e) => onPhotoLayout(index, e)}
-                onLongPress={() => editing && setDraggingIndex(index)}
-                onDragUpdate={(targetIndex) => {
-                  setHoverTargetIndex(targetIndex);
-                }}
-                onDragEnd={(targetIndex) => {
-                  setDraggingIndex(null);
-                  setHoverTargetIndex(null);
-                  if (targetIndex !== null && targetIndex !== index) {
-                    handleReorder(index, targetIndex);
-                  }
-                }}
-                onRemove={() => removePhoto(item)}
-                layoutPositions={layoutPositions}
-                hoverTargetIndex={hoverTargetIndex}
-                draggingIndex={draggingIndex}
-              />
+        {/* Marriage Intentions Card */}
+        <View className="bg-white/5 rounded-2xl border border-white/10 p-5 mb-4">
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-white text-xl font-semibold">Marriage Intentions</Text>
+            {editingSection !== 'marriage' && (
+              <Pressable
+                onPress={() => setEditingSection('marriage')}
+                className="px-3 py-1 bg-pink-500/20 rounded-lg"
+              >
+                <Text className="text-pink-500 text-xs font-semibold">Edit</Text>
+              </Pressable>
             )}
-            ListFooterComponent={
-              editing && photos.length < 6 ? (
-                <Pressable
-                  className="w-24 h-32 rounded-xl bg-white/10 items-center justify-center border-2 border-dashed border-white/30 ml-3"
-                  onPress={pickImage}
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text className="text-white/70 text-2xl">+</Text>
-                  )}
-                </Pressable>
-              ) : null
-            }
-          />
-        </View>
-
-        {/* Basic Info */}
-        <View className="mb-6">
-          <Text className="text-white text-xl font-semibold mb-3">About You</Text>
+          </View>
           
-          <Text className="text-white/70 mb-1">First Name</Text>
-          {editing ? (
-            <TextInput
-              className="bg-white/10 text-white p-4 rounded-2xl mb-4"
-              placeholder="First Name"
-              placeholderTextColor="#777"
-              value={firstName}
-              onChangeText={setFirstName}
-              autoCapitalize="words"
-            />
-          ) : (
-            <Text className="text-white text-lg mb-4">{firstName || "Not set"}</Text>
-          )}
+          <View className="mb-3">
+            <Text className="text-white/70 text-sm mb-1">I would like to get to know someone for</Text>
+            {editingSection === 'marriage' ? (
+              <TextInput
+                className="bg-white/10 text-white p-3 rounded-xl mt-1"
+                placeholder="e.g., 6-12 months"
+                placeholderTextColor="#777"
+                value={getToKnowTimeline}
+                onChangeText={setGetToKnowTimeline}
+              />
+            ) : (
+              <Text className="text-white text-base mt-1">{getToKnowTimeline || "Not set"}</Text>
+            )}
+          </View>
 
-          <Text className="text-white/70 mb-1">Last Name</Text>
-          {editing ? (
-            <TextInput
-              className="bg-white/10 text-white p-4 rounded-2xl mb-4"
-              placeholder="Last Name"
-              placeholderTextColor="#777"
-              value={lastName}
-              onChangeText={setLastName}
-              autoCapitalize="words"
-            />
-          ) : (
-            <Text className="text-white text-lg mb-4">{lastName || "Not set"}</Text>
-          )}
-
-          <Text className="text-white/70 mb-1">Height</Text>
-          {editing ? (
-            <TextInput
-              className="bg-white/10 text-white p-4 rounded-2xl mb-4"
-              placeholder="Height (e.g., 5'10 or 178 cm)"
-              placeholderTextColor="#777"
-              value={height}
-              onChangeText={setHeight}
-            />
-          ) : (
-            <Text className="text-white text-lg mb-4">{height || "Not set"}</Text>
-          )}
-
-          <Text className="text-white/70 mb-1">Marital Status</Text>
-          {editing ? (
-            <View className="flex-row gap-2 mb-4 flex-wrap">
-              {["single", "divorced", "widowed", "separated"].map((status) => (
-                <Pressable
-                  key={status}
-                  onPress={() => setMaritalStatus(status)}
-                  className={`px-4 py-2 rounded-full ${
-                    maritalStatus === status ? "bg-pink-500" : "bg-white/10"
-                  }`}
-                >
-                  <Text className="text-white capitalize">{status}</Text>
-                </Pressable>
-              ))}
+          <View>
+            <Text className="text-white/70 text-sm mb-1">I would like to be married within</Text>
+            {editingSection === 'marriage' ? (
+              <TextInput
+                className="bg-white/10 text-white p-3 rounded-xl mt-1"
+                placeholder="e.g., 1-2 years"
+                placeholderTextColor="#777"
+                value={marriageTimeline}
+                onChangeText={setMarriageTimeline}
+              />
+            ) : (
+              <Text className="text-white text-base mt-1">{marriageTimeline || "Not set"}</Text>
+            )}
+          </View>
+          {editingSection === 'marriage' && (
+            <View className="flex-row gap-3 mt-4">
+              <Pressable
+                className="flex-1 bg-white/10 px-4 py-2 rounded-xl"
+                onPress={() => {
+                  setEditingSection(null);
+                  loadProfile();
+                }}
+              >
+                <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
+              </Pressable>
+              <Pressable
+                className="flex-1 bg-pink-500 px-4 py-2 rounded-xl"
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text className="text-white font-semibold text-center text-sm">Save</Text>
+                )}
+              </Pressable>
             </View>
-          ) : (
-            <Text className="text-white text-lg mb-4 capitalize">{maritalStatus || "Not set"}</Text>
-          )}
-
-          <Text className="text-white/70 mb-1">Do you have children?</Text>
-          {editing ? (
-            <View className="flex-row gap-2 mb-4">
-              {[
-                { value: true, label: "Yes" },
-                { value: false, label: "No" },
-              ].map((option) => (
-                <Pressable
-                  key={option.label}
-                  onPress={() => setHasChildren(option.value)}
-                  className={`flex-1 px-4 py-3 rounded-full ${
-                    hasChildren === option.value ? "bg-pink-500" : "bg-white/10"
-                  }`}
-                >
-                  <Text className="text-white text-center font-semibold">{option.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : (
-            <Text className="text-white text-lg mb-4">
-              {hasChildren === null ? "Not set" : hasChildren ? "Yes" : "No"}
-            </Text>
-          )}
-
-          <Text className="text-white/70 mb-1">Gender</Text>
-          {editing ? (
-            <View className="flex-row gap-2 mb-4">
-              {["male", "female"].map((g) => (
-                <Pressable
-                  key={g}
-                  onPress={() => setGender(g)}
-                  className={`px-4 py-2 rounded-full ${
-                    gender === g ? "bg-pink-500" : "bg-white/10"
-                  }`}
-                >
-                  <Text className="text-white capitalize">{g}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : (
-            <Text className="text-white text-lg mb-4 capitalize">{gender || "Not set"}</Text>
-          )}
-
-          <Text className="text-white/70 mb-1">Date of Birth</Text>
-          {editing ? (
-            <TextInput
-              className="bg-white/10 text-white p-4 rounded-2xl mb-4"
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#777"
-              value={dob}
-              onChangeText={setDob}
-            />
-          ) : (
-            <Text className="text-white text-lg mb-4">{dob || "Not set"}</Text>
           )}
         </View>
 
-        {/* Background */}
-        <View className="mb-6">
-          <Text className="text-white text-xl font-semibold mb-3">Marriage Intentions</Text>
-          
-          <Text className="text-white/70 mb-1">I would like to get to know someone for</Text>
-          {editing ? (
+        {/* Bio Card */}
+        <View className="bg-white/5 rounded-2xl border border-white/10 p-5 mb-4">
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-white text-xl font-semibold">Bio</Text>
+            {editingSection !== 'bio' && (
+              <Pressable
+                onPress={() => setEditingSection('bio')}
+                className="px-3 py-1 bg-pink-500/20 rounded-lg"
+              >
+                <Text className="text-pink-500 text-xs font-semibold">Edit</Text>
+              </Pressable>
+            )}
+          </View>
+          {editingSection === 'bio' ? (
             <TextInput
-              className="bg-white/10 text-white p-4 rounded-2xl mb-4"
-              placeholder="e.g., 6-12 months"
-              placeholderTextColor="#777"
-              value={getToKnowTimeline}
-              onChangeText={setGetToKnowTimeline}
-            />
-          ) : (
-            <Text className="text-white text-lg mb-4">{getToKnowTimeline || "Not set"}</Text>
-          )}
-
-          <Text className="text-white/70 mb-1">I would like to be married within</Text>
-          {editing ? (
-            <TextInput
-              className="bg-white/10 text-white p-4 rounded-2xl mb-4"
-              placeholder="e.g., 1-2 years"
-              placeholderTextColor="#777"
-              value={marriageTimeline}
-              onChangeText={setMarriageTimeline}
-            />
-          ) : (
-            <Text className="text-white text-lg mb-4">{marriageTimeline || "Not set"}</Text>
-          )}
-
-          <Text className="text-white/70 mb-1">Education</Text>
-          {editing ? (
-            <TextInput
-              className="bg-white/10 text-white p-4 rounded-2xl mb-4"
-              placeholder="Education"
-              placeholderTextColor="#777"
-              value={education}
-              onChangeText={setEducation}
-            />
-          ) : (
-            <Text className="text-white text-lg mb-4">{education || "Not set"}</Text>
-          )}
-
-          <Text className="text-white/70 mb-1">Profession</Text>
-          {editing ? (
-            <TextInput
-              className="bg-white/10 text-white p-4 rounded-2xl mb-4"
-              placeholder="Profession"
-              placeholderTextColor="#777"
-              value={profession}
-              onChangeText={setProfession}
-            />
-          ) : (
-            <Text className="text-white text-lg mb-4">{profession || "Not set"}</Text>
-          )}
-
-          <Text className="text-white/70 mb-1">Religion</Text>
-          {editing ? (
-            <TextInput
-              className="bg-white/10 text-white p-4 rounded-2xl mb-4"
-              placeholder="Religion"
-              placeholderTextColor="#777"
-              value={religion}
-              onChangeText={setReligion}
-            />
-          ) : (
-            <Text className="text-white text-lg mb-4">{religion || "Not set"}</Text>
-          )}
-        </View>
-
-        {/* Bio */}
-        <View className="mb-6">
-          <Text className="text-white text-xl font-semibold mb-3">Bio</Text>
-          {editing ? (
-            <TextInput
-              className="bg-white/10 text-white p-4 rounded-2xl mb-4 h-28"
+              className="bg-white/10 text-white p-3 rounded-xl h-24"
               placeholder="Tell us about yourself"
               placeholderTextColor="#777"
               value={bio}
               onChangeText={setBio}
               multiline
+              textAlignVertical="top"
             />
           ) : (
-            <Text className="text-white text-lg mb-4">{bio || "No bio yet"}</Text>
+            <Text className="text-white text-base">{bio || "No bio yet"}</Text>
+          )}
+          {editingSection === 'bio' && (
+            <View className="flex-row gap-3 mt-4">
+              <Pressable
+                className="flex-1 bg-white/10 px-4 py-2 rounded-xl"
+                onPress={() => {
+                  setEditingSection(null);
+                  loadProfile();
+                }}
+              >
+                <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
+              </Pressable>
+              <Pressable
+                className="flex-1 bg-pink-500 px-4 py-2 rounded-xl"
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text className="text-white font-semibold text-center text-sm">Save</Text>
+                )}
+              </Pressable>
+            </View>
           )}
         </View>
 
