@@ -3,6 +3,17 @@ import { View, Text, TextInput, Pressable, ScrollView, Image, Alert, ActivityInd
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import Slider from "@react-native-community/slider";
+
+const TIMELINE_OPTIONS = [
+  "Less than 3 months",
+  "3-6 months",
+  "6-12 months",
+  "1-2 years",
+  "2-3 years",
+  "3-5 years",
+  "5+ years",
+];
 
 async function uploadPhoto(uri: string, userId: string) {
   const ext = uri.split(".").pop() || "jpg";
@@ -28,7 +39,7 @@ async function uploadPhoto(uri: string, userId: string) {
 export default function ProfileScreen() {
   const router = useRouter();
   const [editingSection, setEditingSection] = useState<string | null>(null); // 'photos' | 'about' | 'marriage' | 'bio' | null
-  const [editingField, setEditingField] = useState<string | null>(null); // 'name' | 'height' | 'maritalStatus' | 'children' | 'dob' | 'sect' | 'bornMuslim' | 'religiousPractice' | 'alcoholHabit' | 'smokingHabit' | null
+  const [editingField, setEditingField] = useState<string | null>(null); // 'name' | 'height' | 'maritalStatus' | 'children' | 'dob' | 'sect' | 'bornMuslim' | 'religiousPractice' | 'alcoholHabit' | 'smokingHabit' | 'education' | 'profession' | 'bio' | 'ethnicity' | 'nationality' | 'hobbies' | 'getToKnowTimeline' | 'marriageTimeline' | null
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -48,10 +59,23 @@ export default function ProfileScreen() {
   const [smokingHabit, setSmokingHabit] = useState("");
   const [getToKnowTimeline, setGetToKnowTimeline] = useState("");
   const [marriageTimeline, setMarriageTimeline] = useState("");
+  
+  // Helper function to convert timeline string to index
+  const getTimelineIndex = (timeline: string) => {
+    const index = TIMELINE_OPTIONS.indexOf(timeline);
+    return index !== -1 ? index : 3; // Default to middle option
+  };
+  
+  // Slider indices for editing
+  const [getToKnowIndex, setGetToKnowIndex] = useState(3);
+  const [marriageIndex, setMarriageIndex] = useState(3);
   const [education, setEducation] = useState("");
   const [profession, setProfession] = useState("");
   const [religion, setReligion] = useState("");
   const [bio, setBio] = useState("");
+  const [ethnicity, setEthnicity] = useState("");
+  const [nationality, setNationality] = useState("");
+  const [hobbies, setHobbies] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
 
   useEffect(() => {
@@ -99,10 +123,16 @@ export default function ProfileScreen() {
       setSmokingHabit(data.smoking_habit || "");
       setGetToKnowTimeline(data.get_to_know_timeline || "");
       setMarriageTimeline(data.marriage_timeline || "");
+      // Set slider indices based on loaded values
+      setGetToKnowIndex(getTimelineIndex(data.get_to_know_timeline || ""));
+      setMarriageIndex(getTimelineIndex(data.marriage_timeline || ""));
       setEducation(data.education || "");
       setProfession(data.profession || "");
       setReligion(data.religion || "");
       setBio(data.bio || "");
+      setEthnicity(data.ethnicity || "");
+      setNationality(data.nationality || "");
+      setHobbies(data.hobbies || []);
       setPhotos(data.photos || []);
     } catch (e: any) {
       console.error("Error loading profile:", e);
@@ -118,6 +148,8 @@ export default function ProfileScreen() {
     religiousPractice?: string;
     alcoholHabit?: string;
     smokingHabit?: string;
+    ethnicity?: string;
+    nationality?: string;
   }) => {
     try {
       // Validate that at least 1 photo exists
@@ -137,6 +169,8 @@ export default function ProfileScreen() {
       const currentReligiousPractice = overrideValues?.religiousPractice !== undefined ? overrideValues.religiousPractice : religiousPractice;
       const currentAlcoholHabit = overrideValues?.alcoholHabit !== undefined ? overrideValues.alcoholHabit : alcoholHabit;
       const currentSmokingHabit = overrideValues?.smokingHabit !== undefined ? overrideValues.smokingHabit : smokingHabit;
+      const currentEthnicity = overrideValues?.ethnicity !== undefined ? overrideValues.ethnicity : ethnicity;
+      const currentNationality = overrideValues?.nationality !== undefined ? overrideValues.nationality : nationality;
 
       // Build update payload - only include location if it's valid
       const updatePayload: any = {
@@ -159,6 +193,9 @@ export default function ProfileScreen() {
         profession: profession.trim(),
         religion: religion.trim(),
         bio: bio.trim(),
+        ethnicity: currentEthnicity.trim(),
+        nationality: currentNationality.trim(),
+        hobbies,
         photos,
         last_active_at: new Date().toISOString(),
       };
@@ -722,7 +759,7 @@ export default function ProfileScreen() {
             className="flex-row items-center justify-between py-3 border-b border-white/10"
           >
             <View className="flex-row items-center flex-1">
-              <Text className="text-xl mr-3">🙏</Text>
+              <Text className="text-xl mr-3">🤲</Text>
               <Text className="text-white/80 text-base">Religious Practice</Text>
             </View>
             {editingField === 'religiousPractice' ? (
@@ -828,55 +865,71 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        {/* Marriage Intentions Card */}
-        <View className="bg-white/5 rounded-2xl border border-white/10 p-5 mb-4">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-white text-xl font-semibold">Marriage Intentions</Text>
-            {editingSection !== 'marriage' && (
-              <Pressable
-                onPress={() => setEditingSection('marriage')}
-                className="px-3 py-1 bg-pink-500/20 rounded-lg"
-              >
-                <Text className="text-pink-500 text-xs font-semibold">Edit</Text>
-              </Pressable>
-            )}
-          </View>
+        {/* Background Card */}
+        <View className="bg-white/10 rounded-2xl border border-white/10 p-5 mb-4">
+          <Text className="text-white text-xl font-semibold mb-5">Background</Text>
           
-          <View className="mb-3">
-            <Text className="text-white/70 text-sm mb-1">I would like to get to know someone for</Text>
-            {editingSection === 'marriage' ? (
+          {/* Education Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'education' ? null : 'education')}
+            className="flex-row items-center justify-between py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center flex-1">
+              <Text className="text-xl mr-3">🎓</Text>
+              <Text className="text-white/80 text-base">Education</Text>
+            </View>
+            {editingField === 'education' ? (
               <TextInput
-                className="bg-white/10 text-white p-3 rounded-xl mt-1"
-                placeholder="e.g., 6-12 months"
-                placeholderTextColor="#777"
-                value={getToKnowTimeline}
-                onChangeText={setGetToKnowTimeline}
+                className="bg-white/20 text-white px-3 py-1.5 rounded-lg text-right min-w-[120]"
+                placeholder="Enter education"
+                placeholderTextColor="#999"
+                value={education}
+                onChangeText={setEducation}
+                autoCapitalize="words"
+                autoFocus
               />
             ) : (
-              <Text className="text-white text-base mt-1">{getToKnowTimeline || "Not set"}</Text>
+              <View className="flex-row items-center">
+                <Text className="text-white text-base mr-2">{education || "Not set"}</Text>
+                <Text className="text-white/40 text-lg">›</Text>
+              </View>
             )}
-          </View>
+          </Pressable>
 
-          <View>
-            <Text className="text-white/70 text-sm mb-1">I would like to be married within</Text>
-            {editingSection === 'marriage' ? (
+          {/* Profession Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'profession' ? null : 'profession')}
+            className="flex-row items-center justify-between py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center flex-1">
+              <Text className="text-xl mr-3">💼</Text>
+              <Text className="text-white/80 text-base">Profession</Text>
+            </View>
+            {editingField === 'profession' ? (
               <TextInput
-                className="bg-white/10 text-white p-3 rounded-xl mt-1"
-                placeholder="e.g., 1-2 years"
-                placeholderTextColor="#777"
-                value={marriageTimeline}
-                onChangeText={setMarriageTimeline}
+                className="bg-white/20 text-white px-3 py-1.5 rounded-lg text-right min-w-[120]"
+                placeholder="Enter profession"
+                placeholderTextColor="#999"
+                value={profession}
+                onChangeText={setProfession}
+                autoCapitalize="words"
+                autoFocus
               />
             ) : (
-              <Text className="text-white text-base mt-1">{marriageTimeline || "Not set"}</Text>
+              <View className="flex-row items-center">
+                <Text className="text-white text-base mr-2">{profession || "Not set"}</Text>
+                <Text className="text-white/40 text-lg">›</Text>
+              </View>
             )}
-          </View>
-          {editingSection === 'marriage' && (
+          </Pressable>
+
+          {/* Save button for text inputs */}
+          {(editingField === 'education' || editingField === 'profession') && (
             <View className="flex-row gap-3 mt-4">
               <Pressable
                 className="flex-1 bg-white/10 px-4 py-2 rounded-xl"
                 onPress={() => {
-                  setEditingSection(null);
+                  setEditingField(null);
                   loadProfile();
                 }}
               >
@@ -884,7 +937,268 @@ export default function ProfileScreen() {
               </Pressable>
               <Pressable
                 className="flex-1 bg-pink-500 px-4 py-2 rounded-xl"
-                onPress={handleSave}
+                onPress={async () => {
+                  await handleSave();
+                  setEditingField(null);
+                }}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text className="text-white font-semibold text-center text-sm">Save</Text>
+                )}
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        {/* Ethnicity & Nationality Card */}
+        <View className="bg-white/10 rounded-2xl border border-white/10 p-5 mb-4">
+          <Text className="text-white text-xl font-semibold mb-5">Ethnicity & Nationality</Text>
+          
+          {/* Ethnicity Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'ethnicity' ? null : 'ethnicity')}
+            className="flex-row items-center justify-between py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center flex-1">
+              <Text className="text-xl mr-3">🌍</Text>
+              <Text className="text-white/80 text-base">Ethnicity</Text>
+            </View>
+            {editingField === 'ethnicity' ? (
+              <View className="items-end">
+                {["Arab", "South Asian", "African", "East Asian", "Central Asian", "European", "North African", "Mixed", "Other", "Prefer not to say"].map((option) => (
+                  <Pressable
+                    key={option}
+                    onPress={async () => {
+                      setEthnicity(option);
+                      setEditingField(null);
+                      await handleSave({ ethnicity: option });
+                    }}
+                    className={`px-3 py-1.5 rounded-full mb-2 ${
+                      ethnicity === option ? "bg-pink-500" : "bg-white/20"
+                    }`}
+                  >
+                    <Text className="text-white text-sm">{option}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-white text-base mr-2">{ethnicity || "Not set"}</Text>
+                <Text className="text-white/40 text-lg">›</Text>
+              </View>
+            )}
+          </Pressable>
+
+          {/* Nationality Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'nationality' ? null : 'nationality')}
+            className="py-3"
+          >
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">🏳️</Text>
+                <Text className="text-white/80 text-base">Nationality</Text>
+              </View>
+              {editingField !== 'nationality' && (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2">{nationality || "Not set"}</Text>
+                  <Text className="text-white/40 text-lg">›</Text>
+                </View>
+              )}
+            </View>
+            {editingField === 'nationality' && (
+              <ScrollView className="max-h-64 ml-10" showsVerticalScrollIndicator={false}>
+                {["Afghanistan", "Algeria", "Bahrain", "Bangladesh", "Egypt", "India", "Indonesia", "Iran", "Iraq", "Jordan", "Kazakhstan", "Kuwait", "Lebanon", "Libya", "Malaysia", "Morocco", "Nigeria", "Oman", "Pakistan", "Palestine", "Qatar", "Saudi Arabia", "Somalia", "Sudan", "Syria", "Tunisia", "Turkey", "United Arab Emirates", "United Kingdom", "United States", "Yemen", "Other"].map((option) => (
+                  <Pressable
+                    key={option}
+                    onPress={async () => {
+                      setNationality(option);
+                      setEditingField(null);
+                      await handleSave({ nationality: option });
+                    }}
+                    className={`px-3 py-2 rounded-lg mb-1 ${
+                      nationality === option ? "bg-pink-500" : "bg-white/20"
+                    }`}
+                  >
+                    <Text className="text-white text-sm">{option}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </Pressable>
+        </View>
+
+        {/* Hobbies Card */}
+        <View className="bg-white/10 rounded-2xl border border-white/10 p-5 mb-4">
+          <Text className="text-white text-xl font-semibold mb-5">Hobbies</Text>
+          
+          {editingField === 'hobbies' ? (
+            <ScrollView className="max-h-96" showsVerticalScrollIndicator={false}>
+              <View className="flex-row flex-wrap gap-3">
+                {[
+                  { emoji: "📚", name: "Reading" },
+                  { emoji: "🎬", name: "Movies" },
+                  { emoji: "🎵", name: "Music" },
+                  { emoji: "🎮", name: "Gaming" },
+                  { emoji: "⚽", name: "Sports" },
+                  { emoji: "🏋️", name: "Fitness" },
+                  { emoji: "🥊", name: "Boxing" },
+                  { emoji: "🍳", name: "Cooking" },
+                  { emoji: "✈️", name: "Travel" },
+                  { emoji: "📸", name: "Photography" },
+                  { emoji: "🎨", name: "Art" },
+                  { emoji: "🎤", name: "Singing" },
+                  { emoji: "🎹", name: "Music Instruments" },
+                  { emoji: "🧘", name: "Yoga" },
+                  { emoji: "🏃", name: "Running" },
+                  { emoji: "🚴", name: "Cycling" },
+                  { emoji: "🏊", name: "Swimming" },
+                  { emoji: "🎯", name: "Archery" },
+                  { emoji: "🎲", name: "Board Games" },
+                  { emoji: "🧩", name: "Puzzles" },
+                  { emoji: "🛍️", name: "Shopping" },
+                  { emoji: "🌱", name: "Gardening" },
+                  { emoji: "🐕", name: "Pets" },
+                  { emoji: "✍️", name: "Writing" },
+                  { emoji: "🎪", name: "Theater" },
+                  { emoji: "🍷", name: "Wine Tasting" },
+                  { emoji: "☕", name: "Coffee" },
+                  { emoji: "🍺", name: "Craft Beer" },
+                  { emoji: "🎣", name: "Fishing" },
+                  { emoji: "🏔️", name: "Hiking" },
+                  { emoji: "⛷️", name: "Skiing" },
+                  { emoji: "🏄", name: "Surfing" },
+                  { emoji: "🤿", name: "Diving" },
+                  { emoji: "🎭", name: "Drama" },
+                  { emoji: "💃", name: "Dancing" },
+                  { emoji: "🔬", name: "Science" },
+                  { emoji: "🌍", name: "Languages" },
+                  { emoji: "📱", name: "Technology" },
+                  { emoji: "🚗", name: "Cars" },
+                  { emoji: "✈️", name: "Aviation" },
+                  { emoji: "🏰", name: "History" },
+                  { emoji: "🌌", name: "Astronomy" },
+                ].map((hobby) => {
+                  const isSelected = hobbies.includes(hobby.name);
+                  return (
+                    <Pressable
+                      key={hobby.name}
+                      onPress={() => {
+                        if (isSelected) {
+                          setHobbies(hobbies.filter((h) => h !== hobby.name));
+                        } else {
+                          if (hobbies.length < 3) {
+                            setHobbies([...hobbies, hobby.name]);
+                          } else {
+                            Alert.alert("Limit Reached", "You can only select up to 3 hobbies.");
+                          }
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-full flex-row items-center gap-2 ${
+                        isSelected ? "bg-pink-500" : "bg-white/20"
+                      } ${hobbies.length >= 3 && !isSelected ? "opacity-50" : ""}`}
+                    >
+                      <Text className="text-base">{hobby.emoji}</Text>
+                      <Text className="text-white text-sm">{hobby.name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          ) : (
+            <Pressable
+              onPress={() => setEditingField(editingField === 'hobbies' ? null : 'hobbies')}
+              className="py-3"
+            >
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center flex-1 mr-3">
+                  <Text className="text-xl mr-3">🎯</Text>
+                  <Text className="text-white/80 text-base">Hobbies</Text>
+                </View>
+                <View className="flex-row items-center flex-shrink-0">
+                  {hobbies.length > 0 ? (
+                    <View className="flex-row flex-wrap gap-1.5 mr-2 items-center" style={{ maxWidth: 180 }}>
+                      {hobbies.map((hobbyName) => {
+                        const hobby = [
+                          { emoji: "📚", name: "Reading" },
+                          { emoji: "🎬", name: "Movies" },
+                          { emoji: "🎵", name: "Music" },
+                          { emoji: "🎮", name: "Gaming" },
+                          { emoji: "⚽", name: "Sports" },
+                          { emoji: "🏋️", name: "Fitness" },
+                          { emoji: "🥊", name: "Boxing" },
+                          { emoji: "🍳", name: "Cooking" },
+                          { emoji: "✈️", name: "Travel" },
+                          { emoji: "📸", name: "Photography" },
+                          { emoji: "🎨", name: "Art" },
+                          { emoji: "🎤", name: "Singing" },
+                          { emoji: "🎹", name: "Music Instruments" },
+                          { emoji: "🧘", name: "Yoga" },
+                          { emoji: "🏃", name: "Running" },
+                          { emoji: "🚴", name: "Cycling" },
+                          { emoji: "🏊", name: "Swimming" },
+                          { emoji: "🎯", name: "Archery" },
+                          { emoji: "🎲", name: "Board Games" },
+                          { emoji: "🧩", name: "Puzzles" },
+                          { emoji: "🛍️", name: "Shopping" },
+                          { emoji: "🌱", name: "Gardening" },
+                          { emoji: "🐕", name: "Pets" },
+                          { emoji: "✍️", name: "Writing" },
+                          { emoji: "🎪", name: "Theater" },
+                          { emoji: "🍷", name: "Wine Tasting" },
+                          { emoji: "☕", name: "Coffee" },
+                          { emoji: "🍺", name: "Craft Beer" },
+                          { emoji: "🎣", name: "Fishing" },
+                          { emoji: "🏔️", name: "Hiking" },
+                          { emoji: "⛷️", name: "Skiing" },
+                          { emoji: "🏄", name: "Surfing" },
+                          { emoji: "🤿", name: "Diving" },
+                          { emoji: "🎭", name: "Drama" },
+                          { emoji: "💃", name: "Dancing" },
+                          { emoji: "🔬", name: "Science" },
+                          { emoji: "🌍", name: "Languages" },
+                          { emoji: "📱", name: "Technology" },
+                          { emoji: "🚗", name: "Cars" },
+                          { emoji: "✈️", name: "Aviation" },
+                          { emoji: "🏰", name: "History" },
+                          { emoji: "🌌", name: "Astronomy" },
+                        ].find((h) => h.name === hobbyName);
+                        return (
+                          <View key={hobbyName} className="bg-pink-500/20 px-2 py-1 rounded-full flex-row items-center gap-1">
+                            {hobby && <Text className="text-xs">{hobby.emoji}</Text>}
+                            <Text className="text-white text-xs" numberOfLines={1}>{hobbyName}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <Text className="text-white text-base mr-2">Not set</Text>
+                  )}
+                  <Text className="text-white/40 text-lg">›</Text>
+                </View>
+              </View>
+            </Pressable>
+          )}
+          {editingField === 'hobbies' && (
+            <View className="flex-row gap-3 mt-4">
+              <Pressable
+                className="flex-1 bg-white/10 px-4 py-2 rounded-xl"
+                onPress={() => {
+                  setEditingField(null);
+                  loadProfile();
+                }}
+              >
+                <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
+              </Pressable>
+              <Pressable
+                className="flex-1 bg-pink-500 px-4 py-2 rounded-xl"
+                onPress={async () => {
+                  await handleSave();
+                  setEditingField(null);
+                }}
                 disabled={saving}
               >
                 {saving ? (
@@ -898,6 +1212,161 @@ export default function ProfileScreen() {
         </View>
 
         {/* Bio Card */}
+       
+
+        {/* Marriage Timeline Card */}
+        <View className="bg-white/10 rounded-2xl border border-white/10 p-5 mb-4">
+          <Text className="text-white text-xl font-semibold mb-5">Marriage Timeline</Text>
+          
+          {/* Get to Know Timeline Row */}
+          <Pressable
+            onPress={() => {
+              if (editingField !== 'getToKnowTimeline') {
+                setGetToKnowIndex(getTimelineIndex(getToKnowTimeline));
+                setEditingField('getToKnowTimeline');
+              } else {
+                setEditingField(null);
+              }
+            }}
+            className="py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1 mr-3">
+                <Text className="text-xl mr-3">💑</Text>
+                <Text className="text-white/80 text-base flex-1" numberOfLines={2}>
+                  I would like to get to know someone for
+                </Text>
+              </View>
+              <View className="flex-row items-center flex-shrink-0">
+                {editingField !== 'getToKnowTimeline' && (
+                  <>
+                    <Text className="text-white text-base mr-2 text-right" numberOfLines={1}>
+                      {getToKnowTimeline || "Not set"}
+                    </Text>
+                    <Text className="text-white/40 text-lg">›</Text>
+                  </>
+                )}
+              </View>
+            </View>
+            {editingField === 'getToKnowTimeline' && (
+              <View className="mt-4 ml-10">
+                <View className="bg-white/5 rounded-xl border border-white/10 p-4 mb-2">
+                  <Text className="text-white text-xl font-bold text-center mb-4">
+                    {TIMELINE_OPTIONS[getToKnowIndex]}
+                  </Text>
+                  <Slider
+                    style={{ width: "100%", height: 40 }}
+                    minimumValue={0}
+                    maximumValue={TIMELINE_OPTIONS.length - 1}
+                    step={1}
+                    value={getToKnowIndex}
+                    onValueChange={(value) => {
+                      const index = Math.round(value);
+                      setGetToKnowIndex(index);
+                      setGetToKnowTimeline(TIMELINE_OPTIONS[index]);
+                    }}
+                    minimumTrackTintColor="#ec4899"
+                    maximumTrackTintColor="#ffffff40"
+                    thumbTintColor="#ec4899"
+                  />
+                  <View className="flex-row justify-between mt-2">
+                    <Text className="text-white/50 text-xs">{TIMELINE_OPTIONS[0]}</Text>
+                    <Text className="text-white/50 text-xs">{TIMELINE_OPTIONS[TIMELINE_OPTIONS.length - 1]}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </Pressable>
+
+          {/* Marriage Timeline Row */}
+          <Pressable
+            onPress={() => {
+              if (editingField !== 'marriageTimeline') {
+                setMarriageIndex(getTimelineIndex(marriageTimeline));
+                setEditingField('marriageTimeline');
+              } else {
+                setEditingField(null);
+              }
+            }}
+            className="py-3"
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1 mr-3">
+                <Text className="text-xl mr-3">💍</Text>
+                <Text className="text-white/80 text-base flex-1" numberOfLines={2}>
+                  I would like to be married within
+                </Text>
+              </View>
+              <View className="flex-row items-center flex-shrink-0">
+                {editingField !== 'marriageTimeline' && (
+                  <>
+                    <Text className="text-white text-base mr-2 text-right" numberOfLines={1}>
+                      {marriageTimeline || "Not set"}
+                    </Text>
+                    <Text className="text-white/40 text-lg">›</Text>
+                  </>
+                )}
+              </View>
+            </View>
+            {editingField === 'marriageTimeline' && (
+              <View className="mt-4 ml-10">
+                <View className="bg-white/5 rounded-xl border border-white/10 p-4 mb-2">
+                  <Text className="text-white text-xl font-bold text-center mb-4">
+                    {TIMELINE_OPTIONS[marriageIndex]}
+                  </Text>
+                  <Slider
+                    style={{ width: "100%", height: 40 }}
+                    minimumValue={0}
+                    maximumValue={TIMELINE_OPTIONS.length - 1}
+                    step={1}
+                    value={marriageIndex}
+                    onValueChange={(value) => {
+                      const index = Math.round(value);
+                      setMarriageIndex(index);
+                      setMarriageTimeline(TIMELINE_OPTIONS[index]);
+                    }}
+                    minimumTrackTintColor="#ec4899"
+                    maximumTrackTintColor="#ffffff40"
+                    thumbTintColor="#ec4899"
+                  />
+                  <View className="flex-row justify-between mt-2">
+                    <Text className="text-white/50 text-xs">{TIMELINE_OPTIONS[0]}</Text>
+                    <Text className="text-white/50 text-xs">{TIMELINE_OPTIONS[TIMELINE_OPTIONS.length - 1]}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </Pressable>
+          {/* Save button for sliders */}
+          {(editingField === 'getToKnowTimeline' || editingField === 'marriageTimeline') && (
+            <View className="flex-row gap-3 mt-4">
+              <Pressable
+                className="flex-1 bg-white/10 px-4 py-2 rounded-xl"
+                onPress={() => {
+                  setEditingField(null);
+                  loadProfile();
+                }}
+              >
+                <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
+              </Pressable>
+              <Pressable
+                className="flex-1 bg-pink-500 px-4 py-2 rounded-xl"
+                onPress={async () => {
+                  await handleSave();
+                  setEditingField(null);
+                }}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text className="text-white font-semibold text-center text-sm">Save</Text>
+                )}
+              </Pressable>
+            </View>
+          )}
+        </View>
+
         <View className="bg-white/5 rounded-2xl border border-white/10 p-5 mb-4">
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-white text-xl font-semibold">Bio</Text>
@@ -949,7 +1418,8 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Subscription */}
+
+        {/* Subscription
         <View className="mb-6">
           <Text className="text-white text-xl font-semibold mb-3">Subscription</Text>
           
@@ -965,7 +1435,7 @@ export default function ProfileScreen() {
               <Text className="text-pink-500 text-xl">💎</Text>
             </View>
           </Pressable>
-        </View>
+        </View> */}
 
         {/* Account Actions */}
         <View className="mb-6">

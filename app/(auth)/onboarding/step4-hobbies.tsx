@@ -61,6 +61,10 @@ export default function Step4Hobbies() {
       if (prev.includes(hobbyName)) {
         return prev.filter((h) => h !== hobbyName);
       } else {
+        if (prev.length >= 3) {
+          alert("You can only select up to 3 hobbies.");
+          return prev;
+        }
         return [...prev, hobbyName];
       }
     });
@@ -69,6 +73,10 @@ export default function Step4Hobbies() {
   const next = () => {
     if (selectedHobbies.length === 0) {
       alert("Please select at least one hobby.");
+      return;
+    }
+    if (selectedHobbies.length > 3) {
+      alert("You can only select up to 3 hobbies.");
       return;
     }
     setData((d) => ({
@@ -97,23 +105,30 @@ export default function Step4Hobbies() {
 
         {/* Hobbies Grid */}
         <View className="mb-10">
+          <Text className="text-white/60 text-sm mb-3 ml-1">
+            Select up to 3 hobbies ({selectedHobbies.length}/3)
+          </Text>
           <View className="flex-row flex-wrap gap-3">
             {HOBBIES.map((hobby) => {
               const isSelected = selectedHobbies.includes(hobby.name);
+              const isDisabled = !isSelected && selectedHobbies.length >= 3;
               return (
                 <Pressable
                   key={hobby.name}
                   onPress={() => toggleHobby(hobby.name)}
+                  disabled={isDisabled}
                   className={`px-4 py-3 rounded-full border ${
                     isSelected
                       ? "bg-pink-500 border-pink-500"
+                      : isDisabled
+                      ? "bg-white/5 border-white/10 opacity-50"
                       : "bg-white/10 border-white/20"
                   }`}
                 >
                   <View className="flex-row items-center gap-2">
                     <Text className="text-xl">{hobby.emoji}</Text>
                     <Text className={`text-sm font-medium ${
-                      isSelected ? "text-white" : "text-white/90"
+                      isSelected ? "text-white" : isDisabled ? "text-white/40" : "text-white/90"
                     }`}>
                       {hobby.name}
                     </Text>
