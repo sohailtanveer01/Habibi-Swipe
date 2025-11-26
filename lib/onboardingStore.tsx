@@ -1,29 +1,75 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
 
 type OnboardingData = {
-  name: string;
+  firstName: string;
+  lastName: string;
+  height: string;
+  maritalStatus: string;
+  hasChildren: boolean | null;
   gender: string;
   dob: string; // ISO like "1998-06-14"
-  intent: string;
+  getToKnowTimeline: string; // "I would like to get to know someone for"
+  marriageTimeline: string; // "I would like to be married within"
+  sect: string; // sunni, shia, sufi, other, prefer not to say
+  bornMuslim: boolean | null; // yes or no
+  religiousPractice: string; // actively practicing, moderately practicing, not practicing
+  alcoholHabit: string; // drinks, doesn't drink, sometimes
+  smokingHabit: string; // smokes, doesn't smoke, sometimes
+  hobbies: string[]; // array of selected hobbies
   education: string;
   profession: string;
   religion: string;
   bio: string;
   photos: string[]; // Supabase public URLs
   location: { lat: number; lon: number } | null;
+  ethnicity: string;
+  nationality: string;
+  preferences: {
+    ageMin: number;
+    ageMax: number;
+    nationalities: string[];
+    ethnicities: string[];
+    sects: string[];
+    alcoholPreferences: string[];
+    smokingPreferences: string[];
+    bornMuslim: "yes" | "no" | "both" | null;
+  };
 };
 
 const defaultData: OnboardingData = {
-  name: "",
+  firstName: "",
+  lastName: "",
+  height: "",
+  maritalStatus: "",
+  hasChildren: null,
   gender: "",
   dob: "",
-  intent: "serious",
+  getToKnowTimeline: "",
+  marriageTimeline: "",
+  sect: "",
+  bornMuslim: null,
+  religiousPractice: "",
+  alcoholHabit: "",
+  smokingHabit: "",
+  hobbies: [],
   education: "",
   profession: "",
   religion: "",
   bio: "",
   photos: [],
   location: null,
+  ethnicity: "",
+  nationality: "",
+  preferences: {
+    ageMin: 18,
+    ageMax: 50,
+    nationalities: [],
+    ethnicities: [],
+    sects: [],
+    alcoholPreferences: [],
+    smokingPreferences: [],
+    bornMuslim: null,
+  },
 };
 
 const Ctx = createContext<{

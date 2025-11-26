@@ -4,7 +4,7 @@ import { useOnboarding } from "../../../lib/onboardingStore";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
-export default function Step5Location() {
+export default function Step6Location() {
   const router = useRouter();
   const { setData } = useOnboarding();
   const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ export default function Step5Location() {
     }));
 
     setLoading(false);
-    router.push("/onboarding/done");
+    router.push("/onboarding/step7-ethnicity");
   };
 
   return (
@@ -47,7 +47,7 @@ export default function Step5Location() {
 
       <Pressable
         className="bg-white/10 p-4 rounded-2xl items-center mt-3"
-        onPress={() => router.push("/onboarding/done")}
+        onPress={() => router.push("/onboarding/step7-ethnicity")}
       >
         <Text className="text-white/80">Skip for now</Text>
       </Pressable>

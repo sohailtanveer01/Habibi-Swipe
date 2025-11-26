@@ -1,0 +1,263 @@
+import { View, Text, Pressable, ScrollView, Alert, LayoutChangeEvent } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { supabase } from "../../../lib/supabase";
+import { useOnboarding } from "../../../lib/onboardingStore";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import DraggablePhoto from "@/components/DraggablePhoto";
+
+async function uploadPhoto(uri: string, userId: string) {
+  const ext = uri.split(".").pop() || "jpg";
+  const filePath = `${userId}/${Date.now()}.${ext}`;
+
+  // React Native: Read file as base64 and convert to ArrayBuffer
+  const response = await fetch(uri);
+  const blob = await response.arrayBuffer();
+  
+  const { error } = await supabase.storage
+    .from("profile-photos")
+    .upload(filePath, blob, {
+      contentType: `image/${ext}`,
+      upsert: false,
+    });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage
+    .from("profile-photos")
+    .getPublicUrl(filePath);
+
+  return data.publicUrl;
+}
+
+export default function Step5Photos() {
+  const router = useRouter();
+  const { data, setData } = useOnboarding();
+  const [uploading, setUploading] = useState(false);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [hoverTargetIndex, setHoverTargetIndex] = useState<number | null>(null);
+  const [layoutPositions, setLayoutPositions] = useState<{ [key: number]: { x: number; y: number; width: number; height: number } }>({});
+
+  const pickImage = async (index: number) => {
+    try {
+      // Check & request permission
+      const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      let hasPermission = existingStatus === 'granted';
+      
+      if (!hasPermission) {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        hasPermission = status === 'granted';
+      }
+
+      if (!hasPermission) {
+        Alert.alert(
+          "Permission needed",
+          "We need access to your gallery to add photos. Please enable photo permissions in your device settings."
+        );
+        return;
+      }
+
+      // Open gallery
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: false,
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const selectedUri = result.assets[0].uri;
+
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // User is authenticated - upload immediately
+        setUploading(true);
+        const url = await uploadPhoto(selectedUri, user.id);
+        
+        // Update photos array at specific index
+        const newPhotos = [...data.photos];
+        newPhotos[index] = url;
+        setData((d) => ({ ...d, photos: newPhotos }));
+      } else {
+        // User not authenticated yet - store local URI temporarily
+        const newPhotos = [...data.photos];
+        newPhotos[index] = selectedUri;
+        setData((d) => ({ ...d, photos: newPhotos }));
+      }
+    } catch (e: any) {
+      console.error("Error in pickImage:", e);
+      Alert.alert("Error", e.message || "Failed to pick/upload photo. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removePhoto = (slotIndex: number) => {
+    const photo = photosArray[slotIndex];
+    if (!photo || photo.trim() === "") return;
+    
+    // Check if this is the last photo
+    const filledPhotos = data.photos.filter((p) => p && p.trim() !== "");
+    if (filledPhotos.length <= 1) {
+      Alert.alert("Cannot Remove", "You must have at least 1 photo. Please add another photo before removing this one.");
+      return;
+    }
+    
+    // Remove from filled photos array
+    const photoIndex = filledPhotos.indexOf(photo);
+    if (photoIndex !== -1) {
+      filledPhotos.splice(photoIndex, 1);
+      setData((d) => ({ ...d, photos: filledPhotos }));
+    }
+  };
+
+  // Ensure photos array has 6 slots for display
+  const photosArray = [...data.photos];
+  while (photosArray.length < 6) {
+    photosArray.push("");
+  }
+
+  const handleReorder = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || toIndex === null) return;
+    
+    const filledPhotos = data.photos.filter((p) => p && p.trim() !== "");
+    const fromPhoto = photosArray[fromIndex];
+    
+    if (!fromPhoto || fromPhoto.trim() === "") return;
+    
+    const fromFilledIndex = filledPhotos.indexOf(fromPhoto);
+    if (fromFilledIndex === -1) return;
+    
+    // Calculate target position in filled photos array
+    // Count how many filled photos are before the target slot
+    let targetFilledIndex = 0;
+    for (let i = 0; i < toIndex && i < photosArray.length; i++) {
+      if (photosArray[i] && photosArray[i].trim() !== "") {
+        targetFilledIndex++;
+      }
+    }
+    
+    // If dragging forward, adjust target index (we're removing one item before it)
+    if (fromFilledIndex < targetFilledIndex) {
+      targetFilledIndex--;
+    }
+    
+    // Remove from current position and insert at new position
+    const newFilledPhotos = [...filledPhotos];
+    newFilledPhotos.splice(fromFilledIndex, 1);
+    newFilledPhotos.splice(targetFilledIndex, 0, fromPhoto);
+    
+    setData((d) => ({ ...d, photos: newFilledPhotos }));
+  };
+
+  const onLayout = (index: number, event: LayoutChangeEvent) => {
+    const { x, y, width, height } = event.nativeEvent.layout;
+    setLayoutPositions((prev) => ({
+      ...prev,
+      [index]: { x, y, width, height },
+    }));
+  };
+
+  const next = () => {
+    const filledPhotos = data.photos.filter((p) => p && p.trim() !== "");
+    if (filledPhotos.length < 1) {
+      Alert.alert("Photo Required", "Please upload at least 1 photo to continue.");
+      return;
+    }
+    // Filter out empty slots before saving
+    setData((d) => ({ ...d, photos: filledPhotos }));
+    router.push("/onboarding/step6-location");
+  };
+
+  return (
+    <ScrollView
+      className="flex-1 bg-black"
+      contentContainerStyle={{ paddingBottom: 40 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View className="px-6 pt-20 pb-8">
+        {/* Header Section */}
+        <View className="mb-10">
+          <Text className="text-white text-4xl font-bold mb-3 leading-tight">
+            Your Photos
+          </Text>
+          <Text className="text-white/80 text-xl font-medium mb-2">
+            Add up to 6 photos
+          </Text>
+          <Text className="text-white/60 text-sm">
+            The first photo will be your main profile picture
+          </Text>
+        </View>
+
+        {/* Photo Grid */}
+        <View className="mb-10">
+          <Text className="text-white/60 text-sm mb-3 text-center">
+            Long press and drag to reorder photos
+          </Text>
+          <View className="flex-row flex-wrap gap-4 justify-between">
+            {photosArray.slice(0, 6).map((photo, index) => {
+              const isDragging = draggingIndex === index;
+              const filledPhotos = data.photos.filter((p) => p && p.trim() !== "");
+              const isMainPhoto = photo && filledPhotos.indexOf(photo) === 0;
+              
+              return (
+                <DraggablePhoto
+                  key={index}
+                  photo={photo}
+                  index={index}
+                  isMainPhoto={isMainPhoto}
+                  isDragging={isDragging}
+                  onLayout={(e) => onLayout(index, e)}
+                  onLongPress={() => {
+                    if (photo && photo.trim() !== "") {
+                      setDraggingIndex(index);
+                    }
+                  }}
+                  onDragUpdate={(targetIndex) => {
+                    setHoverTargetIndex(targetIndex);
+                  }}
+                  onDragEnd={(targetIndex) => {
+                    setDraggingIndex(null);
+                    setHoverTargetIndex(null);
+                    if (targetIndex !== null && targetIndex !== index) {
+                      handleReorder(index, targetIndex);
+                    }
+                  }}
+                  hoverTargetIndex={hoverTargetIndex}
+                  draggingIndex={draggingIndex}
+                  onPress={() => {
+                    if (!photo || photo.trim() === "") {
+                      pickImage(index);
+                    }
+                  }}
+                  onRemove={() => removePhoto(index)}
+                  uploading={uploading}
+                  layoutPositions={layoutPositions}
+                />
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Continue Button */}
+        <Pressable
+          className="bg-pink-500 p-5 rounded-2xl items-center shadow-lg"
+          onPress={next}
+          style={{
+            shadowColor: "#ec4899",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 8,
+          }}
+        >
+          <Text className="text-white text-lg font-bold">Continue</Text>
+        </Pressable>
+      </View>
+    </ScrollView>
+  );
+}
