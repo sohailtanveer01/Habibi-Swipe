@@ -28,7 +28,7 @@ async function uploadPhoto(uri: string, userId: string) {
 export default function ProfileScreen() {
   const router = useRouter();
   const [editingSection, setEditingSection] = useState<string | null>(null); // 'photos' | 'about' | 'marriage' | 'bio' | null
-  const [editingField, setEditingField] = useState<string | null>(null); // 'name' | 'height' | 'maritalStatus' | 'children' | 'gender' | 'dob' | null
+  const [editingField, setEditingField] = useState<string | null>(null); // 'name' | 'height' | 'maritalStatus' | 'children' | 'dob' | 'sect' | 'bornMuslim' | 'religiousPractice' | 'alcoholHabit' | 'smokingHabit' | null
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -40,8 +40,12 @@ export default function ProfileScreen() {
   const [height, setHeight] = useState("");
   const [maritalStatus, setMaritalStatus] = useState("");
   const [hasChildren, setHasChildren] = useState<boolean | null>(null);
-  const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
+  const [sect, setSect] = useState("");
+  const [bornMuslim, setBornMuslim] = useState<boolean | null>(null);
+  const [religiousPractice, setReligiousPractice] = useState("");
+  const [alcoholHabit, setAlcoholHabit] = useState("");
+  const [smokingHabit, setSmokingHabit] = useState("");
   const [getToKnowTimeline, setGetToKnowTimeline] = useState("");
   const [marriageTimeline, setMarriageTimeline] = useState("");
   const [education, setEducation] = useState("");
@@ -87,8 +91,12 @@ export default function ProfileScreen() {
       setHeight(data.height || "");
       setMaritalStatus(data.marital_status || "");
       setHasChildren(data.has_children !== undefined ? data.has_children : null);
-      setGender(data.gender || "");
       setDob(data.dob || "");
+      setSect(data.sect || "");
+      setBornMuslim(data.born_muslim !== undefined ? data.born_muslim : null);
+      setReligiousPractice(data.religious_practice || "");
+      setAlcoholHabit(data.alcohol_habit || "");
+      setSmokingHabit(data.smoking_habit || "");
       setGetToKnowTimeline(data.get_to_know_timeline || "");
       setMarriageTimeline(data.marriage_timeline || "");
       setEducation(data.education || "");
@@ -104,7 +112,13 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (overrideValues?: {
+    sect?: string;
+    bornMuslim?: boolean | null;
+    religiousPractice?: string;
+    alcoholHabit?: string;
+    smokingHabit?: string;
+  }) => {
     try {
       // Validate that at least 1 photo exists
       if (!photos || photos.length === 0) {
@@ -117,6 +131,13 @@ export default function ProfileScreen() {
 
       setSaving(true);
 
+      // Use override values if provided, otherwise use state values
+      const currentSect = overrideValues?.sect !== undefined ? overrideValues.sect : sect;
+      const currentBornMuslim = overrideValues?.bornMuslim !== undefined ? overrideValues.bornMuslim : bornMuslim;
+      const currentReligiousPractice = overrideValues?.religiousPractice !== undefined ? overrideValues.religiousPractice : religiousPractice;
+      const currentAlcoholHabit = overrideValues?.alcoholHabit !== undefined ? overrideValues.alcoholHabit : alcoholHabit;
+      const currentSmokingHabit = overrideValues?.smokingHabit !== undefined ? overrideValues.smokingHabit : smokingHabit;
+
       // Build update payload - only include location if it's valid
       const updatePayload: any = {
         id: user.id,
@@ -126,8 +147,12 @@ export default function ProfileScreen() {
         height: height.trim(),
         marital_status: maritalStatus,
         has_children: hasChildren,
-        gender,
         dob,
+        sect: currentSect.trim(),
+        born_muslim: currentBornMuslim,
+        religious_practice: currentReligiousPractice,
+        alcohol_habit: currentAlcoholHabit,
+        smoking_habit: currentSmokingHabit,
         get_to_know_timeline: getToKnowTimeline,
         marriage_timeline: marriageTimeline,
         education: education.trim(),
@@ -557,43 +582,6 @@ export default function ProfileScreen() {
             )}
           </Pressable>
 
-          {/* Gender Row */}
-          <Pressable
-            onPress={() => setEditingField(editingField === 'gender' ? null : 'gender')}
-            className="py-3 border-b border-white/10"
-          >
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center flex-1">
-                <Text className="text-xl mr-3">⚧️</Text>
-                <Text className="text-white/80 text-base">Gender</Text>
-              </View>
-              {editingField !== 'gender' && (
-                <View className="flex-row items-center">
-                  <Text className="text-white text-base mr-2 capitalize">{gender || "Not set"}</Text>
-                  <Text className="text-white/40 text-lg">›</Text>
-                </View>
-              )}
-            </View>
-            {editingField === 'gender' && (
-              <View className="flex-row gap-2 ml-10">
-                {["male", "female"].map((g) => (
-                  <Pressable
-                    key={g}
-                    onPress={() => {
-                      setGender(g);
-                      setEditingField(null);
-                    }}
-                    className={`px-3 py-1.5 rounded-full ${
-                      gender === g ? "bg-pink-500" : "bg-white/20"
-                    }`}
-                  >
-                    <Text className="text-white text-sm capitalize">{g}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </Pressable>
-
           {/* Date of Birth Row */}
           <Pressable
             onPress={() => setEditingField(editingField === 'dob' ? null : 'dob')}
@@ -647,6 +635,197 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
           )}
+        </View>
+
+        {/* Religiosity Card */}
+        <View className="bg-white/10 rounded-2xl border border-white/10 p-5 mb-4">
+          <Text className="text-white text-xl font-semibold mb-5">Religiosity</Text>
+          
+          {/* Sect Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'sect' ? null : 'sect')}
+            className="flex-row items-center justify-between py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center flex-1">
+              <Text className="text-xl mr-3">🕌</Text>
+              <Text className="text-white/80 text-base">Sect</Text>
+            </View>
+            {editingField === 'sect' ? (
+              <View className="items-end">
+                {["sunni", "shia", "sufi", "other", "prefer not to say"].map((option) => (
+                  <Pressable
+                    key={option}
+                    onPress={async () => {
+                      setSect(option);
+                      setEditingField(null);
+                      await handleSave({ sect: option });
+                    }}
+                    className={`px-3 py-1.5 rounded-full mb-2 ${
+                      sect === option ? "bg-pink-500" : "bg-white/20"
+                    }`}
+                  >
+                    <Text className="text-white text-sm capitalize">{option}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-white text-base mr-2 capitalize">{sect || "Not set"}</Text>
+                <Text className="text-white/40 text-lg">›</Text>
+              </View>
+            )}
+          </Pressable>
+
+          {/* Born Muslim Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'bornMuslim' ? null : 'bornMuslim')}
+            className="flex-row items-center justify-between py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center flex-1">
+              <Text className="text-xl mr-3">🌙</Text>
+              <Text className="text-white/80 text-base">Born Muslim?</Text>
+            </View>
+            {editingField === 'bornMuslim' ? (
+              <View className="flex-row gap-2">
+                {[
+                  { value: true, label: "Yes" },
+                  { value: false, label: "No" },
+                ].map((option) => (
+                  <Pressable
+                    key={option.label}
+                    onPress={async () => {
+                      setBornMuslim(option.value);
+                      setEditingField(null);
+                      await handleSave({ bornMuslim: option.value });
+                    }}
+                    className={`flex-1 px-3 py-2 rounded-full ${
+                      bornMuslim === option.value ? "bg-pink-500" : "bg-white/20"
+                    }`}
+                  >
+                    <Text className="text-white text-center text-sm font-semibold">{option.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-white text-base mr-2">
+                  {bornMuslim === true ? "Yes" : bornMuslim === false ? "No" : "Not set"}
+                </Text>
+                <Text className="text-white/40 text-lg">›</Text>
+              </View>
+            )}
+          </Pressable>
+
+          {/* Religious Practice Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'religiousPractice' ? null : 'religiousPractice')}
+            className="flex-row items-center justify-between py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center flex-1">
+              <Text className="text-xl mr-3">🙏</Text>
+              <Text className="text-white/80 text-base">Religious Practice</Text>
+            </View>
+            {editingField === 'religiousPractice' ? (
+              <View className="flex-row gap-2 flex-wrap">
+                {["actively practicing", "moderately practicing", "not practicing"].map((option) => (
+                  <Pressable
+                    key={option}
+                    onPress={async () => {
+                      setReligiousPractice(option);
+                      setEditingField(null);
+                      await handleSave({ religiousPractice: option });
+                    }}
+                    className={`px-3 py-1.5 rounded-full ${
+                      religiousPractice === option ? "bg-pink-500" : "bg-white/20"
+                    }`}
+                  >
+                    <Text className="text-white text-sm capitalize">{option}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-white text-base mr-2 capitalize">{religiousPractice || "Not set"}</Text>
+                <Text className="text-white/40 text-lg">›</Text>
+              </View>
+            )}
+          </Pressable>
+
+          {/* Alcohol Habit Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'alcoholHabit' ? null : 'alcoholHabit')}
+            className="py-3 border-b border-white/10"
+          >
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">🍷</Text>
+                <Text className="text-white/80 text-base">Alcohol</Text>
+              </View>
+              {editingField !== 'alcoholHabit' && (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2 capitalize">{alcoholHabit || "Not set"}</Text>
+                  <Text className="text-white/40 text-lg">›</Text>
+                </View>
+              )}
+            </View>
+            {editingField === 'alcoholHabit' && (
+              <View className="flex-row gap-2 flex-wrap ml-10">
+                {["drinks", "doesn't drink", "sometimes"].map((option) => (
+                  <Pressable
+                    key={option}
+                    onPress={async () => {
+                      setAlcoholHabit(option);
+                      setEditingField(null);
+                      await handleSave({ alcoholHabit: option });
+                    }}
+                    className={`px-3 py-1.5 rounded-full ${
+                      alcoholHabit === option ? "bg-pink-500" : "bg-white/20"
+                    }`}
+                  >
+                    <Text className="text-white text-sm capitalize">{option}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </Pressable>
+
+          {/* Smoking Habit Row */}
+          <Pressable
+            onPress={() => setEditingField(editingField === 'smokingHabit' ? null : 'smokingHabit')}
+            className="py-3"
+          >
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">🚬</Text>
+                <Text className="text-white/80 text-base">Smoking</Text>
+              </View>
+              {editingField !== 'smokingHabit' && (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2 capitalize">{smokingHabit || "Not set"}</Text>
+                  <Text className="text-white/40 text-lg">›</Text>
+                </View>
+              )}
+            </View>
+            {editingField === 'smokingHabit' && (
+              <View className="flex-row gap-2 flex-wrap ml-10">
+                {["smokes", "doesn't smoke", "sometimes"].map((option) => (
+                  <Pressable
+                    key={option}
+                    onPress={async () => {
+                      setSmokingHabit(option);
+                      setEditingField(null);
+                      await handleSave({ smokingHabit: option });
+                    }}
+                    className={`px-3 py-1.5 rounded-full ${
+                      smokingHabit === option ? "bg-pink-500" : "bg-white/20"
+                    }`}
+                  >
+                    <Text className="text-white text-sm capitalize">{option}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </Pressable>
         </View>
 
         {/* Marriage Intentions Card */}
