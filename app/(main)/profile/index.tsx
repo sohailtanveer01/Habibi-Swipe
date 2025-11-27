@@ -408,6 +408,16 @@ export default function ProfileScreen() {
           <Text className="text-white text-3xl font-bold mb-2">
             {firstName && lastName ? `${firstName} ${lastName}` : "Profile"}
           </Text>
+          
+          {/* Preview Profile Button */}
+          <Pressable
+            onPress={() => router.push("/(main)/profile/preview")}
+            className="mt-2"
+          >
+            <Text className="text-pink-400 text-base underline">
+              Preview my profile
+            </Text>
+          </Pressable>
         </View>
 
         {/* Photos Card */}
