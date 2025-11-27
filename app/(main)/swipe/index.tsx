@@ -7,8 +7,8 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import SwipeCard from "../../components/SwipeCard";
-import { supabase } from "../../lib/supabase";
+import SwipeCard from "../../../components/SwipeCard";
+import { supabase } from "../../../lib/supabase";
 
 const { width, height } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
@@ -129,3 +129,4 @@ export default function SwipeScreen() {
     </View>
   );
 }
+

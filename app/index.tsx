@@ -32,7 +32,7 @@ export default function Home() {
 
   return (
     <ImageBackground
-      source={{ uri: "https://i.imgur.com/mtbl1qF.jpeg" }} // replace with your own bg image
+    //   source={{ uri: "https://i.imgur.com/mtbl1qF.jpeg" }} // replace with your own bg image
       style={{ flex: 1 }}
       resizeMode="cover"
     >

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, Image, Alert, ActivityIndicator } from "react-native";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Slider from "@react-native-community/slider";
