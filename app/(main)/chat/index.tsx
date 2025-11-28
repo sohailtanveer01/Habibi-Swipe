@@ -18,6 +18,7 @@ function cleanPhotoUrl(url: string | null | undefined): string | null {
 export default function ChatListScreen() {
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showNotificationBanner, setShowNotificationBanner] = useState(true);
   const router = useRouter();
 
   const loadMatches = async () => {
@@ -94,8 +95,27 @@ export default function ChatListScreen() {
   }
 
   return (
-    <View className="flex-1 bg-white pt-12 px-4">
-      <Text className="text-gray-900 text-2xl font-bold mb-4">Chat</Text>
+    <View className="flex-1 bg-white pt-12">
+      <View className="px-4 mb-4">
+        <Text className="text-gray-900 text-2xl font-bold">Chats</Text>
+      </View>
+
+      {/* Notification Banner */}
+      {showNotificationBanner && (
+        <View className="mx-4 mb-4 bg-pink-500 rounded-2xl px-4 py-3 flex-row items-center justify-between">
+          <View className="flex-row items-center flex-1">
+            <Text className="text-white text-xl mr-3">🔔</Text>
+            <Text className="text-white text-sm font-medium flex-1">
+              Get notified when someone great messages you
+            </Text>
+          </View>
+          <Pressable onPress={() => setShowNotificationBanner(false)}>
+            <Text className="text-white text-lg ml-2">→</Text>
+          </Pressable>
+        </View>
+      )}
+
+      <View className="flex-1 px-4">
 
       {matches.length === 0 ? (
         <View className="flex-1 items-center justify-center">
@@ -157,6 +177,7 @@ export default function ChatListScreen() {
           }}
         />
       )}
+      </View>
     </View>
   );
 }

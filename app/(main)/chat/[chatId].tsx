@@ -131,7 +131,7 @@ export default function ChatScreen() {
     <KeyboardAvoidingView
       className="flex-1 bg-white"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
       {/* Header */}
       <View className="bg-white px-4 pt-12 pb-3 flex-row items-center justify-between border-b border-gray-100">
@@ -174,7 +174,7 @@ export default function ChatScreen() {
             </View>
             <View className="flex-1">
               <Text className="text-gray-900 font-semibold text-sm">Get notified instantly</Text>
-              <Text className="text-gray-600 text-xs">Don't let any chances slip away</Text>
+              <Text className="text-gray-600 text-xs">Do not let any chances slip away</Text>
             </View>
           </View>
           <View className="flex-row items-center gap-2">
@@ -270,9 +270,9 @@ export default function ChatScreen() {
       />
 
       {/* Input */}
-      <View className="bg-white border-t border-gray-200 px-4 py-3 flex-row items-center">
+      <View className="bg-white border-t border-gray-200 px-4 py-2 flex-row items-center" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
         <TextInput
-          className="flex-1 bg-gray-100 text-gray-900 px-4 py-3 rounded-full mr-2"
+          className="flex-1 bg-gray-100 text-gray-900 px-4 py-3 rounded-full"
           placeholder="Type a message..."
           placeholderTextColor="#999"
           value={text}
@@ -283,20 +283,13 @@ export default function ChatScreen() {
           returnKeyType="send"
           onSubmitEditing={send}
         />
-        <Pressable className="mr-2">
-          <Text className="text-gray-600 text-xl">😊</Text>
-        </Pressable>
         {text.trim() ? (
-          <Pressable onPress={send} disabled={sending}>
-            <View className="bg-purple-600 w-8 h-8 rounded-full items-center justify-center">
-              <Text className="text-white text-sm">✓</Text>
+          <Pressable onPress={send} disabled={sending} className="ml-3">
+            <View className="bg-purple-600 w-10 h-10 rounded-full items-center justify-center">
+              <Text className="text-white text-lg">✓</Text>
             </View>
           </Pressable>
-        ) : (
-          <Pressable>
-            <Text className="text-gray-600 text-xl">🎤</Text>
-          </Pressable>
-        )}
+        ) : null}
       </View>
     </KeyboardAvoidingView>
   );

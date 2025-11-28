@@ -1,11 +1,17 @@
-import { Tabs } from "expo-router";
+import { Tabs, usePathname } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, View, Text, Platform, StyleSheet } from "react-native";
-import { BlurView } from "expo-blur";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
+import { BlurView } from "expo-blur";
 
 export default function MainLayout() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const pathname = usePathname();
+  
+  // Check if we're on a chat detail screen
+  const isChatDetail = pathname?.includes("/chat/") && pathname !== "/chat";
 
   useEffect(() => {
     const loadProfilePhoto = async () => {
@@ -54,22 +60,67 @@ export default function MainLayout() {
     };
   }, []);
 
+  // Check for unread messages
+  useEffect(() => {
+    const checkUnreadMessages = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get all matches for the user
+      const { data: matches } = await supabase
+        .from("matches")
+        .select("id")
+        .or(`user1.eq.${user.id},user2.eq.${user.id}`);
+
+      if (matches && matches.length > 0) {
+        // Check for unread messages (messages not sent by current user)
+        const { count } = await supabase
+          .from("messages")
+          .select("*", { count: "exact", head: true })
+          .in("match_id", matches.map(m => m.id))
+          .neq("sender_id", user.id);
+          // Note: In a real app, you'd also check if messages are read/unread
+          // For now, we'll just show a badge if there are any messages
+
+        setUnreadCount(count || 0);
+      }
+    };
+
+    checkUnreadMessages();
+
+    // Subscribe to new messages
+    const channel = supabase
+      .channel("unread-messages")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        () => {
+          checkUnreadMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#ec4899",
-        tabBarInactiveTintColor: "rgba(255, 255, 255, 0.5)",
-        tabBarStyle: {
+        tabBarActiveTintColor: "#F5F573",
+        tabBarInactiveTintColor: "#000000",
+        tabBarStyle: isChatDetail ? { display: "none" } : {
           position: "absolute",
-          bottom: Platform.OS === "ios" ? 50 : 28,
+          bottom: Platform.OS === "ios" ? 60 : 28,
           left: 30,
           right: 30,
-          elevation: 0,
-          backgroundColor: "transparent",
+          elevation: 20,
+          backgroundColor: "#EDEDED",
           borderTopWidth: 0,
           height: Platform.OS === "ios" ? 65 : 58,
-          borderRadius: 18,
+          borderRadius: 28,
           overflow: "hidden",
           // Premium shadow
           ...Platform.select({
@@ -93,8 +144,8 @@ export default function MainLayout() {
             <View style={styles.androidGlass} />
           ),
         tabBarItemStyle: {
-          paddingTop: 2,
-          paddingBottom: 2,
+          paddingTop: 4,
+          paddingBottom: 4,
         },
       }}
     >
@@ -102,9 +153,13 @@ export default function MainLayout() {
         name="swipe/index"
         options={{
           title: "Swipe",
-          tabBarLabel: "Swipe",
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 24 }}>💕</Text>
+          tabBarLabel: "",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "home" : "home-outline"} 
+              size={24} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -112,19 +167,34 @@ export default function MainLayout() {
         name="likes/index"
         options={{
           title: "Likes",
-          tabBarLabel: "Likes",
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 24 }}>❤️</Text>
+          tabBarLabel: "",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "heart" : "heart-outline"} 
+              size={24} 
+              color={color} 
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="chat/index"
         options={{
-          title: "Chat",
-          tabBarLabel: "Chat",
-          tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 24 }}>💬</Text>
+          title: "Chats",
+          tabBarLabel: "",
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ position: "relative" }}>
+              <Ionicons 
+                name={focused ? "chatbubble" : "chatbubble-outline"} 
+                size={24} 
+                color={color} 
+              />
+              {unreadCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <View style={styles.notificationDot} />
+                </View>
+              )}
+            </View>
           ),
         }}
       />
@@ -132,21 +202,21 @@ export default function MainLayout() {
         name="profile/index"
         options={{
           title: "Profile",
-          tabBarLabel: "Profile",
+          tabBarLabel: "",
           tabBarIcon: ({ size }) => {
             if (profilePhoto) {
               return (
-                <View style={styles.profileIconWrapper}>
-                  <Image
-                    source={{ uri: profilePhoto }}
-                    style={{
-                      width: size + 4,
-                      height: size + 4,
-                      borderRadius: (size + 4) / 2,
-                    }}
-                    resizeMode="cover"
-                  />
-                </View>
+                <Image
+                  source={{ uri: profilePhoto }}
+                  style={{
+                    width: size + 8,
+                    height: size + 8,
+                    borderRadius: (size + 4) / 2,
+                    borderWidth: 2,
+                    borderColor: "#ffffff",
+                  }}
+                  resizeMode="cover"
+                />
               );
             }
             return (
@@ -155,14 +225,14 @@ export default function MainLayout() {
                   width: size + 4,
                   height: size + 4,
                   borderRadius: (size + 4) / 2,
-                  backgroundColor: "rgba(255, 255, 255, 0.15)",
+                  backgroundColor: "#9ca3af",
                   alignItems: "center",
                   justifyContent: "center",
                   borderWidth: 2,
-                  borderColor: "#ec4899",
+                  borderColor: "#ffffff",
                 }}
               >
-                <Text style={{ fontSize: (size + 4) * 0.6 }}>👤</Text>
+                <Text style={{ fontSize: (size + 4) * 0.6, color: "#ffffff" }}>👤</Text>
               </View>
             );
           },
@@ -177,24 +247,19 @@ export default function MainLayout() {
 }
 
 const styles = StyleSheet.create({
-  premiumGlass: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.15)",
-    borderRadius: 18,
+  notificationBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  androidGlass: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 18,
-  },
-  profileIconWrapper: {
-    borderWidth: 2,
-    borderColor: "#ec4899",
-    borderRadius: 100,
-    padding: 0,
+  notificationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ef4444", // Red dot
   },
 });
