@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
-import { View, Text, FlatList, Pressable, Image, ActivityIndicator } from "react-native";
+import { useEffect, useCallback, useState } from "react";
+import { View, Text, FlatList, Pressable, Image, ActivityIndicator, RefreshControl } from "react-native";
 import { supabase } from "../../../lib/supabase";
 import { useRouter, useFocusEffect } from "expo-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -16,30 +17,21 @@ function cleanPhotoUrl(url: string | null | undefined): string | null {
 }
 
 export default function ChatListScreen() {
-  const [matches, setMatches] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showNotificationBanner, setShowNotificationBanner] = useState(true);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const loadMatches = async () => {
-    setLoading(true);
-    try {
+  // Fetch chat list with React Query (cached)
+  const { data: chatListData, isLoading, error, refetch } = useQuery({
+    queryKey: ["chat-list"],
+    queryFn: async () => {
       const user = (await supabase.auth.getUser()).data.user;
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+      if (!user) throw new Error("Not authenticated");
 
-      // Call the Edge Function to get chat list with unread counts
       const { data, error } = await supabase.functions.invoke("get-chat-list");
 
-      if (error) {
-        console.error("Error loading chat list:", error);
-        alert(`Error loading chats: ${error.message}`);
-        setLoading(false);
-        return;
-      }
-
+      if (error) throw error;
+      
       if (data && data.matches) {
         // Log unread counts for debugging
         console.log("Chat list loaded with unread counts:", 
@@ -49,36 +41,36 @@ export default function ChatListScreen() {
             otherUser: m.otherUser?.name || m.otherUser?.first_name 
           }))
         );
-        setMatches(data.matches);
-      } else {
-        setMatches([]);
+        return data.matches;
       }
-    } catch (e: any) {
-      console.error("Error in loadMatches:", e);
-      alert(`Error loading chats: ${e.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return [];
+    },
+    staleTime: 1000 * 60 * 1, // 1 minute - cache is fresh for 1 min
+    gcTime: 1000 * 60 * 15, // 15 minutes - cache persists for 15 min
+    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnWindowFocus: false,
+  });
 
+  const matches = chatListData || [];
+
+  // Real-time subscription for matches and messages
   useEffect(() => {
-    loadMatches();
-
-    // Subscribe to new matches and message updates
     const channel = supabase
       .channel("chat-list-updates")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "matches" },
         () => {
-          loadMatches();
+          // Invalidate cache to refetch chat list
+          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
         }
       )
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         () => {
-          loadMatches();
+          // Invalidate cache to refetch chat list (for last message updates)
+          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
         }
       )
       .on(
@@ -86,12 +78,14 @@ export default function ChatListScreen() {
         { 
           event: "UPDATE", 
           schema: "public", 
-          table: "messages",
-          filter: "read=eq.true"
+          table: "messages"
         },
-        () => {
-          // When messages are marked as read, refresh the list
-          loadMatches();
+        (payload) => {
+          // When messages are updated (especially when marked as read), refresh the list
+          // Check if read status changed from false to true
+          if (payload.new.read === true && payload.old?.read === false) {
+            queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+          }
         }
       )
       .subscribe();
@@ -99,24 +93,36 @@ export default function ChatListScreen() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [queryClient]);
 
   // Refresh when screen comes into focus (e.g., when returning from chat detail)
   useFocusEffect(
     useCallback(() => {
-      // Refresh immediately and also after a delay to catch any delayed updates
-      loadMatches();
-      const timer = setTimeout(() => {
-        loadMatches();
-      }, 500);
-      return () => clearTimeout(timer);
-    }, [])
+      // Refetch chat list when screen comes into focus
+      queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+    }, [queryClient])
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View className="flex-1 bg-white items-center justify-center">
         <ActivityIndicator size="large" color="#ec4899" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 bg-white items-center justify-center px-4">
+        <Text className="text-red-500 text-center mb-4">
+          Error loading chats: {error.message}
+        </Text>
+        <Pressable 
+          className="bg-purple-600 px-6 py-3 rounded-full"
+          onPress={() => refetch()}
+        >
+          <Text className="text-white font-semibold">Retry</Text>
+        </Pressable>
       </View>
     );
   }
@@ -153,6 +159,13 @@ export default function ChatListScreen() {
         <FlatList
           data={matches}
           keyExtractor={(m) => m.id}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={() => refetch()}
+              tintColor="#ec4899"
+            />
+          }
           renderItem={({ item }) => {
             const mainPhoto = item.otherUser?.photos && item.otherUser.photos.length > 0
               ? cleanPhotoUrl(item.otherUser.photos[0])
