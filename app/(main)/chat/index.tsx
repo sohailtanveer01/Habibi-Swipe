@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { View, Text, FlatList, Pressable, Image, ActivityIndicator } from "react-native";
 import { supabase } from "../../../lib/supabase";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -22,60 +22,75 @@ export default function ChatListScreen() {
   const router = useRouter();
 
   const loadMatches = async () => {
-    const user = (await supabase.auth.getUser()).data.user;
-    if (!user) {
+    setLoading(true);
+    try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Call the Edge Function to get chat list with unread counts
+      const { data, error } = await supabase.functions.invoke("get-chat-list");
+
+      if (error) {
+        console.error("Error loading chat list:", error);
+        alert(`Error loading chats: ${error.message}`);
+        setLoading(false);
+        return;
+      }
+
+      if (data && data.matches) {
+        // Log unread counts for debugging
+        console.log("Chat list loaded with unread counts:", 
+          data.matches.map((m: any) => ({ 
+            matchId: m.id, 
+            unreadCount: m.unreadCount,
+            otherUser: m.otherUser?.name || m.otherUser?.first_name 
+          }))
+        );
+        setMatches(data.matches);
+      } else {
+        setMatches([]);
+      }
+    } catch (e: any) {
+      console.error("Error in loadMatches:", e);
+      alert(`Error loading chats: ${e.message}`);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const { data } = await supabase
-      .from("matches")
-      .select("*")
-      .or(`user1.eq.${user.id},user2.eq.${user.id}`)
-      .order("created_at", { ascending: false });
-
-    if (data) {
-      // Get the other user's profile and last message for each match
-      const matchesWithProfiles = await Promise.all(
-        data.map(async (match) => {
-          const otherUserId = match.user1 === user.id ? match.user2 : match.user1;
-          const { data: profile } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", otherUserId)
-            .single();
-
-          // Get last message
-          const { data: lastMessage } = await supabase
-            .from("messages")
-            .select("*")
-            .eq("match_id", match.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
-
-          return {
-            ...match,
-            otherUser: profile,
-            lastMessage: lastMessage || null,
-          };
-        })
-      );
-      setMatches(matchesWithProfiles);
-    }
-    setLoading(false);
   };
 
   useEffect(() => {
     loadMatches();
 
-    // Subscribe to new matches
+    // Subscribe to new matches and message updates
     const channel = supabase
-      .channel("matches-updates")
+      .channel("chat-list-updates")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "matches" },
         () => {
+          loadMatches();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        () => {
+          loadMatches();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { 
+          event: "UPDATE", 
+          schema: "public", 
+          table: "messages",
+          filter: "read=eq.true"
+        },
+        () => {
+          // When messages are marked as read, refresh the list
           loadMatches();
         }
       )
@@ -85,6 +100,18 @@ export default function ChatListScreen() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Refresh when screen comes into focus (e.g., when returning from chat detail)
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh immediately and also after a delay to catch any delayed updates
+      loadMatches();
+      const timer = setTimeout(() => {
+        loadMatches();
+      }, 500);
+      return () => clearTimeout(timer);
+    }, [])
+  );
 
   if (loading) {
     return (
@@ -133,6 +160,10 @@ export default function ChatListScreen() {
             const fullName = item.otherUser?.first_name && item.otherUser?.last_name
               ? `${item.otherUser.first_name} ${item.otherUser.last_name}`
               : item.otherUser?.name || "Unknown";
+            
+            // Ensure unreadCount is a number
+            const unreadCount = typeof item.unreadCount === 'number' ? item.unreadCount : 0;
+            const hasUnread = unreadCount > 0;
 
             return (
               <Pressable
@@ -151,11 +182,27 @@ export default function ChatListScreen() {
                   </View>
                 )}
                 <View className="flex-1">
-                  <Text className="text-gray-900 text-lg font-semibold" numberOfLines={1}>
-                    {fullName}
-                  </Text>
+                  <View className="flex-row items-center gap-2">
+                    <Text 
+                      className={`text-lg ${hasUnread ? 'font-bold' : 'font-semibold'}`}
+                      style={{ color: '#111827' }}
+                      numberOfLines={1}
+                    >
+                      {fullName}
+                    </Text>
+                    {hasUnread && (
+                      <View className="bg-pink-500 rounded-full px-2 py-0.5 min-w-[20px] items-center justify-center">
+                        <Text className="text-white text-xs font-bold">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   {item.lastMessage ? (
-                    <Text className="text-gray-500 text-sm mt-1" numberOfLines={1}>
+                    <Text 
+                      className={`text-sm mt-1 ${hasUnread ? 'text-gray-900 font-medium' : 'text-gray-500'}`}
+                      numberOfLines={1}
+                    >
                       {item.lastMessage.content}
                     </Text>
                   ) : (
@@ -164,14 +211,16 @@ export default function ChatListScreen() {
                     </Text>
                   )}
                 </View>
-                {item.lastMessage && (
-                  <Text className="text-gray-400 text-xs">
-                    {new Date(item.lastMessage.created_at).toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </Text>
-                )}
+                <View className="items-end">
+                  {item.lastMessage && (
+                    <Text className="text-gray-400 text-xs mb-1">
+                      {new Date(item.lastMessage.created_at).toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </Text>
+                  )}
+                </View>
               </Pressable>
             );
           }}

@@ -73,27 +73,35 @@ export default function MainLayout() {
         .or(`user1.eq.${user.id},user2.eq.${user.id}`);
 
       if (matches && matches.length > 0) {
-        // Check for unread messages (messages not sent by current user)
+        // Count unread messages (messages not sent by current user AND read = false)
         const { count } = await supabase
           .from("messages")
           .select("*", { count: "exact", head: true })
           .in("match_id", matches.map(m => m.id))
-          .neq("sender_id", user.id);
-          // Note: In a real app, you'd also check if messages are read/unread
-          // For now, we'll just show a badge if there are any messages
+          .neq("sender_id", user.id)
+          .eq("read", false);
 
         setUnreadCount(count || 0);
+      } else {
+        setUnreadCount(0);
       }
     };
 
     checkUnreadMessages();
 
-    // Subscribe to new messages
+    // Subscribe to new messages and message updates (when marked as read)
     const channel = supabase
       .channel("unread-messages")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
+        () => {
+          checkUnreadMessages();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages" },
         () => {
           checkUnreadMessages();
         }

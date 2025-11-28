@@ -83,17 +83,19 @@ export default function ChatScreen() {
 
     setSending(true);
     try {
-      const { error } = await supabase
-        .from("messages")
-        .insert({
-          match_id: chatId,
-          sender_id: user.id,
+      // Call the Edge Function to send message
+      const { data, error } = await supabase.functions.invoke("send-message", {
+        body: {
+          matchId: chatId,
           content: text.trim(),
-        });
+        },
+      });
 
       if (error) {
         alert(error.message || "Message failed");
-      } else {
+      } else if (data && data.message) {
+        // Add the new message to the local state
+        setMessages((prev) => [...prev, data.message]);
         setText("");
         // Scroll to bottom after sending
         setTimeout(() => {
@@ -123,7 +125,11 @@ export default function ChatScreen() {
     
     // Add timestamp if it's a new day or first message
     if (!prevDate || msgDate.toDateString() !== prevDate.toDateString()) {
-      acc.push({ type: 'timestamp', date: msgDate, id: `timestamp-${msg.id}` });
+      acc.push({ 
+        type: 'timestamp', 
+        date: msgDate, 
+        id: `timestamp-${msgDate.toISOString().split('T')[0]}-${index}` 
+      });
     }
     acc.push(msg);
     return acc;
@@ -137,7 +143,17 @@ export default function ChatScreen() {
     >
       {/* Header */}
       <View className="bg-white px-4 pt-12 pb-3 flex-row items-center justify-between border-b border-gray-100">
-        <Pressable onPress={() => router.back()} className="mr-3">
+        <Pressable 
+          onPress={() => {
+            // Refresh chat list when navigating back
+            router.back();
+            // Small delay to ensure navigation happens, then refresh
+            setTimeout(() => {
+              // The chat list will auto-refresh via real-time subscription
+            }, 100);
+          }} 
+          className="mr-3"
+        >
           <Text className="text-gray-900 text-2xl font-semibold">←</Text>
         </Pressable>
         
@@ -194,7 +210,12 @@ export default function ChatScreen() {
       <FlatList
         ref={flatListRef}
         data={groupedMessages}
-        keyExtractor={(item) => item.id || item.type === 'timestamp' ? item.id : `msg-${item.id}`}
+        keyExtractor={(item, index) => {
+          if (item.type === 'timestamp') {
+            return item.id || `timestamp-${index}`;
+          }
+          return item.id || `msg-${index}`;
+        }}
         contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         renderItem={({ item }) => {
@@ -250,12 +271,6 @@ export default function ChatScreen() {
                   </Text>
                 </View>
                 
-                {/* Unread label for sent messages */}
-                {isMe && (
-                  <Text className="text-gray-400 text-xs mt-1 mr-1">
-                    Unread
-                  </Text>
-                )}
               </View>
             </View>
           );

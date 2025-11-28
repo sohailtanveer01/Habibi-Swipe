@@ -20,6 +20,7 @@ serve(async (req) => {
       );
     }
 
+    // Create client with user auth
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -88,6 +89,14 @@ serve(async (req) => {
       );
     }
 
+    // Count unread messages before marking as read
+    const { count: unreadCount } = await supabaseClient
+      .from("messages")
+      .select("*", { count: "exact", head: true })
+      .eq("match_id", matchId)
+      .eq("sender_id", otherUserId)
+      .eq("read", false);
+
     // Fetch messages
     const { data: messages, error: messagesError } = await supabaseClient
       .from("messages")
@@ -103,25 +112,43 @@ serve(async (req) => {
       );
     }
 
-    // Mark unread messages from other user as read (if read column exists)
-    try {
-      const { error: readError } = await supabaseClient
-        .from("messages")
-        .update({ read: true })
-        .eq("match_id", matchId)
-        .eq("sender_id", otherUserId)
-        .eq("read", false);
+    // Mark all unread messages from other user as read
+    // RLS policy allows users to update read status of messages they receive
+    console.log("🔄 Attempting to mark messages as read for match:", matchId, "otherUserId:", otherUserId);
+    
+    const { data: markedAsRead, error: readError } = await supabaseClient
+      .from("messages")
+      .update({ read: true })
+      .eq("match_id", matchId)
+      .eq("sender_id", otherUserId)
+      .eq("read", false)
+      .select();
 
-      if (readError) {
-        // If read column doesn't exist, that's okay - just log it
-        console.log("⚠️ Note: Could not mark messages as read (read column may not exist):", readError.message);
-      }
-    } catch (e) {
-      // Ignore errors related to read column
-      console.log("⚠️ Note: read column may not exist in messages table");
+    if (readError) {
+      console.error("⚠️ Error marking messages as read:", JSON.stringify(readError, null, 2));
+      console.error("⚠️ Error details:", readError.message, readError.details, readError.hint);
+      // Don't fail the request if marking as read fails, just log it
+    } else if (markedAsRead && markedAsRead.length > 0) {
+      console.log("✅ Successfully marked", markedAsRead.length, "messages as read for match", matchId);
+      console.log("✅ Message IDs marked:", markedAsRead.map(m => m.id));
+    } else {
+      console.log("ℹ️ No unread messages to mark as read for match", matchId);
+      // Check if there are any messages at all
+      const { count: totalMessages } = await supabaseClient
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("match_id", matchId)
+        .eq("sender_id", otherUserId);
+      console.log("ℹ️ Total messages from other user:", totalMessages);
     }
 
-    console.log("✅ Loaded chat:", messages?.length || 0, "messages");
+    // Update messages in response to reflect read status
+    const updatedMessages = messages?.map((msg) => ({
+      ...msg,
+      read: msg.sender_id === user.id ? msg.read : true, // Mark as read if from other user
+    })) || [];
+
+    console.log("✅ Loaded chat:", updatedMessages.length, "messages");
 
     return new Response(
       JSON.stringify({
@@ -130,8 +157,9 @@ serve(async (req) => {
           created_at: match.created_at,
         },
         otherUser,
-        messages: messages || [],
+        messages: updatedMessages,
         currentUserId: user.id,
+        unreadCount: unreadCount || 0, // Return count before marking as read
       }),
       {
         status: 200,
