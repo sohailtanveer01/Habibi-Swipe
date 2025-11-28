@@ -27,35 +27,37 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   const loadChat = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    setCurrentUser(user);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    // Get match info
-    const { data: match } = await supabase
-      .from("matches")
-      .select("*")
-      .eq("id", chatId)
-      .single();
+      // Call the Edge Function to get chat data
+      const { data, error } = await supabase.functions.invoke("get-chat", {
+        body: { matchId: chatId },
+      });
 
-    if (match) {
-      const otherUserId = match.user1 === user.id ? match.user2 : match.user1;
-      const { data: profile } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", otherUserId)
-        .single();
-      setOtherUser(profile);
+      if (error) {
+        console.error("Error loading chat:", error);
+        alert(`Error loading chat: ${error.message}`);
+        return;
+      }
+
+      if (data) {
+        // Set current user ID from response
+        setCurrentUser({ id: data.currentUserId });
+        
+        // Set other user data
+        if (data.otherUser) {
+          setOtherUser(data.otherUser);
+        }
+        
+        // Set messages
+        setMessages(data.messages || []);
+      }
+    } catch (e: any) {
+      console.error("Error in loadChat:", e);
+      alert(`Error loading chat: ${e.message}`);
     }
-
-    // Load messages
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("match_id", chatId)
-      .order("created_at", { ascending: true });
-
-    setMessages(data || []);
   };
 
   useEffect(() => {
