@@ -16,7 +16,11 @@ function calculateAge(dob: string | null): number | null {
   return age;
 }
 
-export default function ProfileCard({ profile, isPreview = false }: any) {
+export default function ProfileCard({
+  profile,
+  isPreview = false,
+  showDetails = true,
+}: any) {
   const photos = profile.photos || [];
   
   const fullName = profile.first_name && profile.last_name 
@@ -101,7 +105,8 @@ export default function ProfileCard({ profile, isPreview = false }: any) {
         </View>
       )}
 
-      {/* Profile Details Section */}
+      {/* Profile Details Section (hidden on swipe cards when showDetails=false) */}
+      {showDetails && (
       <View className="p-4" style={{ gap: 16, paddingBottom: 20 }}>
         {/* Bio */}
         {profile.bio && (
@@ -226,6 +231,7 @@ export default function ProfileCard({ profile, isPreview = false }: any) {
           )}
         </View>
       </View>
+      )}
     </View>
   );
 }
