@@ -30,6 +30,7 @@ function cleanPhotoUrl(url: string | null | undefined): string | null {
 export default function LikesScreen() {
   const [likes, setLikes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"myLikes" | "likedMe" | "viewers">("likedMe");
 
   const loadLikes = async () => {
     setLoading(true);
@@ -89,31 +90,83 @@ export default function LikesScreen() {
   };
 
   useEffect(() => {
-    loadLikes();
-  }, []);
+    // For now we only have data wired for "likedMe"
+    if (activeTab === "likedMe") {
+      loadLikes();
+    }
+  }, [activeTab]);
 
   return (
     <View className="flex-1 bg-black pt-12 px-4">
+      {/* Header */}
       <View className="flex-row items-center justify-between mb-4">
         <Text className="text-white text-2xl font-bold">Likes</Text>
-        <Pressable
-          onPress={loadLikes}
-          disabled={loading}
-          className="bg-pink-500 px-4 py-2 rounded-full flex-row items-center gap-2"
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text className="text-white font-semibold">Refresh</Text>
-          )}
-        </Pressable>
+        {activeTab === "likedMe" && (
+          <Pressable
+            onPress={loadLikes}
+            disabled={loading}
+            className="bg-pink-500 px-4 py-2 rounded-full flex-row items-center gap-2"
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text className="text-white font-semibold">Refresh</Text>
+            )}
+          </Pressable>
+        )}
       </View>
 
-      {likes.length === 0 ? (
+      {/* Top tabs: My Likes / Liked Me / Viewers */}
+      <View className="flex-row bg-white/5 rounded-full p-1 mb-4">
+        {[
+          { key: "myLikes", label: "my likes" },
+          { key: "likedMe", label: "liked me" },
+          { key: "viewers", label: "viewers" },
+        ].map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <Pressable
+              key={tab.key}
+              onPress={() => setActiveTab(tab.key as any)}
+              className={`flex-1 py-2 rounded-full items-center justify-center ${
+                isActive ? "bg-white" : "bg-transparent"
+              }`}
+            >
+              <Text
+                className={`text-sm font-semibold ${
+                  isActive ? "text-black" : "text-white/70"
+                }`}
+              >
+                {tab.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Content per tab */}
+      {activeTab === "myLikes" && (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-white/60 text-base">No likes yet</Text>
+          <Text className="text-white/70 text-base">
+            My Likes page – we will wire this next.
+          </Text>
         </View>
-      ) : (
+      )}
+
+      {activeTab === "viewers" && (
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-white/70 text-base">
+            Viewers page – we will wire this next.
+          </Text>
+        </View>
+      )}
+
+      {activeTab === "likedMe" && (
+        likes.length === 0 ? (
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-white/60 text-base">No likes yet</Text>
+          </View>
+        ) : (
         <FlatList
           data={likes}
           numColumns={2}
@@ -207,7 +260,7 @@ export default function LikesScreen() {
             );
           }}
         />
-      )}
+      ))}
     </View>
   );
 }
