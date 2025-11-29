@@ -1,4 +1,4 @@
-import { View, Text, Image, Dimensions, StyleSheet } from "react-native";
+import { View, Text, Image, Dimensions, StyleSheet, ScrollView } from "react-native";
 
 const { width, height } = Dimensions.get("window");
 
@@ -16,7 +16,6 @@ function calculateAge(dob: string | null): number | null {
 
 export default function SwipeCard({ profile }: any) {
   const photos = profile.photos || [];
-  const mainPhoto = photos.length > 0 ? photos[0] : null;
 
   const fullName =
     profile.first_name && profile.last_name
@@ -27,25 +26,37 @@ export default function SwipeCard({ profile }: any) {
 
   return (
     <View style={styles.container}>
-      {mainPhoto ? (
-        <Image
-          source={{ uri: mainPhoto }}
-          style={styles.image}
-          resizeMode="cover"
-        />
+      {photos.length > 0 ? (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {photos.map((photo: string, index: number) => (
+            <View key={index} style={styles.photoWrapper}>
+              <Image
+                source={{ uri: photo }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+
+              {/* Name & age only on the first (main) photo */}
+              {index === 0 && (
+                <View style={styles.nameOverlay}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.nameText}>{fullName}</Text>
+                    {age !== null && <Text style={styles.ageText}>{age}</Text>}
+                  </View>
+                </View>
+              )}
+            </View>
+          ))}
+        </ScrollView>
       ) : (
         <View style={[styles.image, styles.placeholder]}>
           <Text style={styles.placeholderText}>👤</Text>
         </View>
       )}
-
-      {/* Name & age centered above buttons */}
-      <View style={styles.nameContainer}>
-        <View style={styles.nameRow}>
-          <Text style={styles.nameText}>{fullName}</Text>
-          {age !== null && <Text style={styles.ageText}>{age}</Text>}
-        </View>
-      </View>
     </View>
   );
 }
@@ -56,6 +67,16 @@ const styles = StyleSheet.create({
     height,
     position: "relative",
     backgroundColor: "black",
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    alignItems: "center",
+  },
+  photoWrapper: {
+    width,
+    height,
   },
   image: {
     width: "100%",
@@ -70,7 +91,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     color: "white",
   },
-  nameContainer: {
+  nameOverlay: {
     position: "absolute",
     bottom: 230,
     left: 0,
