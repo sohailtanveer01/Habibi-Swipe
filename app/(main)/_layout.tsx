@@ -10,8 +10,12 @@ export default function MainLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
   const pathname = usePathname();
   
-  // Check if we're on a chat detail screen
+  // Check if we're on a chat detail screen or filters screen
   const isChatDetail = pathname?.includes("/chat/") && pathname !== "/chat";
+  const isFiltersScreen = pathname?.includes("/swipe/filters");
+  
+  // Hide tab bar on chat detail or filters screen
+  const hideTabBar = isChatDetail || isFiltersScreen;
 
   useEffect(() => {
     const loadProfilePhoto = async () => {
@@ -119,7 +123,7 @@ export default function MainLayout() {
         headerShown: false,
         tabBarActiveTintColor: "#F5F573",
         tabBarInactiveTintColor: "#000000",
-        tabBarStyle: isChatDetail ? { display: "none" } : {
+        tabBarStyle: hideTabBar ? { display: "none" } : {
           position: "absolute",
           bottom: Platform.OS === "ios" ? 60 : 28,
           left: 30,

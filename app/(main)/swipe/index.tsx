@@ -171,13 +171,21 @@ export default function SwipeScreen() {
 
   if (!current) {
     return (
-      <View className="flex-1 bg-black items-center justify-center">
-        <Text className="text-white/70">No more profiles nearby.</Text>
+      <View className="flex-1 bg-black items-center justify-center px-6">
+        <Text className="text-white/70 text-center mb-4">
+          No profiles found matching your filters.
+        </Text>
         <Pressable
-          className="mt-4 bg-pink-500 px-4 py-2 rounded-full"
+          className="mt-4 bg-pink-500 px-6 py-3 rounded-full"
+          onPress={() => router.push("/(main)/swipe/filters")}
+        >
+          <Text className="text-white font-semibold">Adjust Filters for More Profiles</Text>
+        </Pressable>
+        <Pressable
+          className="mt-4 bg-white/10 px-6 py-3 rounded-full"
           onPress={fetchFeed}
         >
-          <Text className="text-white">Refresh</Text>
+          <Text className="text-white/70">Refresh</Text>
         </Pressable>
       </View>
     );
@@ -187,9 +195,8 @@ export default function SwipeScreen() {
     <View className="flex-1 bg-black">
       {/* Apply Filters Button - Top Left */}
       <Pressable
-        className="absolute top-12 left-4 z-50 bg-white/20 px-4 py-2 rounded-full flex-row items-center gap-2"
+        className="absolute top-12 left-4 z-50 bg-pink-500 px-4 py-2 rounded-full flex-row items-center gap-2"
         onPress={() => router.push("/(main)/swipe/filters")}
-        style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
       >
         <Text className="text-white font-semibold text-sm">Apply Filters</Text>
       </Pressable>

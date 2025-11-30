@@ -8,6 +8,10 @@ import MapView, { Circle, Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { Image } from "expo-image";
 
 const MAX_RADIUS_MILES = 400;
+const MIN_AGE = 18;
+const MAX_AGE = 100;
+const MIN_HEIGHT_CM = 100;
+const MAX_HEIGHT_CM = 250;
 
 // Common countries list
 const COUNTRIES = [
@@ -21,13 +25,26 @@ const COUNTRIES = [
   "Kenya", "Morocco", "Tunisia", "Algeria", "Other"
 ];
 
+// Ethnicity options
+const ETHNICITY_OPTIONS = [
+  "Arab",
+  "South Asian",
+  "African",
+  "East Asian",
+  "Central Asian",
+  "European",
+  "North African",
+  "Mixed",
+  "Other",
+  "Prefer not to say",
+];
+
 type LocationFilterType = "distance" | "country" | null;
 
 export default function FiltersScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [locationEnabled, setLocationEnabled] = useState(false);
   const [filterType, setFilterType] = useState<LocationFilterType>(null);
   const [searchRadiusMiles, setSearchRadiusMiles] = useState(50);
   const [searchLocation, setSearchLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -40,6 +57,16 @@ export default function FiltersScreen() {
     latitudeDelta: 10,
     longitudeDelta: 10,
   });
+  
+  // Age filter
+  const [ageMin, setAgeMin] = useState<number | null>(null);
+  const [ageMax, setAgeMax] = useState<number | null>(null);
+  
+  // Height filter
+  const [heightMinCm, setHeightMinCm] = useState<number | null>(null);
+  
+  // Ethnicity filter
+  const [selectedEthnicities, setSelectedEthnicities] = useState<string[]>([]);
 
   useEffect(() => {
     loadPreferences();
@@ -113,10 +140,13 @@ export default function FiltersScreen() {
       }
 
       if (data) {
-        setLocationEnabled(data.location_enabled || false);
         setFilterType(data.location_filter_type || "distance");
         setSearchRadiusMiles(data.search_radius_miles || 50);
         setSelectedCountry(data.search_country || "");
+        setAgeMin(data.age_min || null);
+        setAgeMax(data.age_max || null);
+        setHeightMinCm(data.height_min_cm || null);
+        setSelectedEthnicities(data.ethnicity_preferences || []);
         
         // Extract lat/lon from PostGIS point if exists
         if (data.search_location) {
@@ -158,7 +188,6 @@ export default function FiltersScreen() {
 
       setUserLocation({ lat, lon });
       setSearchLocation({ lat, lon });
-      setLocationEnabled(true);
       setFilterType("distance");
     } catch (error) {
       console.error("Error getting location:", error);
@@ -181,14 +210,19 @@ export default function FiltersScreen() {
       let searchRadiusMilesValue: number | null = null;
       let searchCountryValue: string | null = null;
 
-      if (locationEnabled) {
+      // Location is enabled if a filter type is selected
+      const isLocationFilterEnabled = !!filterType;
+      
+      if (isLocationFilterEnabled) {
         if (filterType === "distance") {
-          if (!searchLocation) {
-            Alert.alert("Error", "Please set a location for distance filtering.");
+          // Use searchLocation if set, otherwise fall back to userLocation
+          const locationToUse = searchLocation || userLocation;
+          if (!locationToUse) {
+            Alert.alert("Error", "Please set a location for distance filtering. Tap 'Get My Location' to use your current location.");
             setSaving(false);
             return;
           }
-          locationPoint = `SRID=4326;POINT(${searchLocation.lon} ${searchLocation.lat})`;
+          locationPoint = `SRID=4326;POINT(${locationToUse.lon} ${locationToUse.lat})`;
           searchRadiusMilesValue = searchRadiusMiles;
           // Clear country when saving distance filter
           searchCountryValue = null;
@@ -210,11 +244,15 @@ export default function FiltersScreen() {
         .upsert(
           {
             user_id: user.id,
-            location_enabled: locationEnabled,
+            location_enabled: isLocationFilterEnabled,
             location_filter_type: filterType,
             search_radius_miles: searchRadiusMilesValue,
             search_location: locationPoint,
             search_country: searchCountryValue,
+            age_min: ageMin,
+            age_max: ageMax,
+            height_min_cm: heightMinCm,
+            ethnicity_preferences: selectedEthnicities.length > 0 ? selectedEthnicities : null,
             updated_at: new Date().toISOString(),
           },
           {
@@ -247,33 +285,25 @@ export default function FiltersScreen() {
   return (
     <View className="flex-1 bg-black">
       {/* Header */}
-      <View className="pt-12 px-4 pb-4 flex-row items-center justify-between">
-        <Pressable onPress={() => router.back()}>
-          <Text className="text-white text-lg">← Back</Text>
+      <View className="pt-14 px-6 pb-6 flex-row items-center justify-between border-b border-white/10">
+        <Pressable 
+          onPress={() => router.back()}
+          className="px-2 py-1"
+        >
+          <Text className="text-white text-lg font-medium">← Back</Text>
         </Pressable>
-        <Text className="text-white text-xl font-bold">Location Filters</Text>
+        <Text className="text-white text-2xl font-bold">Location Filters</Text>
         <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
-        {/* Location Toggle */}
-        <View className="mb-6">
-          <Text className="text-white text-lg font-semibold mb-3">Enable Location Filter</Text>
-          <Pressable
-            className={`p-4 rounded-2xl ${locationEnabled ? "bg-pink-500" : "bg-white/10"}`}
-            onPress={() => setLocationEnabled(!locationEnabled)}
-          >
-            <Text className={`text-center font-semibold ${locationEnabled ? "text-white" : "text-white/70"}`}>
-              {locationEnabled ? "Location Filter Enabled" : "Location Filter Disabled"}
-            </Text>
-          </Pressable>
-        </View>
-
-        {locationEnabled && (
-          <>
-            {/* Filter Type Selection */}
-            <View className="mb-6">
-              <Text className="text-white text-lg font-semibold mb-3">Filter Type</Text>
+      <ScrollView 
+        className="flex-1" 
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Filter Type Selection */}
+        <View className="mb-8">
+          <Text className="text-white text-2xl font-bold mb-6">Choose Your Filter</Text>
               <View className="flex-row gap-3">
                 <Pressable
                   className={`flex-1 p-4 rounded-2xl ${
@@ -283,13 +313,18 @@ export default function FiltersScreen() {
                     setFilterType("distance");
                     // Clear country selection when switching to distance
                     setSelectedCountry("");
-                    if (!userLocation) {
+                    if (userLocation) {
+                      // Use existing user location
+                      setSearchLocation(userLocation);
+                    } else {
+                      // Get current location if not available
                       getCurrentLocation();
                     }
                   }}
+                  style={filterType === "distance" ? styles.activeFilterButton : styles.inactiveFilterButton}
                 >
                   <Text
-                    className={`text-center font-semibold ${
+                    className={`text-center font-semibold text-sm ${
                       filterType === "distance" ? "text-white" : "text-white/70"
                     }`}
                   >
@@ -306,9 +341,10 @@ export default function FiltersScreen() {
                     setSearchLocation(null);
                     setSearchRadiusMiles(50);
                   }}
+                  style={filterType === "country" ? styles.activeFilterButton : styles.inactiveFilterButton}
                 >
                   <Text
-                    className={`text-center font-semibold ${
+                    className={`text-center font-semibold text-sm ${
                       filterType === "country" ? "text-white" : "text-white/70"
                     }`}
                   >
@@ -318,28 +354,37 @@ export default function FiltersScreen() {
               </View>
             </View>
 
-            {/* Distance Filter with Map */}
-            {filterType === "distance" && (
-              <View className="mb-6">
+        {/* Distance Filter with Map */}
+        {filterType === "distance" && (
+              <View className="mb-8">
                 {!userLocation ? (
-                  <View className="mb-4">
+                  <View className="mb-6">
                     <Pressable
-                      className="bg-white/10 p-4 rounded-2xl items-center"
+                      className="bg-white/10 p-5 rounded-2xl items-center border border-white/20"
                       onPress={getCurrentLocation}
                       disabled={loading}
+                      style={styles.getLocationButton}
                     >
                       {loading ? (
                         <ActivityIndicator color="#fff" />
                       ) : (
-                        <Text className="text-white font-semibold">📍 Get My Location</Text>
+                        <>
+                          <Text className="text-white font-bold text-base mb-1">📍</Text>
+                          <Text className="text-white font-semibold text-base">Get My Location</Text>
+                        </>
                       )}
                     </Pressable>
                   </View>
                 ) : (
                   <>
-                    <Text className="text-white text-lg font-semibold mb-3">
-                      Search Radius: {searchRadiusMiles} miles
-                    </Text>
+                    <View className="mb-4">
+                      <Text className="text-white text-lg font-bold mb-1">
+                        Search Radius
+                      </Text>
+                      <Text className="text-pink-400 text-2xl font-bold">
+                        {searchRadiusMiles} miles
+                      </Text>
+                    </View>
 
                     {/* Map View */}
                     <View style={styles.mapContainer}>
@@ -393,7 +438,7 @@ export default function FiltersScreen() {
                     </View>
 
                     {/* Radius Slider */}
-                    <View className="mt-4">
+                    <View className="mt-6">
                       <Slider
                         style={{ width: "100%", height: 40 }}
                         minimumValue={1}
@@ -405,36 +450,38 @@ export default function FiltersScreen() {
                         maximumTrackTintColor="#ffffff33"
                         thumbTintColor="#EC4899"
                       />
-                      <View className="flex-row justify-between mt-2">
-                        <Text className="text-white/70 text-xs">1 mile</Text>
-                        <Text className="text-white/70 text-xs">{MAX_RADIUS_MILES} miles</Text>
+                      <View className="flex-row justify-between mt-3">
+                        <Text className="text-white/60 text-xs font-medium">1 mile</Text>
+                        <Text className="text-white/60 text-xs font-medium">{MAX_RADIUS_MILES} miles</Text>
                       </View>
                     </View>
                   </>
                 )}
               </View>
-            )}
+        )}
 
-            {/* Country Filter */}
-            {filterType === "country" && (
-              <View className="mb-6">
-                <Text className="text-white text-lg font-semibold mb-3">Select Country</Text>
+        {/* Country Filter */}
+        {filterType === "country" && (
+              <View className="mb-8">
+                <Text className="text-white text-lg font-bold mb-4">Select Country</Text>
                 <ScrollView
-                  style={{ maxHeight: 300 }}
-                  className="bg-white/5 rounded-xl p-2"
+                  style={styles.countryList}
+                  className="bg-white/5 rounded-2xl"
+                  contentContainerStyle={{ padding: 12 }}
                   showsVerticalScrollIndicator={true}
                 >
                   {COUNTRIES.map((country) => (
                     <Pressable
                       key={country}
-                      className={`p-3 rounded-lg mb-1 ${
-                        selectedCountry === country ? "bg-pink-500" : "bg-transparent"
+                      className={`p-4 rounded-xl mb-2 ${
+                        selectedCountry === country ? "bg-pink-500" : "bg-white/5"
                       }`}
                       onPress={() => setSelectedCountry(country)}
+                      style={selectedCountry === country ? styles.selectedCountryItem : styles.countryItem}
                     >
                       <Text
-                        className={`${
-                          selectedCountry === country ? "text-white font-semibold" : "text-white/70"
+                        className={`text-base ${
+                          selectedCountry === country ? "text-white font-bold" : "text-white/80 font-medium"
                         }`}
                       >
                         {country}
@@ -443,26 +490,166 @@ export default function FiltersScreen() {
                   ))}
                 </ScrollView>
                 {selectedCountry && (
-                  <View className="mt-3 bg-white/5 p-3 rounded-xl">
-                    <Text className="text-white/70 text-sm">Selected:</Text>
-                    <Text className="text-white font-semibold">{selectedCountry}</Text>
+                  <View className="mt-4 bg-pink-500/20 border border-pink-500/30 p-4 rounded-xl">
+                    <Text className="text-white/70 text-sm font-medium mb-1">Selected Country</Text>
+                    <Text className="text-white font-bold text-lg">{selectedCountry}</Text>
                   </View>
                 )}
               </View>
-            )}
-          </>
         )}
+
+        {/* Age Filter */}
+        <View className="mb-8">
+          <Text className="text-white text-lg font-bold mb-4">Age Range</Text>
+          <View className="bg-white/5 rounded-2xl p-5 border border-white/10">
+            <View className="mb-4">
+              <Text className="text-white/70 text-sm mb-2">Minimum Age</Text>
+              <View className="flex-row items-center gap-4">
+                <Slider
+                  style={{ flex: 1, height: 40 }}
+                  minimumValue={MIN_AGE}
+                  maximumValue={ageMax || MAX_AGE}
+                  step={1}
+                  value={ageMin || MIN_AGE}
+                  onValueChange={(value) => setAgeMin(Math.floor(value))}
+                  minimumTrackTintColor="#EC4899"
+                  maximumTrackTintColor="#ffffff33"
+                  thumbTintColor="#EC4899"
+                />
+                <Text className="text-white font-bold text-lg w-12 text-right">
+                  {ageMin || MIN_AGE}
+                </Text>
+              </View>
+            </View>
+            <View>
+              <Text className="text-white/70 text-sm mb-2">Maximum Age</Text>
+              <View className="flex-row items-center gap-4">
+                <Slider
+                  style={{ flex: 1, height: 40 }}
+                  minimumValue={ageMin || MIN_AGE}
+                  maximumValue={MAX_AGE}
+                  step={1}
+                  value={ageMax || MAX_AGE}
+                  onValueChange={(value) => setAgeMax(Math.floor(value))}
+                  minimumTrackTintColor="#EC4899"
+                  maximumTrackTintColor="#ffffff33"
+                  thumbTintColor="#EC4899"
+                />
+                <Text className="text-white font-bold text-lg w-12 text-right">
+                  {ageMax || MAX_AGE}
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              className="mt-4 bg-white/10 p-3 rounded-xl"
+              onPress={() => {
+                setAgeMin(null);
+                setAgeMax(null);
+              }}
+            >
+              <Text className="text-white/70 text-center font-medium">Clear Age Filter</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Height Filter */}
+        <View className="mb-8">
+          <Text className="text-white text-lg font-bold mb-4">Minimum Height</Text>
+          <View className="bg-white/5 rounded-2xl p-5 border border-white/10">
+            <View>
+              <Text className="text-white/70 text-sm mb-2">Minimum Height (cm)</Text>
+              <View className="flex-row items-center gap-4">
+                <Slider
+                  style={{ flex: 1, height: 40 }}
+                  minimumValue={MIN_HEIGHT_CM}
+                  maximumValue={MAX_HEIGHT_CM}
+                  step={5}
+                  value={heightMinCm || MIN_HEIGHT_CM}
+                  onValueChange={(value) => setHeightMinCm(Math.floor(value))}
+                  minimumTrackTintColor="#EC4899"
+                  maximumTrackTintColor="#ffffff33"
+                  thumbTintColor="#EC4899"
+                />
+                <Text className="text-white font-bold text-lg w-16 text-right">
+                  {heightMinCm || MIN_HEIGHT_CM} cm
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              className="mt-4 bg-white/10 p-3 rounded-xl"
+              onPress={() => {
+                setHeightMinCm(null);
+              }}
+            >
+              <Text className="text-white/70 text-center font-medium">Clear Height Filter</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Ethnicity Filter */}
+        <View className="mb-8">
+          <Text className="text-white text-lg font-bold mb-4">Ethnicity</Text>
+          <ScrollView
+            style={styles.countryList}
+            className="bg-white/5 rounded-2xl"
+            contentContainerStyle={{ padding: 12 }}
+            showsVerticalScrollIndicator={true}
+          >
+            {ETHNICITY_OPTIONS.map((ethnicity) => {
+              const isSelected = selectedEthnicities.includes(ethnicity);
+              return (
+                <Pressable
+                  key={ethnicity}
+                  className={`p-4 rounded-xl mb-2 ${
+                    isSelected ? "bg-pink-500" : "bg-white/5"
+                  }`}
+                  onPress={() => {
+                    if (isSelected) {
+                      setSelectedEthnicities(selectedEthnicities.filter((e) => e !== ethnicity));
+                    } else {
+                      setSelectedEthnicities([...selectedEthnicities, ethnicity]);
+                    }
+                  }}
+                  style={isSelected ? styles.selectedCountryItem : styles.countryItem}
+                >
+                  <Text
+                    className={`text-base ${
+                      isSelected ? "text-white font-bold" : "text-white/80 font-medium"
+                    }`}
+                  >
+                    {ethnicity}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          {selectedEthnicities.length > 0 && (
+            <View className="mt-4 bg-pink-500/20 border border-pink-500/30 p-4 rounded-xl">
+              <Text className="text-white/70 text-sm font-medium mb-2">
+                Selected ({selectedEthnicities.length})
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                {selectedEthnicities.map((ethnicity) => (
+                  <View key={ethnicity} className="bg-pink-500/30 px-3 py-1.5 rounded-full">
+                    <Text className="text-white text-xs font-medium">{ethnicity}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
 
         {/* Save Button */}
         <Pressable
-          className="bg-pink-500 p-4 rounded-2xl items-center mb-8 mt-4"
+          className="bg-pink-500 p-5 rounded-2xl items-center mt-2 mb-4"
           onPress={savePreferences}
           disabled={saving}
+          style={styles.saveButton}
         >
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-white font-semibold text-lg">Save Preferences</Text>
+            <Text className="text-white font-bold text-lg">Save Preferences</Text>
           )}
         </Pressable>
       </ScrollView>
@@ -471,25 +658,66 @@ export default function FiltersScreen() {
 }
 
 const styles = StyleSheet.create({
+  enabledButton: {
+    shadowColor: "#EC4899",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  disabledButton: {
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  activeFilterButton: {
+    shadowColor: "#EC4899",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  inactiveFilterButton: {
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  getLocationButton: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   mapContainer: {
     width: "100%",
     height: 400,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: "hidden",
-    marginBottom: 16,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   map: {
     width: "100%",
     height: "100%",
   },
   markerContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     borderWidth: 3,
     borderColor: "#EC4899",
     overflow: "hidden",
     backgroundColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   profileImage: {
     width: "100%",
@@ -503,6 +731,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   profilePlaceholderText: {
-    fontSize: 24,
+    fontSize: 28,
+  },
+  countryList: {
+    maxHeight: 350,
+  },
+  countryItem: {
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  selectedCountryItem: {
+    shadowColor: "#EC4899",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  saveButton: {
+    shadowColor: "#EC4899",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });

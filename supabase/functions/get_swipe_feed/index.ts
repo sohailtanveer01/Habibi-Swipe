@@ -59,10 +59,10 @@ serve(async (req) => {
       );
     }
 
-    // Get user's location preferences
+    // Get user's preferences
     const { data: preferences, error: prefsError } = await supabaseClient
       .from("user_preferences")
-      .select("location_enabled, location_filter_type, search_radius_miles, search_location, search_country")
+      .select("location_enabled, location_filter_type, search_radius_miles, search_location, search_country, age_min, age_max, height_min_cm, ethnicity_preferences")
       .eq("user_id", user.id)
       .single();
 
@@ -115,6 +115,40 @@ serve(async (req) => {
           Math.sin(dLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
+    };
+
+    // Helper function to calculate age from DOB
+    const calculateAge = (dob: string | null): number | null => {
+      if (!dob) return null;
+      const birthDate = new Date(dob);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    };
+
+    // Helper function to parse height string to cm
+    const parseHeightToCm = (heightStr: string | null): number | null => {
+      if (!heightStr) return null;
+      
+      // Try to parse "175 cm" format
+      const cmMatch = heightStr.match(/(\d+)\s*cm/i);
+      if (cmMatch) {
+        return parseInt(cmMatch[1], 10);
+      }
+      
+      // Try to parse "5'10\"" or "5'10" format
+      const ftMatch = heightStr.match(/(\d+)'(\d+)/);
+      if (ftMatch) {
+        const feet = parseInt(ftMatch[1], 10);
+        const inches = parseInt(ftMatch[2], 10);
+        return Math.round((feet * 30.48) + (inches * 2.54));
+      }
+      
+      return null;
     };
 
     // Extract search location coordinates if distance filter is enabled
@@ -201,12 +235,28 @@ serve(async (req) => {
         }
       }
 
-      // TODO: Add more filters here as needed
-      // Example for future filters:
-      // if (preferences?.age_min && profile.dob) {
-      //   const age = calculateAge(profile.dob);
-      //   if (age < preferences.age_min || age > preferences.age_max) return false;
-      // }
+      // Age filter (apply if at least one bound is set)
+      if ((preferences?.age_min !== null || preferences?.age_max !== null) && profile.dob) {
+        const age = calculateAge(profile.dob);
+        if (age === null) return false;
+        if (preferences.age_min !== null && age < preferences.age_min) return false;
+        if (preferences.age_max !== null && age > preferences.age_max) return false;
+      }
+
+      // Height filter (minimum only)
+      if (preferences?.height_min_cm !== null && profile.height) {
+        const heightCm = parseHeightToCm(profile.height);
+        if (heightCm === null || heightCm < preferences.height_min_cm) return false;
+      }
+
+      // Ethnicity filter
+      if (preferences?.ethnicity_preferences && 
+          Array.isArray(preferences.ethnicity_preferences) && 
+          preferences.ethnicity_preferences.length > 0) {
+        if (!profile.ethnicity || !preferences.ethnicity_preferences.includes(profile.ethnicity)) {
+          return false;
+        }
+      }
 
       return true;
     });
