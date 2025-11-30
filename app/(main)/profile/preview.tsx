@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Pressable, Image, Dimensions } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 
@@ -17,6 +17,7 @@ function calculateAge(dob: string | null): number | null {
 
 export default function ProfilePreviewScreen() {
   const router = useRouter();
+  const { userId } = useLocalSearchParams<{ userId?: string }>();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -49,10 +50,14 @@ export default function ProfilePreviewScreen() {
         return;
       }
 
+      // If userId is provided, view that user's profile; otherwise view own profile
+      const profileUserId = userId || user.id;
+      const isViewingOtherProfile = userId && userId !== user.id;
+
       const { data, error } = await supabase
         .from("users")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", profileUserId)
         .single();
 
       if (error) throw error;
@@ -84,6 +89,19 @@ export default function ProfilePreviewScreen() {
       setMarriageTimeline(data.marriage_timeline || "");
       setBio(data.bio || "");
       setPhotos(data.photos || []);
+      
+      // Track view if viewing someone else's profile
+      if (isViewingOtherProfile) {
+        try {
+          await supabase.functions.invoke("create-profile-view", {
+            body: { viewed_id: profileUserId },
+          });
+          console.log("✅ Profile view recorded for:", profileUserId);
+        } catch (viewError) {
+          console.error("Error recording profile view:", viewError);
+          // Don't fail the profile load if view tracking fails
+        }
+      }
       
       setLoading(false);
     } catch (error: any) {

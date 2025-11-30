@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, Pressable, Image, ActivityIndicator, Dimensions } from "react-native";
+import { useRouter } from "expo-router";
 import { supabase } from "../../../lib/supabase";
 
 const { width } = Dimensions.get("window");
@@ -28,7 +29,9 @@ function cleanPhotoUrl(url: string | null | undefined): string | null {
 }
 
 export default function LikesScreen() {
+  const router = useRouter();
   const [likes, setLikes] = useState<any[]>([]);
+  const [viewers, setViewers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"myLikes" | "likedMe" | "viewers">("likedMe");
 
@@ -89,10 +92,62 @@ export default function LikesScreen() {
     setLoading(false);
   };
 
+  const loadViewers = async () => {
+    setLoading(true);
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) {
+      console.log("No user found");
+      setLoading(false);
+      return;
+    }
+
+    console.log("Fetching viewers for user:", user.id);
+
+    const { data, error } = await supabase.functions.invoke("get-viewers");
+
+    if (error) {
+      console.error("Error fetching viewers:", error);
+      alert(`Error loading viewers: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    console.log("Viewers response:", data);
+    
+    // Parse the response if it's a string
+    let parsedData = data;
+    if (typeof data === 'string') {
+      try {
+        parsedData = JSON.parse(data);
+      } catch (e) {
+        console.error("Error parsing response:", e);
+        setLoading(false);
+        return;
+      }
+    }
+    
+    // Handle different response formats
+    let viewersArray = [];
+    if (parsedData) {
+      if (Array.isArray(parsedData)) {
+        viewersArray = parsedData;
+      } else if (parsedData.viewers && Array.isArray(parsedData.viewers)) {
+        viewersArray = parsedData.viewers;
+      } else if (parsedData.data && Array.isArray(parsedData.data)) {
+        viewersArray = parsedData.data;
+      }
+    }
+    
+    console.log("Parsed viewers array:", viewersArray.length);
+    setViewers(viewersArray);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    // For now we only have data wired for "likedMe"
     if (activeTab === "likedMe") {
       loadLikes();
+    } else if (activeTab === "viewers") {
+      loadViewers();
     }
   }, [activeTab]);
 
@@ -101,9 +156,9 @@ export default function LikesScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between mb-4">
         <Text className="text-white text-2xl font-bold">Likes</Text>
-        {activeTab === "likedMe" && (
+        {(activeTab === "likedMe" || activeTab === "viewers") && (
           <Pressable
-            onPress={loadLikes}
+            onPress={activeTab === "likedMe" ? loadLikes : loadViewers}
             disabled={loading}
             className="bg-pink-500 px-4 py-2 rounded-full flex-row items-center gap-2"
           >
@@ -154,11 +209,102 @@ export default function LikesScreen() {
       )}
 
       {activeTab === "viewers" && (
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-white/70 text-base">
-            Viewers page – we will wire this next.
-          </Text>
-        </View>
+        viewers.length === 0 ? (
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-white/60 text-base">No viewers yet</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={viewers}
+            numColumns={2}
+            columnWrapperStyle={{ gap: 12 }}
+            contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
+            keyExtractor={(item, index) => item.id || `viewer-${index}`}
+            renderItem={({ item }) => {
+              // Clean and get the first valid photo
+              let mainPhoto: string | null = null;
+              if (item.photos && Array.isArray(item.photos) && item.photos.length > 0) {
+                for (const photo of item.photos) {
+                  const cleaned = cleanPhotoUrl(photo);
+                  if (cleaned) {
+                    mainPhoto = cleaned;
+                    break;
+                  }
+                }
+              }
+              
+              const fullName = item.first_name && item.last_name
+                ? `${item.first_name} ${item.last_name}`
+                : item.name || "Unknown";
+              
+              const viewCount = item.viewCount || 1;
+              
+              return (
+                <Pressable
+                  className="bg-white/10 rounded-2xl overflow-hidden"
+                  style={{ width: CARD_WIDTH, height: CARD_WIDTH * 1.4 }}
+                  onPress={() => router.push(`/(main)/profile/preview?userId=${item.id}`)}
+                >
+                  {mainPhoto ? (
+                    <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                      <Image
+                        source={{ uri: mainPhoto }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                      {/* Gradient overlay for text readability */}
+                      <View 
+                        style={{ 
+                          position: 'absolute', 
+                          bottom: 0, 
+                          left: 0, 
+                          right: 0, 
+                          height: 80, 
+                          backgroundColor: 'rgba(0,0,0,0.6)' 
+                        }} 
+                      />
+                      {/* Name and view count on bottom */}
+                      <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
+                        <Text className="text-white text-lg font-bold" numberOfLines={1}>
+                          {fullName}
+                        </Text>
+                        {viewCount > 1 && (
+                          <Text className="text-white/70 text-xs mt-1">
+                            Viewed {viewCount} times
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  ) : (
+                    <View className="w-full h-full bg-white/5 items-center justify-center" style={{ position: 'relative' }}>
+                      <Text className="text-white/60 text-4xl">👤</Text>
+                      <View 
+                        style={{ 
+                          position: 'absolute', 
+                          bottom: 0, 
+                          left: 0, 
+                          right: 0, 
+                          height: 80, 
+                          backgroundColor: 'rgba(0,0,0,0.6)' 
+                        }} 
+                      />
+                      <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
+                        <Text className="text-white text-lg font-bold" numberOfLines={1}>
+                          {fullName}
+                        </Text>
+                        {viewCount > 1 && (
+                          <Text className="text-white/70 text-xs mt-1">
+                            Viewed {viewCount} times
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            }}
+          />
+        )
       )}
 
       {activeTab === "likedMe" && (
@@ -202,6 +348,7 @@ export default function LikesScreen() {
               <Pressable
                 className="bg-white/10 rounded-2xl overflow-hidden"
                 style={{ width: CARD_WIDTH, height: CARD_WIDTH * 1.4 }}
+                onPress={() => router.push(`/(main)/profile/preview?userId=${item.id}`)}
               >
                 {mainPhoto ? (
                   <View style={{ width: '100%', height: '100%', position: 'relative' }}>

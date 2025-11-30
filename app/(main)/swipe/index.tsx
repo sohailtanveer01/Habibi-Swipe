@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { View, Text, Dimensions, Pressable } from "react-native";
 import Animated, {
   useSharedValue,
@@ -17,6 +17,7 @@ export default function SwipeScreen() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [index, setIndex] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false); // prevents double swipe
+  const viewedProfileIds = useRef<Set<string>>(new Set()); // Track which profiles have been viewed
 
   const x = useSharedValue(0);
   const y = useSharedValue(0);
@@ -39,6 +40,8 @@ export default function SwipeScreen() {
     if (data?.profiles) {
       setProfiles(data.profiles);
       setIndex(0);
+      // Reset viewed profiles when feed refreshes
+      viewedProfileIds.current.clear();
     } else {
       setProfiles([]);
     }
@@ -47,6 +50,45 @@ export default function SwipeScreen() {
   useEffect(() => {
     fetchFeed();
   }, []);
+
+  // Track profile views when a profile becomes current in the swipe feed
+  useEffect(() => {
+    const trackProfileView = async () => {
+      const currentProfile = profiles[index];
+      if (!currentProfile || !currentProfile.id) return;
+
+      // Skip if we've already tracked a view for this profile
+      if (viewedProfileIds.current.has(currentProfile.id)) {
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.id === currentProfile.id) {
+        // Don't track views for own profile
+        return;
+      }
+
+      // Mark as viewed to prevent duplicates
+      viewedProfileIds.current.add(currentProfile.id);
+
+      // Record the view
+      try {
+        await supabase.functions.invoke("create-profile-view", {
+          body: { viewed_id: currentProfile.id },
+        });
+        console.log("✅ Profile view recorded for swipe feed:", currentProfile.id);
+      } catch (error) {
+        console.error("Error recording profile view from swipe feed:", error);
+        // Remove from set if it failed so we can retry
+        viewedProfileIds.current.delete(currentProfile.id);
+      }
+    };
+
+    // Track view when index changes (new profile shown)
+    if (profiles.length > 0 && index < profiles.length) {
+      trackProfileView();
+    }
+  }, [index, profiles]);
 
   // Send swipe to server
   const sendSwipe = async (action: "like" | "pass" | "superlike") => {
