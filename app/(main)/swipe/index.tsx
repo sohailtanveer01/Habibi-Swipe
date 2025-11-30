@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { View, Text, Dimensions, Pressable } from "react-native";
 import Animated, {
   useSharedValue,
@@ -7,6 +7,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { useRouter, useFocusEffect } from "expo-router";
 import SwipeCard from "../../../components/SwipeCard";
 import { supabase } from "../../../lib/supabase";
 
@@ -14,6 +15,7 @@ const { width } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
 
 export default function SwipeScreen() {
+  const router = useRouter();
   const [profiles, setProfiles] = useState<any[]>([]);
   const [index, setIndex] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false); // prevents double swipe
@@ -50,6 +52,13 @@ export default function SwipeScreen() {
   useEffect(() => {
     fetchFeed();
   }, []);
+
+  // Refresh feed when screen comes into focus (e.g., returning from filters)
+  useFocusEffect(
+    useCallback(() => {
+      fetchFeed();
+    }, [])
+  );
 
   // Track profile views when a profile becomes current in the swipe feed
   useEffect(() => {
@@ -176,6 +185,15 @@ export default function SwipeScreen() {
 
   return (
     <View className="flex-1 bg-black">
+      {/* Apply Filters Button - Top Left */}
+      <Pressable
+        className="absolute top-12 left-4 z-50 bg-white/20 px-4 py-2 rounded-full flex-row items-center gap-2"
+        onPress={() => router.push("/(main)/swipe/filters")}
+        style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+      >
+        <Text className="text-white font-semibold text-sm">Apply Filters</Text>
+      </Pressable>
+
       <GestureDetector gesture={pan}>
         <Animated.View
           style={[{ width: "100%", height: "100%" }, cardStyle]}
