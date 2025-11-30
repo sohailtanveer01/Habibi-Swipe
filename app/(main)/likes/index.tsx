@@ -151,6 +151,44 @@ export default function LikesScreen() {
     }
   }, [activeTab]);
 
+  // Real-time subscription for profile views
+  useEffect(() => {
+    if (activeTab !== "viewers") return;
+
+    let channel: any = null;
+
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      channel = supabase
+        .channel("profile-views-updates")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "profile_views",
+            filter: `viewed_id=eq.${user.id}`, // Only listen for views of current user
+          },
+          (payload) => {
+            console.log("🔄 New profile view detected, refreshing viewers list");
+            // Refresh viewers list to get updated counts
+            loadViewers();
+          }
+        )
+        .subscribe();
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [activeTab]);
+
   return (
     <View className="flex-1 bg-black pt-12 px-4">
       {/* Header */}
@@ -243,7 +281,19 @@ export default function LikesScreen() {
                 <Pressable
                   className="bg-white/10 rounded-2xl overflow-hidden"
                   style={{ width: CARD_WIDTH, height: CARD_WIDTH * 1.4 }}
-                  onPress={() => router.push(`/(main)/profile/preview?userId=${item.id}`)}
+                  onPress={async () => {
+                    // Track profile view when tapping from viewers tab
+                    try {
+                      await supabase.functions.invoke("create-profile-view", {
+                        body: { viewed_id: item.id },
+                      });
+                      console.log("✅ Profile view recorded from viewers tab:", item.id);
+                    } catch (error) {
+                      console.error("Error recording profile view from viewers tab:", error);
+                      // Continue with navigation even if view tracking fails
+                    }
+                    router.push(`/(main)/profile/preview?userId=${item.id}`);
+                  }}
                 >
                   {mainPhoto ? (
                     <View style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -348,7 +398,19 @@ export default function LikesScreen() {
               <Pressable
                 className="bg-white/10 rounded-2xl overflow-hidden"
                 style={{ width: CARD_WIDTH, height: CARD_WIDTH * 1.4 }}
-                onPress={() => router.push(`/(main)/profile/preview?userId=${item.id}`)}
+                onPress={async () => {
+                  // Track profile view when tapping from likes tab
+                  try {
+                    await supabase.functions.invoke("create-profile-view", {
+                      body: { viewed_id: item.id },
+                    });
+                    console.log("✅ Profile view recorded from likes tab:", item.id);
+                  } catch (error) {
+                    console.error("Error recording profile view from likes tab:", error);
+                    // Continue with navigation even if view tracking fails
+                  }
+                  router.push(`/(main)/profile/preview?userId=${item.id}`);
+                }}
               >
                 {mainPhoto ? (
                   <View style={{ width: '100%', height: '100%', position: 'relative' }}>
