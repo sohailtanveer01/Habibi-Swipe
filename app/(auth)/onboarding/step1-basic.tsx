@@ -1,8 +1,12 @@
-import { View, Text, TextInput, Pressable, ScrollView, Platform } from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, Platform, KeyboardAvoidingView } from "react-native";
 import { useRouter } from "expo-router";
 import { useOnboarding } from "../../../lib/onboardingStore";
 import { useState, useEffect } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { Ionicons } from "@expo/vector-icons";
+
+const TOTAL_STEPS = 8;
+const CURRENT_STEP = 1;
 
 export default function Step1Basic() {
   const router = useRouter();
@@ -28,24 +32,17 @@ export default function Step1Basic() {
   const [height, setHeight] = useState(data.height);
   const [maritalStatus, setMaritalStatus] = useState(data.maritalStatus);
   const [hasChildren, setHasChildren] = useState<boolean | null>(data.hasChildren);
+  const [showMaritalStatusDropdown, setShowMaritalStatusDropdown] = useState(false);
 
   // Height input state
-  const [heightUnit, setHeightUnit] = useState<"ft" | "cm">("ft");
   const [feet, setFeet] = useState("");
   const [inches, setInches] = useState("");
-  const [centimeters, setCentimeters] = useState("");
 
   // Parse existing height value
   useEffect(() => {
     if (height) {
-      const cmMatch = height.match(/(\d+)\s*cm/i);
       const ftMatch = height.match(/(\d+)'(\d+)/);
-      
-      if (cmMatch) {
-        setHeightUnit("cm");
-        setCentimeters(cmMatch[1]);
-      } else if (ftMatch) {
-        setHeightUnit("ft");
+      if (ftMatch) {
         setFeet(ftMatch[1]);
         setInches(ftMatch[2]);
       }
@@ -55,12 +52,10 @@ export default function Step1Basic() {
 
   // Update height string when values change
   useEffect(() => {
-    if (heightUnit === "ft" && feet && inches) {
+    if (feet && inches) {
       setHeight(`${feet}'${inches}"`);
-    } else if (heightUnit === "cm" && centimeters) {
-      setHeight(`${centimeters} cm`);
     }
-  }, [feet, inches, centimeters, heightUnit]);
+  }, [feet, inches]);
 
   const formatDateForDB = (date: Date): string => {
     const year = date.getFullYear();
@@ -92,11 +87,7 @@ export default function Step1Basic() {
   };
 
   const next = () => {
-    const heightValid = heightUnit === "ft" 
-      ? (feet.trim() && inches.trim())
-      : centimeters.trim();
-    
-    if (!firstName.trim() || !lastName.trim() || !gender || !heightValid || !maritalStatus || hasChildren === null) {
+    if (!firstName.trim() || !lastName.trim() || !gender || !height || !maritalStatus || hasChildren === null) {
       alert("Please fill all fields.");
       return;
     }
@@ -114,168 +105,175 @@ export default function Step1Basic() {
   };
 
   return (
-    <ScrollView 
+    <KeyboardAvoidingView 
       className="flex-1 bg-black"
-      contentContainerStyle={{ paddingBottom: 40 }}
-      showsVerticalScrollIndicator={false}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
-      <View className="px-6 pt-20 pb-8">
-        {/* Header Section */}
-        <View className="mb-10">
-          <Text className="text-white text-4xl font-bold mb-3 leading-tight">
-            You are in !!
-          </Text>
-          <Text className="text-white/80 text-xl font-medium">
-            Let&apos;s get to know you
-          </Text>
-        </View>
-
-        {/* Name Fields Section */}
-        <View className="mb-8">
-          <View className="flex-row gap-3 mb-4">
-            <View className="flex-1">
-             
-              <TextInput
-                className="bg-white/10 text-white p-4 rounded-2xl border border-white/5"
-                placeholder="First Name"
-                placeholderTextColor="#999"
-                value={firstName}
-                onChangeText={setFirstName}
-                autoCapitalize="words"
-                style={{ fontSize: 16 }}
-              />
-            </View>
-            <View className="flex-1">
-             
-              <TextInput
-                className="bg-white/10 text-white p-4 rounded-2xl border border-white/5"
-                placeholder="Last Name"
-                placeholderTextColor="#999"
-                value={lastName}
-                onChangeText={setLastName}
-                autoCapitalize="words"
-                style={{ fontSize: 16 }}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Gender Section */}
-        <View className="mb-8">
-          <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
-            Gender
-          </Text>
-          <View className="flex-row gap-3">
-            {[
-              { value: "male", label: "Male" },
-              { value: "female", label: "Female" },
-            ].map((option) => (
-              <Pressable
-                key={option.value}
-                onPress={() => setGender(option.value)}
-                className={`flex-1 px-4 py-4 rounded-2xl border ${
-                  gender === option.value 
-                    ? "bg-[#B8860B] border-[#B8860B]" 
-                    : "bg-white/10 border-white/20"
-                }`}
-              >
-                <Text className={`text-center font-semibold text-lg ${
-                  gender === option.value ? "text-white" : "text-white/90"
-                }`}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* Date of Birth Section */}
-        <View className="mb-8">
-          <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
-            Date of Birth
-          </Text>
+      {/* Header with Back Button and Progress Indicators */}
+      <View className="pt-20 px-6 pb-8">
+        <View className="flex-row items-center justify-between mb-8">
+          {/* Back Button */}
           <Pressable
-            onPress={() => setShowDatePicker(true)}
-            className="bg-white/10 p-4 rounded-2xl border border-white/5"
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-full border border-[#B8860B] items-center justify-center"
           >
-            <Text className="text-white text-lg">
-              {formatDateForDisplay(dob)}
-            </Text>
+            <Ionicons name="chevron-back" size={20} color="white" />
           </Pressable>
-          {showDatePicker && (
-            <View className="mt-4">
-              {Platform.OS === "ios" ? (
-                <View className="bg-white/10 rounded-2xl border border-white/5 p-4">
-                  <View className="flex-row justify-between items-center mb-4">
-                    <Text className="text-white text-lg font-semibold">Select Date</Text>
-                    <Pressable onPress={() => setShowDatePicker(false)}>
-                      <Text className="text-[#B8860B] text-lg font-semibold">Done</Text>
-                    </Pressable>
+
+          {/* Step Indicators - Centered */}
+          <View className="flex-row items-center gap-2 flex-1 justify-center px-4">
+            {Array.from({ length: 5 }, (_, i) => i + 1).map((indicator) => {
+              const getIndicatorForStep = (step: number) => {
+                if (step <= 5) return step;
+                return 5;
+              };
+              const activeIndicator = getIndicatorForStep(CURRENT_STEP);
+              const isActive = indicator === activeIndicator;
+              return (
+                <View
+                  key={indicator}
+                  className={`h-1 rounded-full ${
+                    isActive ? "bg-[#F5F573] w-8" : "bg-[#B8860B] w-6"
+                  }`}
+                />
+              );
+            })}
+          </View>
+
+          {/* Step Text - Right Aligned */}
+          <Text className="text-[#B8860B] text-xs font-medium" style={{ width: 50, textAlign: 'right' }}>
+            step {CURRENT_STEP}/{TOTAL_STEPS}
+          </Text>
+        </View>
+      </View>
+
+      <ScrollView 
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 20 }}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View className="px-6 pt-6 pb-8">
+          {/* Header Section */}
+          <View className="mb-8">
+            <Text className="text-white text-4xl font-bold mb-3 leading-tight">
+              You are in !!
+            </Text>
+            <Text className="text-white/80 text-xl font-medium">
+              Let&apos;s get to know you
+            </Text>
+          </View>
+
+          {/* Name Fields Section */}
+          <View className="mb-6">
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <TextInput
+                  className="bg-white/10 text-white p-4 rounded-2xl border border-white/5"
+                  placeholder="First Name"
+                  placeholderTextColor="#999"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  autoCapitalize="words"
+                  style={{ fontSize: 16 }}
+                />
+              </View>
+              <View className="flex-1">
+                <TextInput
+                  className="bg-white/10 text-white p-4 rounded-2xl border border-white/5"
+                  placeholder="Last Name"
+                  placeholderTextColor="#999"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  autoCapitalize="words"
+                  style={{ fontSize: 16 }}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Gender Section */}
+          <View className="mb-6">
+            <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
+              Gender
+            </Text>
+            <View className="flex-row gap-3">
+              {[
+                { value: "male", label: "Male" },
+                { value: "female", label: "Female" },
+              ].map((option) => (
+                <Pressable
+                  key={option.value}
+                  onPress={() => setGender(option.value)}
+                  className={`flex-1 px-4 py-4 rounded-2xl border ${
+                    gender === option.value 
+                      ? "bg-[#B8860B] border-[#B8860B]" 
+                      : "bg-white/10 border-white/20"
+                  }`}
+                >
+                  <Text className={`text-center font-semibold text-lg ${
+                    gender === option.value ? "text-white" : "text-white/90"
+                  }`}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          {/* Date of Birth Section */}
+          <View className="mb-6">
+            <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
+              Date of Birth
+            </Text>
+            <Pressable
+              onPress={() => setShowDatePicker(true)}
+              className="bg-white/10 p-4 rounded-2xl border border-white/5"
+            >
+              <Text className="text-white text-lg">
+                {formatDateForDisplay(dob)}
+              </Text>
+            </Pressable>
+            {showDatePicker && (
+              <View className="mt-4">
+                {Platform.OS === "ios" ? (
+                  <View className="bg-white/10 rounded-2xl border border-white/5 p-4">
+                    <View className="flex-row justify-between items-center mb-4">
+                      <Text className="text-white text-lg font-semibold">Select Date</Text>
+                      <Pressable onPress={() => setShowDatePicker(false)}>
+                        <Text className="text-[#B8860B] text-lg font-semibold">Done</Text>
+                      </Pressable>
+                    </View>
+                    <DateTimePicker
+                      value={dob}
+                      mode="date"
+                      display="spinner"
+                      onChange={onDateChange}
+                      maximumDate={new Date()}
+                      minimumDate={new Date(1950, 0, 1)}
+                      textColor="#ffffff"
+                    />
                   </View>
+                ) : (
                   <DateTimePicker
                     value={dob}
                     mode="date"
-                    display="spinner"
+                    display="default"
                     onChange={onDateChange}
                     maximumDate={new Date()}
                     minimumDate={new Date(1950, 0, 1)}
-                    textColor="#ffffff"
                   />
-                </View>
-              ) : (
-                <DateTimePicker
-                  value={dob}
-                  mode="date"
-                  display="default"
-                  onChange={onDateChange}
-                  maximumDate={new Date()}
-                  minimumDate={new Date(1950, 0, 1)}
-                />
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* Height Field */}
-        <View className="mb-8">
-          <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
-            Height
-          </Text>
-          
-          {/* Unit Selector */}
-          <View className="flex-row gap-3 mb-4">
-            <Pressable
-              onPress={() => setHeightUnit("ft")}
-              className={`flex-1 px-4 py-3 rounded-2xl border ${
-                heightUnit === "ft"
-                  ? "bg-[#B8860B] border-[#B8860B]"
-                  : "bg-white/10 border-white/20"
-              }`}
-            >
-              <Text className={`text-center font-semibold ${
-                heightUnit === "ft" ? "text-white" : "text-white/90"
-              }`}>
-                Feet & Inches
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setHeightUnit("cm")}
-              className={`flex-1 px-4 py-3 rounded-2xl border ${
-                heightUnit === "cm"
-                  ? "bg-[#B8860B] border-[#B8860B]"
-                  : "bg-white/10 border-white/20"
-              }`}
-            >
-              <Text className={`text-center font-semibold ${
-                heightUnit === "cm" ? "text-white" : "text-white/90"
-              }`}>
-                Centimeters
-              </Text>
-            </Pressable>
+                )}
+              </View>
+            )}
           </View>
 
-          {/* Height Inputs */}
-          {heightUnit === "ft" ? (
+          {/* Height Field */}
+          <View className="mb-6">
+            <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
+              Height
+            </Text>
             <View className="flex-row gap-3 items-end">
               <View className="flex-1">
                 <TextInput
@@ -304,78 +302,74 @@ export default function Step1Basic() {
               </View>
               <Text className="text-white/70 text-3xl font-bold mb-2">&quot;</Text>
             </View>
-          ) : (
-            <View>
-              <TextInput
-                className="bg-white/10 text-white p-4 rounded-2xl border border-white/5 text-center"
-                placeholder="178"
-                placeholderTextColor="#999"
-                value={centimeters}
-                onChangeText={setCentimeters}
-                keyboardType="number-pad"
-                style={{ fontSize: 18, fontWeight: "600" }}
-              />
-              <Text className="text-white/70 text-center mt-2 text-sm">Centimeters</Text>
+          </View>
+
+          {/* Marital Status Section */}
+          <View className="mb-6">
+            <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
+              Marital Status
+            </Text>
+            <Pressable
+              onPress={() => setShowMaritalStatusDropdown(!showMaritalStatusDropdown)}
+              className="bg-white/10 p-4 rounded-2xl border border-white/5"
+            >
+              <Text className="text-white text-lg">
+                {maritalStatus ? maritalStatus.charAt(0).toUpperCase() + maritalStatus.slice(1) : "Select marital status"}
+              </Text>
+            </Pressable>
+            {showMaritalStatusDropdown && (
+              <View className="bg-white/10 rounded-2xl border border-white/5 mt-2 overflow-hidden">
+                {["single", "divorced", "widowed", "separated"].map((status) => (
+                  <Pressable
+                    key={status}
+                    onPress={() => {
+                      setMaritalStatus(status);
+                      setShowMaritalStatusDropdown(false);
+                    }}
+                    className={`p-4 border-b border-white/5 ${
+                      maritalStatus === status ? "bg-[#B8860B]/20" : ""
+                    }`}
+                  >
+                    <Text className="text-white text-lg capitalize">{status}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Children Section */}
+          <View className="mb-6">
+            <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
+              Do you have children?
+            </Text>
+            <View className="flex-row gap-3">
+              {[
+                { value: true, label: "Yes" },
+                { value: false, label: "No" },
+              ].map((option) => (
+                <Pressable
+                  key={option.label}
+                  onPress={() => setHasChildren(option.value)}
+                  className={`flex-1 px-4 py-4 rounded-2xl border ${
+                    hasChildren === option.value 
+                      ? "bg-[#B8860B] border-[#B8860B]" 
+                      : "bg-white/10 border-white/20"
+                  }`}
+                >
+                  <Text className={`text-center font-semibold text-lg ${
+                    hasChildren === option.value ? "text-white" : "text-white/90"
+                  }`}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
-          )}
-        </View>
-
-        {/* Marital Status Section */}
-        <View className="mb-8">
-          <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
-            Marital Status
-          </Text>
-          <View className="flex-row gap-3 flex-wrap">
-            {["single", "divorced", "widowed", "separated"].map((status) => (
-              <Pressable
-                key={status}
-                onPress={() => setMaritalStatus(status)}
-                className={`px-5 py-3 rounded-full border ${
-                  maritalStatus === status 
-                    ? "bg-[#B8860B] border-[#B8860B]" 
-                    : "bg-white/10 border-white/20"
-                }`}
-              >
-                <Text className={`text-center capitalize font-medium ${
-                  maritalStatus === status ? "text-white" : "text-white/90"
-                }`}>
-                  {status}
-                </Text>
-              </Pressable>
-            ))}
           </View>
         </View>
+      </ScrollView>
 
-        {/* Children Section */}
-        <View className="mb-10">
-          <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
-            Do you have children?
-          </Text>
-          <View className="flex-row gap-3">
-            {[
-              { value: true, label: "Yes" },
-              { value: false, label: "No" },
-            ].map((option) => (
-              <Pressable
-                key={option.label}
-                onPress={() => setHasChildren(option.value)}
-                className={`flex-1 px-4 py-4 rounded-2xl border ${
-                  hasChildren === option.value 
-                    ? "bg-[#B8860B] border-[#B8860B]" 
-                    : "bg-white/10 border-white/20"
-                }`}
-              >
-                <Text className={`text-center font-semibold text-lg ${
-                  hasChildren === option.value ? "text-white" : "text-white/90"
-                }`}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* Next Button */}
+      {/* Fixed Continue Button */}
+      <View className="px-6 pb-8 pt-4 bg-black border-t border-white/10">
         <Pressable
           className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
@@ -390,6 +384,6 @@ export default function Step1Basic() {
           <Text className="text-white text-lg font-bold">Continue</Text>
         </Pressable>
       </View>
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

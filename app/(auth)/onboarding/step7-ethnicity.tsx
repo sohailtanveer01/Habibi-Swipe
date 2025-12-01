@@ -1,7 +1,8 @@
-import { View, Text, Pressable, ScrollView, TextInput } from "react-native";
+import { View, Text, Pressable, ScrollView, TextInput, Platform, KeyboardAvoidingView } from "react-native";
 import { useRouter } from "expo-router";
 import { useOnboarding } from "../../../lib/onboardingStore";
 import { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 
 const ETHNICITY_OPTIONS = [
   "Arab",
@@ -51,6 +52,9 @@ const NATIONALITY_OPTIONS = [
   "Other",
 ];
 
+const TOTAL_STEPS = 8;
+const CURRENT_STEP = 7;
+
 export default function Step7Ethnicity() {
   const router = useRouter();
   const { data, setData } = useOnboarding();
@@ -79,12 +83,54 @@ export default function Step7Ethnicity() {
   };
 
   return (
-    <ScrollView
-      className="flex-1 bg-black"
-      contentContainerStyle={{ paddingBottom: 40 }}
-      showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View className="px-6 pt-20 pb-8">
+      <ScrollView
+        className="flex-1 bg-black"
+        contentContainerStyle={{ paddingBottom: 20 }}
+        showsVerticalScrollIndicator={true}
+      >
+        {/* Header with Back Button and Progress Indicators */}
+        <View className="pt-20 px-6 pb-8">
+        <View className="flex-row items-center justify-between mb-8">
+          {/* Back Button */}
+          <Pressable
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-full border border-[#B8860B] items-center justify-center"
+          >
+            <Ionicons name="chevron-back" size={20} color="white" />
+          </Pressable>
+
+          {/* Step Indicators - Centered */}
+          <View className="flex-row items-center gap-2 flex-1 justify-center px-4">
+            {Array.from({ length: 5 }, (_, i) => i + 1).map((indicator) => {
+              const getIndicatorForStep = (step: number) => {
+                if (step <= 5) return step;
+                return 5;
+              };
+              const activeIndicator = getIndicatorForStep(CURRENT_STEP);
+              const isActive = indicator === activeIndicator;
+              return (
+                <View
+                  key={indicator}
+                  className={`h-1 rounded-full ${
+                    isActive ? "bg-[#F5F573] w-8" : "bg-[#B8860B] w-6"
+                  }`}
+                />
+              );
+            })}
+          </View>
+
+          {/* Step Text - Right Aligned */}
+          <Text className="text-[#B8860B] text-xs font-medium" style={{ width: 50, textAlign: 'right' }}>
+            step {CURRENT_STEP}/8
+          </Text>
+        </View>
+      </View>
+
+      <View className="px-6 pb-10">
         {/* Header Section */}
         <View className="mb-10">
           <Text className="text-white text-4xl font-bold mb-3 leading-tight">
@@ -182,8 +228,11 @@ export default function Step7Ethnicity() {
             </View>
           )}
         </View>
+      </View>
+      </ScrollView>
 
-        {/* Continue Button */}
+      {/* Fixed Continue Button */}
+      <View className="px-6 pb-8 pt-4 bg-black border-t border-white/10">
         <Pressable
           className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
@@ -198,7 +247,7 @@ export default function Step7Ethnicity() {
           <Text className="text-white text-lg font-bold">Continue</Text>
         </Pressable>
       </View>
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
