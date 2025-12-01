@@ -216,7 +216,7 @@ export default function ChatScreen() {
   if (isLoading) {
     return (
       <View className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color="#ec4899" />
+        <ActivityIndicator size="large" color="#B8860B" />
       </View>
     );
   }

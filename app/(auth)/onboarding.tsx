@@ -50,7 +50,7 @@ export default function Onboarding() {
         {["serious","marriage","casual"].map(i => (
           <Pressable
             key={i}
-            className={`px-4 py-2 rounded-full ${intent===i?"bg-pink-500":"bg-white/10"}`}
+            className={`px-4 py-2 rounded-full ${intent===i?"bg-[#B8860B]":"bg-white/10"}`}
             onPress={()=>setIntent(i)}
           >
             <Text className="text-white">{i}</Text>
@@ -58,7 +58,7 @@ export default function Onboarding() {
         ))}
       </View>
 
-      <Pressable className="bg-pink-500 p-4 rounded-2xl items-center" onPress={save}>
+      <Pressable className="bg-[#B8860B] p-4 rounded-2xl items-center" onPress={save}>
         <Text className="text-white font-semibold">Continue</Text>
       </Pressable>
     </View>

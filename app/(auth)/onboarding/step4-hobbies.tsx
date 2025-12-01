@@ -119,7 +119,7 @@ export default function Step4Hobbies() {
                   disabled={isDisabled}
                   className={`px-4 py-3 rounded-full border ${
                     isSelected
-                      ? "bg-pink-500 border-pink-500"
+                      ? "bg-[#B8860B] border-[#B8860B]"
                       : isDisabled
                       ? "bg-white/5 border-white/10 opacity-50"
                       : "bg-white/10 border-white/20"
@@ -141,10 +141,10 @@ export default function Step4Hobbies() {
 
         {/* Continue Button */}
         <Pressable
-          className="bg-pink-500 p-5 rounded-2xl items-center shadow-lg"
+          className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
           style={{
-            shadowColor: "#ec4899",
+            shadowColor: "#B8860B",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 8,

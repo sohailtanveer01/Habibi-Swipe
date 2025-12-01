@@ -186,12 +186,12 @@ export default function DraggableProfilePhoto({
               resizeMode="cover"
             />
             {isMainPhoto && (
-              <View className="absolute top-1 left-1 bg-pink-500 px-2 py-1 rounded-full">
+              <View className="absolute top-1 left-1 bg-[#B8860B] px-2 py-1 rounded-full">
                 <Text className="text-white text-xs font-bold">Main</Text>
               </View>
             )}
             {isDragging && (
-              <View className="absolute inset-0 bg-pink-500/20 border-2 border-pink-500 rounded-xl" />
+              <View className="absolute inset-0 bg-[#B8860B]/20 border-2 border-[#B8860B] rounded-xl" />
             )}
             <Pressable
               className="absolute top-1 right-1 bg-red-500 w-6 h-6 rounded-full items-center justify-center"

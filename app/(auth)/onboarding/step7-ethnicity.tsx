@@ -122,7 +122,7 @@ export default function Step7Ethnicity() {
                       setShowEthnicityDropdown(false);
                     }}
                     className={`p-4 border-b border-white/5 ${
-                      ethnicity === option ? "bg-pink-500/20" : ""
+                      ethnicity === option ? "bg-[#B8860B]/20" : ""
                     }`}
                   >
                     <Text className="text-white text-lg">{option}</Text>
@@ -172,7 +172,7 @@ export default function Step7Ethnicity() {
                       setNationalitySearch("");
                     }}
                     className={`p-4 border-b border-white/5 ${
-                      nationality === option ? "bg-pink-500/20" : ""
+                      nationality === option ? "bg-[#B8860B]/20" : ""
                     }`}
                   >
                     <Text className="text-white text-lg">{option}</Text>
@@ -185,10 +185,10 @@ export default function Step7Ethnicity() {
 
         {/* Continue Button */}
         <Pressable
-          className="bg-pink-500 p-5 rounded-2xl items-center shadow-lg"
+          className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
           style={{
-            shadowColor: "#ec4899",
+            shadowColor: "#B8860B",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 8,

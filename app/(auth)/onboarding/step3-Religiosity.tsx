@@ -79,7 +79,7 @@ export default function Step3Religiosity() {
                     setShowSectDropdown(false);
                   }}
                   className={`p-4 border-b border-white/5 ${
-                    sect === option ? "bg-pink-500/20" : ""
+                    sect === option ? "bg-[#B8860B]/20" : ""
                   }`}
                 >
                   <Text className="text-white text-lg capitalize">{option}</Text>
@@ -104,7 +104,7 @@ export default function Step3Religiosity() {
                 onPress={() => setBornMuslim(option.value)}
                 className={`flex-1 px-4 py-4 rounded-2xl border ${
                   bornMuslim === option.value
-                    ? "bg-pink-500 border-pink-500"
+                    ? "bg-[#B8860B] border-[#B8860B]"
                     : "bg-white/10 border-white/20"
                 }`}
               >
@@ -130,7 +130,7 @@ export default function Step3Religiosity() {
                 onPress={() => setReligiousPractice(practice)}
                 className={`px-5 py-3 rounded-full border ${
                   religiousPractice === practice
-                    ? "bg-pink-500 border-pink-500"
+                    ? "bg-[#B8860B] border-[#B8860B]"
                     : "bg-white/10 border-white/20"
                 }`}
               >
@@ -162,7 +162,7 @@ export default function Step3Religiosity() {
                   onPress={() => setAlcoholHabit(option)}
                   className={`px-5 py-3 rounded-full border ${
                     alcoholHabit === option
-                      ? "bg-pink-500 border-pink-500"
+                      ? "bg-[#B8860B] border-[#B8860B]"
                       : "bg-white/10 border-white/20"
                   }`}
                 >
@@ -188,7 +188,7 @@ export default function Step3Religiosity() {
                   onPress={() => setSmokingHabit(option)}
                   className={`px-5 py-3 rounded-full border ${
                     smokingHabit === option
-                      ? "bg-pink-500 border-pink-500"
+                      ? "bg-[#B8860B] border-[#B8860B]"
                       : "bg-white/10 border-white/20"
                   }`}
                 >
@@ -205,10 +205,10 @@ export default function Step3Religiosity() {
 
         {/* Continue Button */}
         <Pressable
-          className="bg-pink-500 p-5 rounded-2xl items-center shadow-lg"
+          className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
           style={{
-            shadowColor: "#ec4899",
+            shadowColor: "#B8860B",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 8,

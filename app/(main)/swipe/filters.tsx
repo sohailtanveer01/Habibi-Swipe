@@ -307,7 +307,7 @@ export default function FiltersScreen() {
               <View className="flex-row gap-3">
                 <Pressable
                   className={`flex-1 p-4 rounded-2xl ${
-                    filterType === "distance" ? "bg-pink-500" : "bg-white/10"
+                    filterType === "distance" ? "bg-[#B8860B]" : "bg-white/10"
                   }`}
                   onPress={() => {
                     setFilterType("distance");
@@ -333,7 +333,7 @@ export default function FiltersScreen() {
                 </Pressable>
                 <Pressable
                   className={`flex-1 p-4 rounded-2xl ${
-                    filterType === "country" ? "bg-pink-500" : "bg-white/10"
+                    filterType === "country" ? "bg-[#B8860B]" : "bg-white/10"
                   }`}
                   onPress={() => {
                     setFilterType("country");
@@ -381,7 +381,7 @@ export default function FiltersScreen() {
                       <Text className="text-white text-lg font-bold mb-1">
                         Search Radius
                       </Text>
-                      <Text className="text-pink-400 text-2xl font-bold">
+                      <Text className="text-[#D4AF37] text-2xl font-bold">
                         {searchRadiusMiles} miles
                       </Text>
                     </View>
@@ -446,9 +446,9 @@ export default function FiltersScreen() {
                         step={1}
                         value={searchRadiusMiles}
                         onValueChange={setSearchRadiusMiles}
-                        minimumTrackTintColor="#EC4899"
+                        minimumTrackTintColor="#B8860B"
                         maximumTrackTintColor="#ffffff33"
-                        thumbTintColor="#EC4899"
+                        thumbTintColor="#B8860B"
                       />
                       <View className="flex-row justify-between mt-3">
                         <Text className="text-white/60 text-xs font-medium">1 mile</Text>
@@ -474,7 +474,7 @@ export default function FiltersScreen() {
                     <Pressable
                       key={country}
                       className={`p-4 rounded-xl mb-2 ${
-                        selectedCountry === country ? "bg-pink-500" : "bg-white/5"
+                        selectedCountry === country ? "bg-[#B8860B]" : "bg-white/5"
                       }`}
                       onPress={() => setSelectedCountry(country)}
                       style={selectedCountry === country ? styles.selectedCountryItem : styles.countryItem}
@@ -490,7 +490,7 @@ export default function FiltersScreen() {
                   ))}
                 </ScrollView>
                 {selectedCountry && (
-                  <View className="mt-4 bg-pink-500/20 border border-pink-500/30 p-4 rounded-xl">
+                  <View className="mt-4 bg-[#B8860B]/20 border border-[#B8860B]/30 p-4 rounded-xl">
                     <Text className="text-white/70 text-sm font-medium mb-1">Selected Country</Text>
                     <Text className="text-white font-bold text-lg">{selectedCountry}</Text>
                   </View>
@@ -512,9 +512,9 @@ export default function FiltersScreen() {
                   step={1}
                   value={ageMin || MIN_AGE}
                   onValueChange={(value) => setAgeMin(Math.floor(value))}
-                  minimumTrackTintColor="#EC4899"
+                  minimumTrackTintColor="#B8860B"
                   maximumTrackTintColor="#ffffff33"
-                  thumbTintColor="#EC4899"
+                  thumbTintColor="#B8860B"
                 />
                 <Text className="text-white font-bold text-lg w-12 text-right">
                   {ageMin || MIN_AGE}
@@ -531,9 +531,9 @@ export default function FiltersScreen() {
                   step={1}
                   value={ageMax || MAX_AGE}
                   onValueChange={(value) => setAgeMax(Math.floor(value))}
-                  minimumTrackTintColor="#EC4899"
+                  minimumTrackTintColor="#B8860B"
                   maximumTrackTintColor="#ffffff33"
-                  thumbTintColor="#EC4899"
+                  thumbTintColor="#B8860B"
                 />
                 <Text className="text-white font-bold text-lg w-12 text-right">
                   {ageMax || MAX_AGE}
@@ -566,9 +566,9 @@ export default function FiltersScreen() {
                   step={5}
                   value={heightMinCm || MIN_HEIGHT_CM}
                   onValueChange={(value) => setHeightMinCm(Math.floor(value))}
-                  minimumTrackTintColor="#EC4899"
+                  minimumTrackTintColor="#B8860B"
                   maximumTrackTintColor="#ffffff33"
-                  thumbTintColor="#EC4899"
+                  thumbTintColor="#B8860B"
                 />
                 <Text className="text-white font-bold text-lg w-16 text-right">
                   {heightMinCm || MIN_HEIGHT_CM} cm
@@ -601,7 +601,7 @@ export default function FiltersScreen() {
                 <Pressable
                   key={ethnicity}
                   className={`p-4 rounded-xl mb-2 ${
-                    isSelected ? "bg-pink-500" : "bg-white/5"
+                    isSelected ? "bg-[#B8860B]" : "bg-white/5"
                   }`}
                   onPress={() => {
                     if (isSelected) {
@@ -624,13 +624,13 @@ export default function FiltersScreen() {
             })}
           </ScrollView>
           {selectedEthnicities.length > 0 && (
-            <View className="mt-4 bg-pink-500/20 border border-pink-500/30 p-4 rounded-xl">
+            <View className="mt-4 bg-[#B8860B]/20 border border-[#B8860B]/30 p-4 rounded-xl">
               <Text className="text-white/70 text-sm font-medium mb-2">
                 Selected ({selectedEthnicities.length})
               </Text>
               <View className="flex-row flex-wrap gap-2">
                 {selectedEthnicities.map((ethnicity) => (
-                  <View key={ethnicity} className="bg-pink-500/30 px-3 py-1.5 rounded-full">
+                  <View key={ethnicity} className="bg-[#B8860B]/30 px-3 py-1.5 rounded-full">
                     <Text className="text-white text-xs font-medium">{ethnicity}</Text>
                   </View>
                 ))}
@@ -641,7 +641,7 @@ export default function FiltersScreen() {
 
         {/* Save Button */}
         <Pressable
-          className="bg-pink-500 p-5 rounded-2xl items-center mt-2 mb-4"
+          className="bg-[#B8860B] p-5 rounded-2xl items-center mt-2 mb-4"
           onPress={savePreferences}
           disabled={saving}
           style={styles.saveButton}
@@ -659,7 +659,7 @@ export default function FiltersScreen() {
 
 const styles = StyleSheet.create({
   enabledButton: {
-    shadowColor: "#EC4899",
+    shadowColor: "#B8860B",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.1)",
   },
   activeFilterButton: {
-    shadowColor: "#EC4899",
+    shadowColor: "#B8860B",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     borderWidth: 3,
-    borderColor: "#EC4899",
+    borderColor: "#B8860B",
     overflow: "hidden",
     backgroundColor: "white",
     shadowColor: "#000",
@@ -726,7 +726,7 @@ const styles = StyleSheet.create({
   profilePlaceholder: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#EC4899",
+    backgroundColor: "#B8860B",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -741,14 +741,14 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.1)",
   },
   selectedCountryItem: {
-    shadowColor: "#EC4899",
+    shadowColor: "#B8860B",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
   },
   saveButton: {
-    shadowColor: "#EC4899",
+    shadowColor: "#B8860B",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,

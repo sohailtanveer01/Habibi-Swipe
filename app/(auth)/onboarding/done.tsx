@@ -109,7 +109,7 @@ export default function OnboardingDone() {
       </Text>
 
       <Pressable
-        className="bg-pink-500 px-8 py-4 rounded-2xl items-center"
+        className="bg-[#B8860B] px-8 py-4 rounded-2xl items-center"
         onPress={finish}
         disabled={saving}
       >

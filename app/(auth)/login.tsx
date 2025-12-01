@@ -54,13 +54,13 @@ export default function Login() {
 
   return (
     <View className="flex-1 bg-black px-6 justify-center">
-      <Text className="text-pink-500 text-3xl font-bold mb-6">Log In</Text>
+      <Text className="text-[#B8860B] text-3xl font-bold mb-6">Log In</Text>
 
       {/* Login Method Toggle */}
       <View className="flex-row gap-2 mb-6">
         <Pressable
           className={`flex-1 p-3 rounded-2xl ${
-            loginMethod === "email" ? "bg-pink-500" : "bg-white/10"
+            loginMethod === "email" ? "bg-[#B8860B]" : "bg-white/10"
           }`}
           onPress={() => setLoginMethod("email")}
         >
@@ -68,7 +68,7 @@ export default function Login() {
         </Pressable>
         <Pressable
           className={`flex-1 p-3 rounded-2xl ${
-            loginMethod === "phone" ? "bg-pink-500" : "bg-white/10"
+            loginMethod === "phone" ? "bg-[#B8860B]" : "bg-white/10"
           }`}
           onPress={() => setLoginMethod("phone")}
         >
@@ -90,7 +90,7 @@ export default function Login() {
           />
 
           <Pressable
-            className="bg-pink-500 p-4 rounded-2xl items-center mb-4"
+            className="bg-[#B8860B] p-4 rounded-2xl items-center mb-4"
             onPress={loginWithEmail}
             disabled={loading}
           >
@@ -115,7 +115,7 @@ export default function Login() {
           />
 
           <Pressable
-            className="bg-pink-500 p-4 rounded-2xl items-center mb-4"
+            className="bg-[#B8860B] p-4 rounded-2xl items-center mb-4"
             onPress={sendOtp}
             disabled={loading}
           >
@@ -128,7 +128,7 @@ export default function Login() {
 
       <Pressable onPress={() => router.push("/(auth)/signup")}>
         <Text className="text-white/70 text-center">
-          Don&apos;t have an account? <Text className="text-pink-500">Sign Up</Text>
+          Don&apos;t have an account? <Text className="text-[#B8860B]">Sign Up</Text>
         </Text>
       </Pressable>
     </View>

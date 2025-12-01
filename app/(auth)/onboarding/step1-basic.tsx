@@ -175,7 +175,7 @@ export default function Step1Basic() {
                 onPress={() => setGender(option.value)}
                 className={`flex-1 px-4 py-4 rounded-2xl border ${
                   gender === option.value 
-                    ? "bg-pink-500 border-pink-500" 
+                    ? "bg-[#B8860B] border-[#B8860B]" 
                     : "bg-white/10 border-white/20"
                 }`}
               >
@@ -209,7 +209,7 @@ export default function Step1Basic() {
                   <View className="flex-row justify-between items-center mb-4">
                     <Text className="text-white text-lg font-semibold">Select Date</Text>
                     <Pressable onPress={() => setShowDatePicker(false)}>
-                      <Text className="text-pink-500 text-lg font-semibold">Done</Text>
+                      <Text className="text-[#B8860B] text-lg font-semibold">Done</Text>
                     </Pressable>
                   </View>
                   <DateTimePicker
@@ -248,7 +248,7 @@ export default function Step1Basic() {
               onPress={() => setHeightUnit("ft")}
               className={`flex-1 px-4 py-3 rounded-2xl border ${
                 heightUnit === "ft"
-                  ? "bg-pink-500 border-pink-500"
+                  ? "bg-[#B8860B] border-[#B8860B]"
                   : "bg-white/10 border-white/20"
               }`}
             >
@@ -262,7 +262,7 @@ export default function Step1Basic() {
               onPress={() => setHeightUnit("cm")}
               className={`flex-1 px-4 py-3 rounded-2xl border ${
                 heightUnit === "cm"
-                  ? "bg-pink-500 border-pink-500"
+                  ? "bg-[#B8860B] border-[#B8860B]"
                   : "bg-white/10 border-white/20"
               }`}
             >
@@ -332,7 +332,7 @@ export default function Step1Basic() {
                 onPress={() => setMaritalStatus(status)}
                 className={`px-5 py-3 rounded-full border ${
                   maritalStatus === status 
-                    ? "bg-pink-500 border-pink-500" 
+                    ? "bg-[#B8860B] border-[#B8860B]" 
                     : "bg-white/10 border-white/20"
                 }`}
               >
@@ -361,7 +361,7 @@ export default function Step1Basic() {
                 onPress={() => setHasChildren(option.value)}
                 className={`flex-1 px-4 py-4 rounded-2xl border ${
                   hasChildren === option.value 
-                    ? "bg-pink-500 border-pink-500" 
+                    ? "bg-[#B8860B] border-[#B8860B]" 
                     : "bg-white/10 border-white/20"
                 }`}
               >
@@ -377,10 +377,10 @@ export default function Step1Basic() {
 
         {/* Next Button */}
         <Pressable
-          className="bg-pink-500 p-5 rounded-2xl items-center shadow-lg"
+          className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
           style={{ 
-            shadowColor: "#ec4899",
+            shadowColor: "#B8860B",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 8,

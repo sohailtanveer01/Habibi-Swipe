@@ -45,7 +45,7 @@ export default function Home() {
 
         {/* Create Account Button */}
         <Pressable
-          className="bg-pink-500 p-4 rounded-2xl mb-4 items-center"
+          className="bg-[#B8860B] p-4 rounded-2xl mb-4 items-center"
           onPress={() => router.push("/(auth)/signup")}
         >
           <Text className="text-white text-lg font-semibold">

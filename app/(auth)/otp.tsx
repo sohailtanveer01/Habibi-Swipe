@@ -54,7 +54,7 @@ export default function OTP() {
         value={code}
       />
 
-      <Pressable className="bg-pink-500 p-4 rounded-2xl items-center" onPress={verify}>
+      <Pressable className="bg-[#B8860B] p-4 rounded-2xl items-center" onPress={verify}>
         <Text className="text-white font-semibold">Verify</Text>
       </Pressable>
     </View>

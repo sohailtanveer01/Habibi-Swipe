@@ -176,7 +176,7 @@ export default function SwipeScreen() {
           No profiles found matching your filters.
         </Text>
         <Pressable
-          className="mt-4 bg-pink-500 px-6 py-3 rounded-full"
+          className="mt-4 bg-[#B8860B] px-6 py-3 rounded-full"
           onPress={() => router.push("/(main)/swipe/filters")}
         >
           <Text className="text-white font-semibold">Adjust Filters for More Profiles</Text>
@@ -195,7 +195,7 @@ export default function SwipeScreen() {
     <View className="flex-1 bg-black">
       {/* Apply Filters Button - Top Left */}
       <Pressable
-        className="absolute top-12 left-4 z-50 bg-pink-500 px-4 py-2 rounded-full flex-row items-center gap-2"
+        className="absolute top-12 left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
         onPress={() => router.push("/(main)/swipe/filters")}
       >
         <Text className="text-white font-semibold text-sm">Apply Filters</Text>
@@ -220,7 +220,7 @@ export default function SwipeScreen() {
 
             {/* Like */}
             <Pressable
-              className="bg-pink-500 w-16 h-16 rounded-full items-center justify-center"
+              className="bg-[#B8860B] w-16 h-16 rounded-full items-center justify-center"
               onPress={() => sendSwipe("like")}
               disabled={isSwiping}
             >
@@ -241,7 +241,7 @@ export default function SwipeScreen() {
         </Pressable>
 
         <Pressable
-          className="bg-pink-500 w-20 h-20 rounded-full items-center justify-center"
+          className="bg-[#B8860B] w-20 h-20 rounded-full items-center justify-center"
           onPress={() => sendSwipe("like")}
           disabled={isSwiping}
         >

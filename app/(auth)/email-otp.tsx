@@ -80,7 +80,7 @@ export default function EmailOTP() {
       <Text className="text-white text-3xl font-bold mb-2">Check your email</Text>
       <Text className="text-white/70 mb-6">
         Enter the 6-digit code we sent to{" "}
-        <Text className="text-pink-500">{emailAddress}</Text>
+        <Text className="text-[#B8860B]">{emailAddress}</Text>
       </Text>
 
       <TextInput
@@ -94,7 +94,7 @@ export default function EmailOTP() {
       />
 
       <Pressable
-        className="bg-pink-500 p-4 rounded-2xl items-center mb-4"
+        className="bg-[#B8860B] p-4 rounded-2xl items-center mb-4"
         onPress={verify}
         disabled={verifying}
       >

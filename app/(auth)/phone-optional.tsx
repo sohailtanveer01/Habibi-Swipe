@@ -63,7 +63,7 @@ export default function PhoneOptional() {
       />
 
       <Pressable
-        className="bg-pink-500 p-4 rounded-2xl items-center mb-4"
+        className="bg-[#B8860B] p-4 rounded-2xl items-center mb-4"
         onPress={savePhone}
         disabled={loading}
       >

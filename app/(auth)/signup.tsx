@@ -82,7 +82,7 @@ export default function Signup() {
 
   return (
     <View className="flex-1 bg-black px-6 justify-center">
-      <Text className="text-pink-500 text-3xl font-bold mb-2">Create Account</Text>
+      <Text className="text-[#B8860B] text-3xl font-bold mb-2">Create Account</Text>
       <Text className="text-white/70 mb-6">Sign up to find your Habibi</Text>
 
       <TextInput
@@ -97,7 +97,7 @@ export default function Signup() {
       />
 
       <Pressable
-        className="bg-pink-500 p-4 rounded-2xl items-center mb-4"
+        className="bg-[#B8860B] p-4 rounded-2xl items-center mb-4"
         onPress={continueWithEmail}
         disabled={emailLoading}
       >
@@ -123,7 +123,7 @@ export default function Signup() {
 
       <Pressable onPress={() => router.push("/(auth)/login")}>
         <Text className="text-white/70 text-center">
-          Already have an account? <Text className="text-pink-500">Log In</Text>
+          Already have an account? <Text className="text-[#B8860B]">Log In</Text>
         </Text>
       </Pressable>
     </View>

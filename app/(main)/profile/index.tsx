@@ -382,7 +382,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View className="flex-1 bg-black items-center justify-center">
-        <ActivityIndicator size="large" color="#ec4899" />
+        <ActivityIndicator size="large" color="#B8860B" />
       </View>
     );
   }
@@ -397,11 +397,11 @@ export default function ProfileScreen() {
           {mainPhoto ? (
             <Image
               source={{ uri: mainPhoto }}
-              className="w-32 h-32 rounded-full mb-4 border-4 border-pink-500"
+              className="w-32 h-32 rounded-full mb-4 border-4 border-[#B8860B]"
               resizeMode="cover"
             />
           ) : (
-            <View className="w-32 h-32 rounded-full mb-4 border-4 border-pink-500 bg-white/10 items-center justify-center">
+            <View className="w-32 h-32 rounded-full mb-4 border-4 border-[#B8860B] bg-white/10 items-center justify-center">
               <Text className="text-white/50 text-4xl">👤</Text>
             </View>
           )}
@@ -414,7 +414,7 @@ export default function ProfileScreen() {
             onPress={() => router.push("/(main)/profile/preview")}
             className="mt-2"
           >
-            <Text className="text-pink-400 text-base underline">
+            <Text className="text-[#D4AF37] text-base underline">
               Preview my profile
             </Text>
           </Pressable>
@@ -424,8 +424,8 @@ export default function ProfileScreen() {
         <View className="bg-white/5 rounded-2xl border border-white/10 p-5 mb-4">
           <Text className="text-white text-xl font-semibold mb-4">Photos</Text>
           {photos.length < 6 && (
-            <View className="bg-pink-500/20 border border-pink-500/30 rounded-xl p-3 mb-3">
-              <Text className="text-pink-400 text-sm font-medium text-center">
+            <View className="bg-[#B8860B]/20 border border-[#B8860B]/30 rounded-xl p-3 mb-3">
+              <Text className="text-[#D4AF37] text-sm font-medium text-center">
                 Add {6 - photos.length} more photo{6 - photos.length > 1 ? 's' : ''} to fully complete your profile
               </Text>
             </View>
@@ -465,7 +465,7 @@ export default function ProfileScreen() {
                     resizeMode="cover"
                   />
                   {index === 0 && (
-                    <View className="absolute top-1 left-1 bg-pink-500 px-2 py-1 rounded-full">
+                    <View className="absolute top-1 left-1 bg-[#B8860B] px-2 py-1 rounded-full">
                       <Text className="text-white text-xs font-bold">Main</Text>
                     </View>
                   )}
@@ -577,7 +577,7 @@ export default function ProfileScreen() {
                       setEditingField(null);
                     }}
                     className={`px-3 py-1.5 rounded-full ${
-                      maritalStatus === status ? "bg-pink-500" : "bg-white/20"
+                      maritalStatus === status ? "bg-[#B8860B]" : "bg-white/20"
                     }`}
                   >
                     <Text className="text-white text-sm capitalize">{status}</Text>
@@ -619,7 +619,7 @@ export default function ProfileScreen() {
                       setEditingField(null);
                     }}
                     className={`flex-1 px-3 py-2 rounded-full ${
-                      hasChildren === option.value ? "bg-pink-500" : "bg-white/20"
+                      hasChildren === option.value ? "bg-[#B8860B]" : "bg-white/20"
                     }`}
                   >
                     <Text className="text-white text-center text-sm font-semibold">{option.label}</Text>
@@ -667,7 +667,7 @@ export default function ProfileScreen() {
                 <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
               </Pressable>
               <Pressable
-                className="flex-1 bg-pink-500 px-4 py-2 rounded-xl"
+                className="flex-1 bg-[#B8860B] px-4 py-2 rounded-xl"
                 onPress={async () => {
                   await handleSave();
                   setEditingField(null);
@@ -708,7 +708,7 @@ export default function ProfileScreen() {
                       await handleSave({ sect: option });
                     }}
                     className={`px-3 py-1.5 rounded-full mb-2 ${
-                      sect === option ? "bg-pink-500" : "bg-white/20"
+                      sect === option ? "bg-[#B8860B]" : "bg-white/20"
                     }`}
                   >
                     <Text className="text-white text-sm capitalize">{option}</Text>
@@ -746,7 +746,7 @@ export default function ProfileScreen() {
                       await handleSave({ bornMuslim: option.value });
                     }}
                     className={`flex-1 px-3 py-2 rounded-full ${
-                      bornMuslim === option.value ? "bg-pink-500" : "bg-white/20"
+                      bornMuslim === option.value ? "bg-[#B8860B]" : "bg-white/20"
                     }`}
                   >
                     <Text className="text-white text-center text-sm font-semibold">{option.label}</Text>
@@ -783,7 +783,7 @@ export default function ProfileScreen() {
                       await handleSave({ religiousPractice: option });
                     }}
                     className={`px-3 py-1.5 rounded-full ${
-                      religiousPractice === option ? "bg-pink-500" : "bg-white/20"
+                      religiousPractice === option ? "bg-[#B8860B]" : "bg-white/20"
                     }`}
                   >
                     <Text className="text-white text-sm capitalize">{option}</Text>
@@ -826,7 +826,7 @@ export default function ProfileScreen() {
                       await handleSave({ alcoholHabit: option });
                     }}
                     className={`px-3 py-1.5 rounded-full ${
-                      alcoholHabit === option ? "bg-pink-500" : "bg-white/20"
+                      alcoholHabit === option ? "bg-[#B8860B]" : "bg-white/20"
                     }`}
                   >
                     <Text className="text-white text-sm capitalize">{option}</Text>
@@ -864,7 +864,7 @@ export default function ProfileScreen() {
                       await handleSave({ smokingHabit: option });
                     }}
                     className={`px-3 py-1.5 rounded-full ${
-                      smokingHabit === option ? "bg-pink-500" : "bg-white/20"
+                      smokingHabit === option ? "bg-[#B8860B]" : "bg-white/20"
                     }`}
                   >
                     <Text className="text-white text-sm capitalize">{option}</Text>
@@ -946,7 +946,7 @@ export default function ProfileScreen() {
                 <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
               </Pressable>
               <Pressable
-                className="flex-1 bg-pink-500 px-4 py-2 rounded-xl"
+                className="flex-1 bg-[#B8860B] px-4 py-2 rounded-xl"
                 onPress={async () => {
                   await handleSave();
                   setEditingField(null);
@@ -987,7 +987,7 @@ export default function ProfileScreen() {
                       await handleSave({ ethnicity: option });
                     }}
                     className={`px-3 py-1.5 rounded-full mb-2 ${
-                      ethnicity === option ? "bg-pink-500" : "bg-white/20"
+                      ethnicity === option ? "bg-[#B8860B]" : "bg-white/20"
                     }`}
                   >
                     <Text className="text-white text-sm">{option}</Text>
@@ -1030,7 +1030,7 @@ export default function ProfileScreen() {
                       await handleSave({ nationality: option });
                     }}
                     className={`px-3 py-2 rounded-lg mb-1 ${
-                      nationality === option ? "bg-pink-500" : "bg-white/20"
+                      nationality === option ? "bg-[#B8860B]" : "bg-white/20"
                     }`}
                   >
                     <Text className="text-white text-sm">{option}</Text>
@@ -1108,7 +1108,7 @@ export default function ProfileScreen() {
                         }
                       }}
                       className={`px-3 py-2 rounded-full flex-row items-center gap-2 ${
-                        isSelected ? "bg-pink-500" : "bg-white/20"
+                        isSelected ? "bg-[#B8860B]" : "bg-white/20"
                       } ${hobbies.length >= 3 && !isSelected ? "opacity-50" : ""}`}
                     >
                       <Text className="text-base">{hobby.emoji}</Text>
@@ -1177,7 +1177,7 @@ export default function ProfileScreen() {
                           { emoji: "🌌", name: "Astronomy" },
                         ].find((h) => h.name === hobbyName);
                         return (
-                          <View key={hobbyName} className="bg-pink-500/20 px-2 py-1 rounded-full flex-row items-center gap-1">
+                          <View key={hobbyName} className="bg-[#B8860B]/20 px-2 py-1 rounded-full flex-row items-center gap-1">
                             {hobby && <Text className="text-xs">{hobby.emoji}</Text>}
                             <Text className="text-white text-xs" numberOfLines={1}>{hobbyName}</Text>
                           </View>
@@ -1204,7 +1204,7 @@ export default function ProfileScreen() {
                 <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
               </Pressable>
               <Pressable
-                className="flex-1 bg-pink-500 px-4 py-2 rounded-xl"
+                className="flex-1 bg-[#B8860B] px-4 py-2 rounded-xl"
                 onPress={async () => {
                   await handleSave();
                   setEditingField(null);
@@ -1275,9 +1275,9 @@ export default function ProfileScreen() {
                       setGetToKnowIndex(index);
                       setGetToKnowTimeline(TIMELINE_OPTIONS[index]);
                     }}
-                    minimumTrackTintColor="#ec4899"
+                    minimumTrackTintColor="#B8860B"
                     maximumTrackTintColor="#ffffff40"
-                    thumbTintColor="#ec4899"
+                    thumbTintColor="#B8860B"
                   />
                   <View className="flex-row justify-between mt-2">
                     <Text className="text-white/50 text-xs">{TIMELINE_OPTIONS[0]}</Text>
@@ -1335,9 +1335,9 @@ export default function ProfileScreen() {
                       setMarriageIndex(index);
                       setMarriageTimeline(TIMELINE_OPTIONS[index]);
                     }}
-                    minimumTrackTintColor="#ec4899"
+                    minimumTrackTintColor="#B8860B"
                     maximumTrackTintColor="#ffffff40"
-                    thumbTintColor="#ec4899"
+                    thumbTintColor="#B8860B"
                   />
                   <View className="flex-row justify-between mt-2">
                     <Text className="text-white/50 text-xs">{TIMELINE_OPTIONS[0]}</Text>
@@ -1360,7 +1360,7 @@ export default function ProfileScreen() {
                 <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
               </Pressable>
               <Pressable
-                className="flex-1 bg-pink-500 px-4 py-2 rounded-xl"
+                className="flex-1 bg-[#B8860B] px-4 py-2 rounded-xl"
                 onPress={async () => {
                   await handleSave();
                   setEditingField(null);
@@ -1383,9 +1383,9 @@ export default function ProfileScreen() {
             {editingSection !== 'bio' && (
               <Pressable
                 onPress={() => setEditingSection('bio')}
-                className="px-3 py-1 bg-pink-500/20 rounded-lg"
+                className="px-3 py-1 bg-[#B8860B]/20 rounded-lg"
               >
-                <Text className="text-pink-500 text-xs font-semibold">Edit</Text>
+                <Text className="text-[#B8860B] text-xs font-semibold">Edit</Text>
               </Pressable>
             )}
           </View>
@@ -1414,7 +1414,7 @@ export default function ProfileScreen() {
                 <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
               </Pressable>
               <Pressable
-                className="flex-1 bg-pink-500 px-4 py-2 rounded-xl"
+                className="flex-1 bg-[#B8860B] px-4 py-2 rounded-xl"
                 onPress={handleSave}
                 disabled={saving}
               >
@@ -1434,7 +1434,7 @@ export default function ProfileScreen() {
           <Text className="text-white text-xl font-semibold mb-3">Subscription</Text>
           
           <Pressable
-            className="bg-pink-500/20 border border-pink-500 p-4 rounded-2xl mb-3"
+            className="bg-[#B8860B]/20 border border-[#B8860B] p-4 rounded-2xl mb-3"
             onPress={() => router.push("/(main)/paywall")}
           >
             <View className="flex-row items-center justify-between">
@@ -1442,7 +1442,7 @@ export default function ProfileScreen() {
                 <Text className="text-white font-semibold">Manage Subscription</Text>
                 <Text className="text-white/70 text-sm">Upgrade to Premium</Text>
               </View>
-              <Text className="text-pink-500 text-xl">💎</Text>
+              <Text className="text-[#B8860B] text-xl">💎</Text>
             </View>
           </Pressable>
         </View> */}

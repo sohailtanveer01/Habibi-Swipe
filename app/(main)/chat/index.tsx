@@ -106,7 +106,7 @@ export default function ChatListScreen() {
   if (isLoading) {
     return (
       <View className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color="#ec4899" />
+        <ActivityIndicator size="large" color="#B8860B" />
       </View>
     );
   }
@@ -135,7 +135,7 @@ export default function ChatListScreen() {
 
       {/* Notification Banner */}
       {showNotificationBanner && (
-        <View className="mx-4 mb-4 bg-pink-500 rounded-2xl px-4 py-3 flex-row items-center justify-between">
+        <View className="mx-4 mb-4 bg-[#B8860B] rounded-2xl px-4 py-3 flex-row items-center justify-between">
           <View className="flex-row items-center flex-1">
             <Text className="text-white text-xl mr-3">🔔</Text>
             <Text className="text-white text-sm font-medium flex-1">
@@ -163,7 +163,7 @@ export default function ChatListScreen() {
             <RefreshControl
               refreshing={isLoading}
               onRefresh={() => refetch()}
-              tintColor="#ec4899"
+              tintColor="#B8860B"
             />
           }
           renderItem={({ item }) => {
@@ -186,11 +186,11 @@ export default function ChatListScreen() {
                 {mainPhoto ? (
                   <Image
                     source={{ uri: mainPhoto }}
-                    className="w-16 h-16 rounded-full mr-4 border-2 border-pink-500"
+                    className="w-16 h-16 rounded-full mr-4 border-2 border-[#B8860B]"
                     resizeMode="cover"
                   />
                 ) : (
-                  <View className="w-16 h-16 rounded-full bg-gray-200 mr-4 items-center justify-center border-2 border-pink-500">
+                  <View className="w-16 h-16 rounded-full bg-gray-200 mr-4 items-center justify-center border-2 border-[#B8860B]">
                     <Text className="text-gray-500 text-2xl">👤</Text>
                   </View>
                 )}
@@ -204,7 +204,7 @@ export default function ChatListScreen() {
                       {fullName}
                     </Text>
                     {hasUnread && (
-                      <View className="bg-pink-500 rounded-full px-2 py-0.5 min-w-[20px] items-center justify-center">
+                      <View className="bg-[#B8860B] rounded-full px-2 py-0.5 min-w-[20px] items-center justify-center">
                         <Text className="text-white text-xs font-bold">
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </Text>
@@ -219,7 +219,7 @@ export default function ChatListScreen() {
                       {item.lastMessage.content}
                     </Text>
                   ) : (
-                    <Text className="text-pink-500 text-sm mt-1 italic">
+                    <Text className="text-[#B8860B] text-sm mt-1 italic">
                       New match! Say salam 👋
                     </Text>
                   )}

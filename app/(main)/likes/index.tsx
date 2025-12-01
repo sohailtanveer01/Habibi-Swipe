@@ -260,7 +260,7 @@ export default function LikesScreen() {
               : loadViewers
           }
           disabled={loading}
-          className="bg-pink-500 px-4 py-2 rounded-full flex-row items-center gap-2"
+          className="bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
         >
           {loading ? (
             <ActivityIndicator color="#fff" size="small" />

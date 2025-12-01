@@ -91,9 +91,9 @@ export default function Step2MarriageIntent() {
               step={1}
               value={getToKnowIndex}
               onValueChange={(value) => setGetToKnowIndex(Math.round(value))}
-              minimumTrackTintColor="#ec4899"
+              minimumTrackTintColor="#B8860B"
               maximumTrackTintColor="#ffffff40"
-              thumbTintColor="#ec4899"
+              thumbTintColor="#B8860B"
             />
             
             <View className="flex-row justify-between mt-2">
@@ -121,9 +121,9 @@ export default function Step2MarriageIntent() {
               step={1}
               value={marriageIndex}
               onValueChange={(value) => setMarriageIndex(Math.round(value))}
-              minimumTrackTintColor="#ec4899"
+              minimumTrackTintColor="#B8860B"
               maximumTrackTintColor="#ffffff40"
-              thumbTintColor="#ec4899"
+              thumbTintColor="#B8860B"
             />
             
             <View className="flex-row justify-between mt-2">
@@ -135,10 +135,10 @@ export default function Step2MarriageIntent() {
 
         {/* Continue Button */}
         <Pressable
-          className="bg-pink-500 p-5 rounded-2xl items-center shadow-lg"
+          className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
           style={{ 
-            shadowColor: "#ec4899",
+            shadowColor: "#B8860B",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 8,

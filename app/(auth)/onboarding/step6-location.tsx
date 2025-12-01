@@ -36,7 +36,7 @@ export default function Step6Location() {
       </Text>
 
       <Pressable
-        className="bg-pink-500 p-4 rounded-2xl items-center"
+        className="bg-[#B8860B] p-4 rounded-2xl items-center"
         onPress={enableLocation}
         disabled={loading}
       >
