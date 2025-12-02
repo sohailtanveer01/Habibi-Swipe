@@ -15,6 +15,7 @@ const RELIGIOUS_PRACTICE_OPTIONS = [
 const ALCOHOL_OPTIONS = ["never", "socially", "often"];
 const SMOKING_OPTIONS = ["never", "socially", "often"];
 
+const TOTAL_STEPS = 9;
 const CURRENT_STEP = 3;
 
 export default function Step3Religiosity() {
@@ -88,7 +89,7 @@ export default function Step3Religiosity() {
 
           {/* Step Text - Right Aligned */}
           <Text className="text-[#B8860B] text-xs font-medium" style={{ width: 50, textAlign: 'right' }}>
-            step {CURRENT_STEP}/8
+            step {CURRENT_STEP}/{TOTAL_STEPS}
           </Text>
           </View>
 
@@ -107,7 +108,7 @@ export default function Step3Religiosity() {
 
         {/* Sect Dropdown */}
         <View className="mb-8">
-          <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
+          <Text className="text-white text-base font-bold mb-4">
             Sect
           </Text>
           <Pressable
@@ -140,7 +141,7 @@ export default function Step3Religiosity() {
 
         {/* Born Muslim */}
         <View className="mb-8">
-          <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
+          <Text className="text-white text-base font-bold mb-4">
             Born Muslim?
           </Text>
           <View className="flex-row gap-3">
@@ -169,7 +170,7 @@ export default function Step3Religiosity() {
 
         {/* Religious Practice */}
         <View className="mb-8">
-          <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
+          <Text className="text-white text-base font-bold mb-4">
             Religious Practice
           </Text>
           <View className="flex-row gap-3 flex-wrap">
@@ -195,13 +196,11 @@ export default function Step3Religiosity() {
 
         {/* Habits */}
         <View className="mb-10">
-          <Text className="text-white/70 text-sm font-medium mb-4 ml-1">
-            Habits
-          </Text>
+       
 
           {/* Alcohol */}
           <View className="mb-6">
-            <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
+            <Text className="text-white text-base font-bold mb-4">
               Alcohol
             </Text>
             <View className="flex-row gap-3 flex-wrap">
@@ -227,7 +226,7 @@ export default function Step3Religiosity() {
 
           {/* Smoking */}
           <View>
-            <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
+            <Text className="text-white text-base font-bold mb-4">
               Smoking
             </Text>
             <View className="flex-row gap-3 flex-wrap">
@@ -254,8 +253,14 @@ export default function Step3Religiosity() {
       </View>
       </ScrollView>
 
-      {/* Fixed Next Button */}
+      {/* Fixed Buttons */}
       <View className="px-6 pb-8 pt-4">
+        <Pressable
+          className="bg-white/10 p-5 rounded-2xl items-center mb-3"
+          onPress={() => router.push("/onboarding/step4-hobbies")}
+        >
+          <Text className="text-white/80 text-lg font-semibold">Skip</Text>
+        </Pressable>
         <Pressable
           className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}

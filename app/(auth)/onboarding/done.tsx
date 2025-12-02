@@ -94,6 +94,32 @@ export default function OnboardingDone() {
         return;
       }
 
+      // Save prompts to user_prompts table
+      if (data.prompts && data.prompts.length > 0) {
+        // First, delete any existing prompts for this user
+        await supabase
+          .from("user_prompts")
+          .delete()
+          .eq("user_id", user.id);
+
+        // Then insert new prompts with display_order
+        const promptsToInsert = data.prompts.map((prompt, index) => ({
+          user_id: user.id,
+          question: prompt.question,
+          answer: prompt.answer,
+          display_order: index,
+        }));
+
+        const { error: promptsError } = await supabase
+          .from("user_prompts")
+          .insert(promptsToInsert);
+
+        if (promptsError) {
+          console.error("Error saving prompts:", promptsError);
+          // Don't block the flow if prompts fail to save
+        }
+      }
+
       router.replace("/swipe");
     } catch (e: any) {
       alert(e.message || "Failed to save profile. Please try again.");

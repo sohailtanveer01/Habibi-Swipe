@@ -52,7 +52,7 @@ const HOBBIES = [
   { emoji: "🌌", name: "Astronomy" },
 ];
 
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 9;
 const CURRENT_STEP = 4;
 
 export default function Step4Hobbies() {
@@ -88,7 +88,7 @@ export default function Step4Hobbies() {
       ...d,
       hobbies: selectedHobbies,
     }));
-    router.push("/onboarding/step5-photos");
+    router.push("/onboarding/step5-prompts");
   };
 
   return (
@@ -135,7 +135,7 @@ export default function Step4Hobbies() {
 
           {/* Step Text - Right Aligned */}
           <Text className="text-[#B8860B] text-xs font-medium" style={{ width: 50, textAlign: 'right' }}>
-            step {CURRENT_STEP}/8
+            step {CURRENT_STEP}/{TOTAL_STEPS}
           </Text>
         </View>
       </View>
@@ -189,8 +189,14 @@ export default function Step4Hobbies() {
       </View>
       </ScrollView>
 
-      {/* Fixed Next Button */}
+      {/* Fixed Buttons */}
       <View className="px-6 pb-8 pt-4">
+        <Pressable
+          className="bg-white/10 p-5 rounded-2xl items-center mb-3"
+          onPress={() => router.push("/onboarding/step5-photos")}
+        >
+          <Text className="text-white/80 text-lg font-semibold">Skip</Text>
+        </Pressable>
         <Pressable
           className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}

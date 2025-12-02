@@ -24,6 +24,7 @@ type OnboardingData = {
   location: { lat: number; lon: number } | null;
   ethnicity: string;
   nationality: string;
+  prompts: Array<{ id: string; question: string; answer: string }>; // User prompts and answers
   preferences: {
     ageMin: number;
     ageMax: number;
@@ -60,6 +61,7 @@ const defaultData: OnboardingData = {
   location: null,
   ethnicity: "",
   nationality: "",
+  prompts: [],
   preferences: {
     ageMin: 18,
     ageMax: 50,
