@@ -4,6 +4,7 @@ import { useOnboarding } from "../../../lib/onboardingStore";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import OnboardingBackground from "@/components/OnboardingBackground";
 
 const TOTAL_STEPS = 8;
 const CURRENT_STEP = 6;
@@ -33,11 +34,12 @@ export default function Step6Location() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View className="flex-1 bg-black">
+    <OnboardingBackground>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+      <View className="flex-1">
         {/* Header with Back Button and Progress Indicators */}
         <View className="pt-20 px-6 pb-8">
         <View className="flex-row items-center justify-between mb-8">
@@ -100,6 +102,7 @@ export default function Step6Location() {
         </Pressable>
       </View>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </OnboardingBackground>
   );
 }

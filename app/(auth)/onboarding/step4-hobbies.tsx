@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useOnboarding } from "../../../lib/onboardingStore";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import OnboardingBackground from "@/components/OnboardingBackground";
 
 const HOBBIES = [
   { emoji: "📚", name: "Reading" },
@@ -91,12 +92,13 @@ export default function Step4Hobbies() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
+    <OnboardingBackground>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
       <ScrollView
-        className="flex-1 bg-black"
+        className="flex-1"
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={true}
       >
@@ -167,8 +169,8 @@ export default function Step4Hobbies() {
                     isSelected
                       ? "bg-[#B8860B] border-[#B8860B]"
                       : isDisabled
-                      ? "bg-white/5 border-white/10 opacity-50"
-                      : "bg-white/10 border-white/20"
+                      ? "bg-white/5 border-[#eebd2b]/10 opacity-50"
+                      : "bg-white/5 border-[#eebd2b]/20"
                   }`}
                 >
                   <View className="flex-row items-center gap-2">
@@ -187,8 +189,8 @@ export default function Step4Hobbies() {
       </View>
       </ScrollView>
 
-      {/* Fixed Continue Button */}
-      <View className="px-6 pb-8 pt-4 bg-black border-t border-white/10">
+      {/* Fixed Next Button */}
+      <View className="px-6 pb-8 pt-4">
         <Pressable
           className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
@@ -200,10 +202,11 @@ export default function Step4Hobbies() {
             elevation: 8,
           }}
         >
-          <Text className="text-white text-lg font-bold">Continue</Text>
+          <Text className="text-white text-lg font-bold">Next</Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </OnboardingBackground>
   );
 }
 

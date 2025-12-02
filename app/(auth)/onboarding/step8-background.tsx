@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useOnboarding } from "../../../lib/onboardingStore";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import OnboardingBackground from "@/components/OnboardingBackground";
 
 const PROFESSION_OPTIONS = [
   "Unemployed",
@@ -67,12 +68,13 @@ export default function Step8Background() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
+    <OnboardingBackground>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
       <ScrollView
-        className="flex-1 bg-black"
+        className="flex-1"
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={true}
       >
@@ -134,7 +136,7 @@ export default function Step8Background() {
             Education
           </Text>
           <TextInput
-            className="bg-white/10 text-white p-4 rounded-2xl border border-white/5 text-lg"
+            className="bg-white/5 text-white p-4 rounded-2xl border border-[#eebd2b]/40 text-lg"
             placeholder="e.g., Bachelor's in Computer Science"
             placeholderTextColor="#999"
             value={education}
@@ -152,18 +154,18 @@ export default function Step8Background() {
             onPress={() => {
               setShowProfessionDropdown(!showProfessionDropdown);
             }}
-            className="bg-white/10 p-4 rounded-2xl border border-white/5"
+            className="bg-white/5 p-4 rounded-2xl border border-[#eebd2b]/30"
           >
             <Text className="text-white text-lg">
               {profession || "Select profession"}
             </Text>
           </Pressable>
           {showProfessionDropdown && (
-            <View className="bg-white/10 rounded-2xl border border-white/5 mt-2 overflow-hidden max-h-80">
+            <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/30 mt-2 overflow-hidden max-h-80">
               {/* Search Input */}
-              <View className="p-3 border-b border-white/5">
+              <View className="p-3 border-b border-[#eebd2b]/20">
                 <TextInput
-                  className="bg-white/10 text-white p-3 rounded-xl border border-white/5"
+                  className="bg-white/5 text-white p-3 rounded-xl border border-[#eebd2b]/30"
                   placeholder="Search profession..."
                   placeholderTextColor="#999"
                   value={professionSearch}
@@ -198,7 +200,7 @@ export default function Step8Background() {
             Bio
           </Text>
           <TextInput
-            className="bg-white/10 text-white p-4 rounded-2xl border border-white/5 text-lg"
+            className="bg-white/5 text-white p-4 rounded-2xl border border-[#eebd2b]/40 text-lg"
             placeholder="Tell us about yourself..."
             placeholderTextColor="#999"
             value={bio}
@@ -215,8 +217,8 @@ export default function Step8Background() {
       </View>
       </ScrollView>
 
-      {/* Fixed Continue Button */}
-      <View className="px-6 pb-8 pt-4 bg-black border-t border-white/10">
+      {/* Fixed Next Button */}
+      <View className="px-6 pb-8 pt-4">
         <Pressable
           className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
@@ -228,10 +230,11 @@ export default function Step8Background() {
             elevation: 8,
           }}
         >
-          <Text className="text-white text-lg font-bold">Continue</Text>
+          <Text className="text-white text-lg font-bold">Next</Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </OnboardingBackground>
   );
 }
 

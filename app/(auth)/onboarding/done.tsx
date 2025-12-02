@@ -3,6 +3,7 @@ import { useOnboarding } from "../../../lib/onboardingStore";
 import { supabase } from "../../../lib/supabase";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import OnboardingBackground from "@/components/OnboardingBackground";
 
 export default function OnboardingDone() {
   const { data } = useOnboarding();
@@ -102,23 +103,25 @@ export default function OnboardingDone() {
   };
 
   return (
-    <View className="flex-1 bg-black px-6 pt-16 items-center justify-center">
-      <Text className="text-white text-3xl font-bold mb-2">All Set!</Text>
-      <Text className="text-white/70 mb-8 text-center">
-        Your profile is ready. Let’s find your Habibi 💗
-      </Text>
+    <OnboardingBackground>
+      <View className="flex-1 px-6 pt-16 items-center justify-center">
+        <Text className="text-white text-3xl font-bold mb-2">All Set!</Text>
+        <Text className="text-white/70 mb-8 text-center">
+          Your profile is ready. Let’s find your Habibi 💗
+        </Text>
 
-      <Pressable
-        className="bg-[#B8860B] px-8 py-4 rounded-2xl items-center"
-        onPress={finish}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text className="text-white text-lg font-semibold">Start Swiping</Text>
-        )}
-      </Pressable>
-    </View>
+        <Pressable
+          className="bg-[#eebd2b] px-8 py-4 rounded-2xl items-center"
+          onPress={finish}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <Text className="text-black text-lg font-semibold">Start Swiping</Text>
+          )}
+        </Pressable>
+      </View>
+    </OnboardingBackground>
   );
 }

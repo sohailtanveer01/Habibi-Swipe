@@ -4,6 +4,7 @@ import { useOnboarding } from "../../../lib/onboardingStore";
 import { useState, useEffect } from "react";
 import Slider from "@react-native-community/slider";
 import { Ionicons } from "@expo/vector-icons";
+import OnboardingBackground from "@/components/OnboardingBackground";
 
 const TIMELINE_OPTIONS = [
   "Less than 3 months",
@@ -61,12 +62,13 @@ export default function Step2MarriageIntent() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
+    <OnboardingBackground>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
       <ScrollView 
-        className="flex-1 bg-black"
+        className="flex-1"
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={true}
       >
@@ -125,7 +127,7 @@ export default function Step2MarriageIntent() {
             I would like to get to know someone for
           </Text>
           
-          <View className="bg-white/5 rounded-2xl border border-white/10 p-6 mb-2">
+          <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/25 p-6 mb-2">
             <Text className="text-white text-2xl font-bold text-center mb-6">
               {getToKnowTimeline}
             </Text>
@@ -155,7 +157,7 @@ export default function Step2MarriageIntent() {
             I would like to be married within
           </Text>
           
-          <View className="bg-white/5 rounded-2xl border border-white/10 p-6 mb-2">
+          <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/25 p-6 mb-2">
             <Text className="text-white text-2xl font-bold text-center mb-6">
               {marriageTimeline}
             </Text>
@@ -181,8 +183,8 @@ export default function Step2MarriageIntent() {
       </View>
       </ScrollView>
 
-      {/* Fixed Continue Button */}
-      <View className="px-6 pb-8 pt-4 bg-black border-t border-white/10">
+      {/* Fixed Next Button */}
+      <View className="px-6 pb-8 pt-4">
         <Pressable
           className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
@@ -194,9 +196,10 @@ export default function Step2MarriageIntent() {
             elevation: 8,
           }}
         >
-          <Text className="text-white text-lg font-bold">Continue</Text>
+          <Text className="text-white text-lg font-bold">Next</Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </OnboardingBackground>
   );
 }

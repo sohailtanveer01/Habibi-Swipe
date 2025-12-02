@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useOnboarding } from "../../../lib/onboardingStore";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import OnboardingBackground from "@/components/OnboardingBackground";
 
 const ETHNICITY_OPTIONS = [
   "Arab",
@@ -83,12 +84,13 @@ export default function Step7Ethnicity() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
+    <OnboardingBackground>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
       <ScrollView
-        className="flex-1 bg-black"
+        className="flex-1"
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={true}
       >
@@ -151,14 +153,14 @@ export default function Step7Ethnicity() {
               setShowEthnicityDropdown(!showEthnicityDropdown);
               setShowNationalityDropdown(false);
             }}
-            className="bg-white/10 p-4 rounded-2xl border border-white/5"
+            className="bg-white/5 p-4 rounded-2xl border border-[#eebd2b]/30"
           >
             <Text className="text-white text-lg">
               {ethnicity || "Select ethnicity"}
             </Text>
           </Pressable>
           {showEthnicityDropdown && (
-            <View className="bg-white/10 rounded-2xl border border-white/5 mt-2 overflow-hidden max-h-64">
+            <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/30 mt-2 overflow-hidden max-h-64">
               <ScrollView showsVerticalScrollIndicator={false}>
                 {ETHNICITY_OPTIONS.map((option) => (
                   <Pressable
@@ -189,18 +191,18 @@ export default function Step7Ethnicity() {
               setShowNationalityDropdown(!showNationalityDropdown);
               setShowEthnicityDropdown(false);
             }}
-            className="bg-white/10 p-4 rounded-2xl border border-white/5"
+            className="bg-white/5 p-4 rounded-2xl border border-[#eebd2b]/30"
           >
             <Text className="text-white text-lg">
               {nationality || "Select nationality"}
             </Text>
           </Pressable>
           {showNationalityDropdown && (
-            <View className="bg-white/10 rounded-2xl border border-white/5 mt-2 overflow-hidden max-h-80">
+            <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/30 mt-2 overflow-hidden max-h-80">
               {/* Search Input */}
-              <View className="p-3 border-b border-white/5">
+              <View className="p-3 border-b border-[#eebd2b]/20">
                 <TextInput
-                  className="bg-white/10 text-white p-3 rounded-xl border border-white/5"
+                  className="bg-white/5 text-white p-3 rounded-xl border border-[#eebd2b]/30"
                   placeholder="Search nationality..."
                   placeholderTextColor="#999"
                   value={nationalitySearch}
@@ -231,8 +233,8 @@ export default function Step7Ethnicity() {
       </View>
       </ScrollView>
 
-      {/* Fixed Continue Button */}
-      <View className="px-6 pb-8 pt-4 bg-black border-t border-white/10">
+      {/* Fixed Next Button */}
+      <View className="px-6 pb-8 pt-4">
         <Pressable
           className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
@@ -244,10 +246,11 @@ export default function Step7Ethnicity() {
             elevation: 8,
           }}
         >
-          <Text className="text-white text-lg font-bold">Continue</Text>
+          <Text className="text-white text-lg font-bold">Next</Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </OnboardingBackground>
   );
 }
 

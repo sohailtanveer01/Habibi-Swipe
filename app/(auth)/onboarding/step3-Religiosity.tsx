@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useOnboarding } from "../../../lib/onboardingStore";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import OnboardingBackground from "@/components/OnboardingBackground";
 
 const SECT_OPTIONS = ["sunni", "shia", "sufi", "other", "prefer not to say"];
 const RELIGIOUS_PRACTICE_OPTIONS = [
@@ -44,12 +45,13 @@ export default function Step3Religiosity() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
+    <OnboardingBackground>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
       <ScrollView
-        className="flex-1 bg-black"
+        className="flex-1"
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={true}
       >
@@ -110,14 +112,14 @@ export default function Step3Religiosity() {
           </Text>
           <Pressable
             onPress={() => setShowSectDropdown(!showSectDropdown)}
-            className="bg-white/10 p-4 rounded-2xl border border-white/5"
+            className="bg-white/5 p-4 rounded-2xl border border-[#eebd2b]/30"
           >
             <Text className="text-white text-lg">
               {sect ? sect.charAt(0).toUpperCase() + sect.slice(1) : "Select sect"}
             </Text>
           </Pressable>
           {showSectDropdown && (
-            <View className="bg-white/10 rounded-2xl border border-white/5 mt-2 overflow-hidden">
+            <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/30 mt-2 overflow-hidden">
               {SECT_OPTIONS.map((option) => (
                 <Pressable
                   key={option}
@@ -152,7 +154,7 @@ export default function Step3Religiosity() {
                 className={`flex-1 px-4 py-4 rounded-2xl border ${
                   bornMuslim === option.value
                     ? "bg-[#B8860B] border-[#B8860B]"
-                    : "bg-white/10 border-white/20"
+                    : "bg-white/5 border-[#eebd2b]/20"
                 }`}
               >
                 <Text className={`text-center font-semibold text-lg ${
@@ -178,7 +180,7 @@ export default function Step3Religiosity() {
                 className={`px-5 py-3 rounded-full border ${
                   religiousPractice === practice
                     ? "bg-[#B8860B] border-[#B8860B]"
-                    : "bg-white/10 border-white/20"
+                    : "bg-white/5 border-[#eebd2b]/20"
                 }`}
               >
                 <Text className={`text-center capitalize font-medium ${
@@ -207,10 +209,10 @@ export default function Step3Religiosity() {
                 <Pressable
                   key={option}
                   onPress={() => setAlcoholHabit(option)}
-                  className={`px-5 py-3 rounded-full border ${
-                    alcoholHabit === option
-                      ? "bg-[#B8860B] border-[#B8860B]"
-                      : "bg-white/10 border-white/20"
+                className={`px-5 py-3 rounded-full border ${
+                  alcoholHabit === option
+                    ? "bg-[#B8860B] border-[#B8860B]"
+                    : "bg-white/5 border-[#eebd2b]/20"
                   }`}
                 >
                   <Text className={`text-center capitalize font-medium ${
@@ -233,10 +235,10 @@ export default function Step3Religiosity() {
                 <Pressable
                   key={option}
                   onPress={() => setSmokingHabit(option)}
-                  className={`px-5 py-3 rounded-full border ${
-                    smokingHabit === option
-                      ? "bg-[#B8860B] border-[#B8860B]"
-                      : "bg-white/10 border-white/20"
+                className={`px-5 py-3 rounded-full border ${
+                  smokingHabit === option
+                    ? "bg-[#B8860B] border-[#B8860B]"
+                    : "bg-white/5 border-[#eebd2b]/20"
                   }`}
                 >
                   <Text className={`text-center capitalize font-medium ${
@@ -252,8 +254,8 @@ export default function Step3Religiosity() {
       </View>
       </ScrollView>
 
-      {/* Fixed Continue Button */}
-      <View className="px-6 pb-8 pt-4 bg-black border-t border-white/10">
+      {/* Fixed Next Button */}
+      <View className="px-6 pb-8 pt-4">
         <Pressable
           className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
@@ -265,9 +267,10 @@ export default function Step3Religiosity() {
             elevation: 8,
           }}
         >
-          <Text className="text-white text-lg font-bold">Continue</Text>
+          <Text className="text-white text-lg font-bold">Next</Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </OnboardingBackground>
   );
 }

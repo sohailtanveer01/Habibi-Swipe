@@ -4,6 +4,7 @@ import { useOnboarding } from "../../../lib/onboardingStore";
 import { useState, useEffect } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
+import OnboardingBackground from "@/components/OnboardingBackground";
 
 const TOTAL_STEPS = 8;
 const CURRENT_STEP = 1;
@@ -105,11 +106,12 @@ export default function Step1Basic() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      className="flex-1 bg-black"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-    >
+    <OnboardingBackground>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
       {/* Header with Back Button and Progress Indicators */}
       <View className="pt-20 px-6 pb-8">
         <View className="flex-row items-center justify-between mb-8">
@@ -170,7 +172,7 @@ export default function Step1Basic() {
             <View className="flex-row gap-3">
               <View className="flex-1">
                 <TextInput
-                  className="bg-white/10 text-white p-4 rounded-2xl border border-white/5"
+                  className="bg-white/5 text-white p-4 rounded-2xl border border-[#eebd2b]/40"
                   placeholder="First Name"
                   placeholderTextColor="#999"
                   value={firstName}
@@ -181,7 +183,7 @@ export default function Step1Basic() {
               </View>
               <View className="flex-1">
                 <TextInput
-                  className="bg-white/10 text-white p-4 rounded-2xl border border-white/5"
+                  className="bg-white/5 text-white p-4 rounded-2xl border border-[#eebd2b]/40"
                   placeholder="Last Name"
                   placeholderTextColor="#999"
                   value={lastName}
@@ -229,7 +231,7 @@ export default function Step1Basic() {
             </Text>
             <Pressable
               onPress={() => setShowDatePicker(true)}
-              className="bg-white/10 p-4 rounded-2xl border border-white/5"
+              className="bg-white/5 p-4 rounded-2xl border border-[#eebd2b]/30"
             >
               <Text className="text-white text-lg">
                 {formatDateForDisplay(dob)}
@@ -238,7 +240,7 @@ export default function Step1Basic() {
             {showDatePicker && (
               <View className="mt-4">
                 {Platform.OS === "ios" ? (
-                  <View className="bg-white/10 rounded-2xl border border-white/5 p-4">
+                  <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/30 p-4">
                     <View className="flex-row justify-between items-center mb-4">
                       <Text className="text-white text-lg font-semibold">Select Date</Text>
                       <Pressable onPress={() => setShowDatePicker(false)}>
@@ -277,7 +279,7 @@ export default function Step1Basic() {
             <View className="flex-row gap-3 items-end">
               <View className="flex-1">
                 <TextInput
-                  className="bg-white/10 text-white p-4 rounded-2xl border border-white/5 text-center"
+                  className="bg-white/5 text-white p-4 rounded-2xl border border-[#eebd2b]/40 text-center"
                   placeholder="5"
                   placeholderTextColor="#999"
                   value={feet}
@@ -290,7 +292,7 @@ export default function Step1Basic() {
               <Text className="text-white/70 text-3xl font-bold mb-2">&apos;</Text>
               <View className="flex-1">
                 <TextInput
-                  className="bg-white/10 text-white p-4 rounded-2xl border border-white/5 text-center"
+                  className="bg-white/5 text-white p-4 rounded-2xl border border-[#eebd2b]/40 text-center"
                   placeholder="10"
                   placeholderTextColor="#999"
                   value={inches}
@@ -311,14 +313,14 @@ export default function Step1Basic() {
             </Text>
             <Pressable
               onPress={() => setShowMaritalStatusDropdown(!showMaritalStatusDropdown)}
-              className="bg-white/10 p-4 rounded-2xl border border-white/5"
+              className="bg-white/5 p-4 rounded-2xl border border-[#eebd2b]/30"
             >
               <Text className="text-white text-lg">
                 {maritalStatus ? maritalStatus.charAt(0).toUpperCase() + maritalStatus.slice(1) : "Select marital status"}
               </Text>
             </Pressable>
             {showMaritalStatusDropdown && (
-              <View className="bg-white/10 rounded-2xl border border-white/5 mt-2 overflow-hidden">
+              <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/30 mt-2 overflow-hidden">
                 {["single", "divorced", "widowed", "separated"].map((status) => (
                   <Pressable
                     key={status}
@@ -353,7 +355,7 @@ export default function Step1Basic() {
                   className={`flex-1 px-4 py-4 rounded-2xl border ${
                     hasChildren === option.value 
                       ? "bg-[#B8860B] border-[#B8860B]" 
-                      : "bg-white/10 border-white/20"
+                      : "bg-white/5 border-[#eebd2b]/20"
                   }`}
                 >
                   <Text className={`text-center font-semibold text-lg ${
@@ -368,8 +370,8 @@ export default function Step1Basic() {
         </View>
       </ScrollView>
 
-      {/* Fixed Continue Button */}
-      <View className="px-6 pb-8 pt-4 bg-black border-t border-white/10">
+      {/* Fixed Next Button */}
+      <View className="px-6 pb-8 pt-4">
         <Pressable
           className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
@@ -381,9 +383,10 @@ export default function Step1Basic() {
             elevation: 8,
           }}
         >
-          <Text className="text-white text-lg font-bold">Continue</Text>
+          <Text className="text-white text-lg font-bold">Next</Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </OnboardingBackground>
   );
 }
