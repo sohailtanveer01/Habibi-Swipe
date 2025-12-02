@@ -78,28 +78,47 @@ export default function Step6Location() {
         </View>
       </View>
 
-      <View className="flex-1 px-6 pt-4">
-        <Text className="text-white text-3xl font-bold mb-4">Enable Location</Text>
-        <Text className="text-white/70 mb-8">
-          We use your location to show nearby Habibis.
+      <View className="flex-1 px-6 justify-center items-center">
+        {/* Location Icon Circle */}
+        <View 
+          className="w-32 h-32 rounded-full items-center justify-center mb-8"
+          style={{
+            borderWidth: 2,
+            borderColor: "#eebd2b", // Golden yellow ring
+          }}
+        >
+          <Ionicons name="location" size={64} color="#eebd2b" />
+        </View>
+
+        {/* Heading */}
+        <Text className="text-white text-3xl font-bold mb-4 text-center">
+          Find Matches Nearby
         </Text>
 
-        <Pressable
-          className="bg-[#B8860B] p-4 rounded-2xl items-center"
-          onPress={enableLocation}
-          disabled={loading}
-        >
-          <Text className="text-white text-lg font-semibold">
-            {loading ? "Getting location..." : "Enable Location"}
-          </Text>
-        </Pressable>
+        {/* Description */}
+        <Text className="text-white/70 text-base mb-10 text-center px-4">
+          Enable your location to connect with people in your area and enhance your matching potential.
+        </Text>
 
-        <Pressable
-          className="bg-white/10 p-4 rounded-2xl items-center mt-3"
-          onPress={() => router.push("/onboarding/step7-ethnicity")}
-        >
-          <Text className="text-white/80">Skip for now</Text>
-        </Pressable>
+        {/* Buttons */}
+        <View className="w-full">
+          <Pressable
+            className="bg-[#B8860B] p-4 rounded-2xl items-center mb-3"
+            onPress={enableLocation}
+            disabled={loading}
+          >
+            <Text className="text-white text-lg font-semibold">
+              {loading ? "Getting location..." : "Enable Location"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            className="bg-white/10 p-4 rounded-2xl items-center"
+            onPress={() => router.push("/onboarding/step7-ethnicity")}
+          >
+            <Text className="text-white/80">Skip for now</Text>
+          </Pressable>
+        </View>
       </View>
       </View>
       </KeyboardAvoidingView>
