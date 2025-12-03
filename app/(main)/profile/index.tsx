@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, ScrollView, Image, ActivityIndicator, Pressable, Alert } from "react-native";
+import { View, Text, ScrollView, Image, ActivityIndicator, Pressable, Alert, Dimensions } from "react-native";
 import { supabase } from "../../../lib/supabase";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -291,19 +291,28 @@ export default function ProfileScreen() {
       <View className="px-6 pt-16 pb-8">
         {/* Header with Profile Picture */}
         <View className="items-center mb-8">
-          {/* Profile Picture with Edit Button */}
+          {/* Profile Picture with Gold Circle and Completion Percentage */}
           <View className="relative mb-4">
-            {mainPhoto ? (
-              <Image
-                source={{ uri: mainPhoto }}
-                className="w-32 h-32 rounded-full"
-                resizeMode="cover"
-              />
-            ) : (
-              <View className="w-32 h-32 rounded-full bg-white/10 items-center justify-center">
-                <Ionicons name="person" size={48} color="#9CA3AF" />
+            {/* Gold Circle Border */}
+            <View className="w-36 h-36 rounded-full border-4 border-[#B8860B] items-center justify-center">
+              {mainPhoto ? (
+                <Image
+                  source={{ uri: mainPhoto }}
+                  className="w-32 h-32 rounded-full"
+                  resizeMode="cover"
+                />
+              ) : (
+                <View className="w-32 h-32 rounded-full bg-white/10 items-center justify-center">
+                  <Ionicons name="person" size={48} color="#9CA3AF" />
+                </View>
+              )}
+              {/* Completion Percentage Badge */}
+              <View className="absolute -bottom-2 bg-[#B8860B] px-3 py-1 rounded-full border-2 border-black">
+                <Text className="text-white text-xs font-bold">
+                  {completionPercentage}%
+                </Text>
               </View>
-            )}
+            </View>
             {/* Edit Button - Pencil Icon positioned next to profile picture */}
             <Pressable
               onPress={() => router.push("/(main)/profile/edit")}
@@ -318,24 +327,6 @@ export default function ProfileScreen() {
           <Text className="text-white text-3xl font-bold mb-2">
             {fullName}
           </Text>
-
-          {/* Profile Completion */}
-          <View className="w-full max-w-xs mb-4">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/70 text-sm font-medium">
-                Profile Completion
-              </Text>
-              <Text className="text-[#B8860B] text-sm font-semibold">
-                {completionPercentage}%
-              </Text>
-            </View>
-            <View className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
-              <View 
-                className="h-full bg-[#B8860B] rounded-full"
-                style={{ width: `${completionPercentage}%` }}
-              />
-            </View>
-          </View>
           
           {/* Preview Profile Button */}
           <Pressable
@@ -350,62 +341,69 @@ export default function ProfileScreen() {
 
         {/* Photos Section */}
         <View className="mb-6">
-          <Text className="text-white text-xl font-semibold mb-4">Photos</Text>
-          {photos.length < 6 && (
-            <View className="bg-[#B8860B]/20 border border-[#B8860B]/30 rounded-xl p-3 mb-3">
-              <Text className="text-[#B8860B] text-sm font-medium text-center">
-                Add {6 - photos.length} more photo{6 - photos.length > 1 ? 's' : ''} to fully complete your profile
-              </Text>
-            </View>
-          )}
-          <View className="flex-row flex-wrap gap-3 justify-between">
-            {Array.from({ length: 6 }).map((_, index) => {
-              const photo = photos[index];
-              const isEmpty = !photo;
-              
-              return isEmpty ? (
-                <View
-                  key={`empty-${index}`}
-                  className="w-[30%] aspect-square"
+          {/* Section Title */}
+          <Text className="text-white text-xl font-bold mb-4">My Photos</Text>
+          
+          {/* 2x2 Grid Layout */}
+          <View className="flex-row flex-wrap gap-4">
+            {/* New Photo Card - Always show if less than 6 photos */}
+            {photos.length < 6 && (
+              <Pressable
+                onPress={() => {
+                  // Find first empty slot
+                  const firstEmptyIndex = photos.length;
+                  pickImage(firstEmptyIndex);
+                }}
+                disabled={uploading}
+                className="w-[48%]"
+                style={{ aspectRatio: 0.8 }}
+              >
+                <View 
+                  className="rounded-3xl items-center justify-center w-full h-full"
+                  style={{ 
+                    backgroundColor: '#B8860B', // Gold color
+                  }}
                 >
-                  <Pressable
-                    onPress={() => pickImage(index)}
-                    disabled={uploading}
-                    className="w-full h-full rounded-xl bg-white/5 items-center justify-center border-2 border-dashed border-white/30"
-                  >
-                    {uploading ? (
-                      <ActivityIndicator color="#B8860B" size="small" />
-                    ) : (
-                      <>
-                        <Ionicons name="add" size={32} color="#9CA3AF" />
-                        <Text className="text-white/50 text-xs text-center mt-1">
-                          {index === 0 ? "Main Photo" : `Photo ${index + 1}`}
-                        </Text>
-                      </>
-                    )}
-                  </Pressable>
-                </View>
-              ) : (
-                <View key={`photo-${index}`} className="w-[30%] aspect-square relative">
-                  <Image
-                    source={{ uri: photo }}
-                    className="w-full h-full rounded-xl"
-                    resizeMode="cover"
-                  />
-                  {index === 0 && (
-                    <View className="absolute top-1 left-1 bg-[#B8860B] px-2 py-1 rounded-full">
-                      <Text className="text-white text-xs font-bold">Main</Text>
-                    </View>
+                  {uploading ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="camera" size={48} color="#fff" style={{ marginBottom: 8 }} />
+                      <Text className="text-white text-base font-semibold">New Photo</Text>
+                      <Text className="text-white/80 text-xs mt-1 text-center">
+                        {6 - photos.length} slot{6 - photos.length > 1 ? 's' : ''} left
+                      </Text>
+                    </>
                   )}
-                  <Pressable
-                    className="absolute top-1 right-1 bg-red-500 w-6 h-6 rounded-full items-center justify-center"
-                    onPress={() => removePhoto(photo)}
-                  >
-                    <Ionicons name="close" size={14} color="#fff" />
-                  </Pressable>
                 </View>
-              );
-            })}
+              </Pressable>
+            )}
+            
+            {/* Existing Photo Cards */}
+            {photos.map((photo, index) => (
+              <View 
+                key={`photo-${index}`} 
+                className="w-[48%] relative"
+                style={{ aspectRatio: 0.8 }}
+              >
+                <Image
+                  source={{ uri: photo }}
+                  className="w-full h-full rounded-3xl"
+                  resizeMode="cover"
+                />
+                {index === 0 && (
+                  <View className="absolute top-3 left-3 bg-[#B8860B] px-2 py-1 rounded-full">
+                    <Text className="text-white text-xs font-bold">Main</Text>
+                  </View>
+                )}
+                <Pressable
+                  className="absolute top-3 right-3 bg-red-500 w-7 h-7 rounded-full items-center justify-center"
+                  onPress={() => removePhoto(photo)}
+                >
+                  <Ionicons name="close" size={16} color="#fff" />
+                </Pressable>
+              </View>
+            ))}
           </View>
         </View>
       </View>
