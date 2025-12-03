@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Pressable, Image, Dimensions } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
 
 function calculateAge(dob: string | null): number | null {
@@ -39,6 +39,13 @@ export default function ProfilePreviewScreen() {
   useEffect(() => {
     loadProfile();
   }, []);
+
+  // Reload profile when screen comes into focus (e.g., after removing a photo)
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [userId])
+  );
 
   const loadProfile = async () => {
     try {
