@@ -193,7 +193,7 @@ export default function Step4Hobbies() {
       <View className="px-6 pb-8 pt-4">
         <Pressable
           className="bg-white/10 p-5 rounded-2xl items-center mb-3"
-          onPress={() => router.push("/onboarding/step5-photos")}
+          onPress={() => router.push("/onboarding/step5-prompts")}
         >
           <Text className="text-white/80 text-lg font-semibold">Skip</Text>
         </Pressable>
