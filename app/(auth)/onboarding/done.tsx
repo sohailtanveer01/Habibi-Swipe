@@ -120,6 +120,31 @@ export default function OnboardingDone() {
         }
       }
 
+      // Create default preferences for the user (no filters enabled)
+      // This ensures the swipe feed works immediately after onboarding
+      const { error: prefsError } = await supabase
+        .from("user_preferences")
+        .upsert({
+          user_id: user.id,
+          location_enabled: false,
+          location_filter_type: "distance",
+          search_radius_miles: 50,
+          search_location: null,
+          search_country: null,
+          age_min: null,
+          age_max: null,
+          height_min_cm: null,
+          height_max_cm: null,
+          ethnicity_preferences: null,
+        }, {
+          onConflict: "user_id",
+        });
+
+      if (prefsError) {
+        console.error("Error creating default preferences:", prefsError);
+        // Don't block the flow if preferences fail to save
+      }
+
       router.replace("/swipe");
     } catch (e: any) {
       alert(e.message || "Failed to save profile. Please try again.");

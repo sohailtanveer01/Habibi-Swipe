@@ -59,6 +59,38 @@ serve(async (req) => {
       );
     }
 
+    // Get current user's profile to fetch their gender
+    const { data: currentUserProfile, error: userProfileError } = await supabaseClient
+      .from("users")
+      .select("gender")
+      .eq("id", user.id)
+      .single();
+
+    if (userProfileError || !currentUserProfile) {
+      console.error("Error fetching current user profile:", userProfileError);
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch user profile" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Determine opposite gender for filtering
+    const currentUserGender = currentUserProfile.gender;
+    const oppositeGender = currentUserGender === "male" ? "female" : currentUserGender === "female" ? "male" : null;
+
+    if (!oppositeGender) {
+      return new Response(
+        JSON.stringify({ error: "Invalid user gender" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Get user's preferences
     const { data: preferences, error: prefsError } = await supabaseClient
       .from("user_preferences")
@@ -81,10 +113,12 @@ serve(async (req) => {
     const swipedIdsSet = new Set(swipedIds);
 
     // Build query for profiles - get more to account for filtering
+    // Filter by opposite gender (constant filter - users can't change gender)
     let query = supabaseClient
       .from("users")
       .select("*")
       .neq("id", user.id)
+      .eq("gender", oppositeGender) // Only show opposite gender
       .limit(limit * 5); // Get more to account for filtering
 
     // If location filter is enabled, we'll filter client-side after fetching
@@ -184,6 +218,7 @@ serve(async (req) => {
     }
 
     // Filter profiles - all filtering logic in one place
+    // Note: Gender filtering is already applied at the query level (opposite gender only)
     let filteredProfiles = (allProfiles || []).filter((profile) => {
       // Exclude already swiped users
       if (swipedIdsSet.has(profile.id)) return false;
@@ -236,7 +271,7 @@ serve(async (req) => {
       }
 
       // Age filter (apply if at least one bound is set)
-      if ((preferences?.age_min !== null || preferences?.age_max !== null) && profile.dob) {
+      if (preferences && (preferences.age_min !== null || preferences.age_max !== null) && profile.dob) {
         const age = calculateAge(profile.dob);
         if (age === null) return false;
         if (preferences.age_min !== null && age < preferences.age_min) return false;
@@ -244,13 +279,13 @@ serve(async (req) => {
       }
 
       // Height filter (minimum only)
-      if (preferences?.height_min_cm !== null && profile.height) {
+      if (preferences && preferences.height_min_cm !== null && profile.height) {
         const heightCm = parseHeightToCm(profile.height);
         if (heightCm === null || heightCm < preferences.height_min_cm) return false;
       }
 
       // Ethnicity filter
-      if (preferences?.ethnicity_preferences && 
+      if (preferences && preferences.ethnicity_preferences && 
           Array.isArray(preferences.ethnicity_preferences) && 
           preferences.ethnicity_preferences.length > 0) {
         if (!profile.ethnicity || !preferences.ethnicity_preferences.includes(profile.ethnicity)) {
