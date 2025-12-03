@@ -122,10 +122,10 @@ export default function EmailOTP() {
         router.replace("/(main)/swipe");
       } else {
         // User needs to complete onboarding (new signup)
-        router.replace("/(auth)/phone-optional");
+        router.replace("/(auth)/onboarding/step1-basic");
       }
     } else {
-      router.replace("/(auth)/phone-optional");
+      router.replace("/(auth)/onboarding/step1-basic");
     }
   };
 

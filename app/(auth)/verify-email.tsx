@@ -25,7 +25,7 @@ export default function VerifyEmail() {
       setChecking(false);
       // Small delay before navigating
       setTimeout(() => {
-        router.push("/(auth)/phone-optional");
+        router.push("/(auth)/onboarding/step1-basic");
       }, 500);
     } else {
       setChecking(false);
