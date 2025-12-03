@@ -201,7 +201,7 @@ export default function Step5Prompts() {
                         <Text className={`text-base ${
                           prompt.question ? "text-white" : "text-white/50"
                         }`}>
-                          {prompt.question || "Choose a prompt..."}
+                          {prompt.question || DEFAULT_PROMPTS[index] || DEFAULT_PROMPTS[0]}
                         </Text>
                         <Ionicons 
                           name={showDropdown === index ? "chevron-up" : "chevron-down"} 
