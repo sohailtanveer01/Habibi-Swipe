@@ -148,7 +148,6 @@ export default function ProfileScreen() {
             : null;
 
           const updatePayload: any = {
-            id: user.id,
             photos: newPhotos,
             last_active_at: new Date().toISOString(),
           };
@@ -157,10 +156,25 @@ export default function ProfileScreen() {
             updatePayload.location = locationPoint;
           }
 
-          await supabase.from("users").upsert(updatePayload);
+          const { error: updateError } = await supabase
+            .from("users")
+            .update(updatePayload)
+            .eq("id", user.id);
+          
+          if (updateError) {
+            console.error("Error updating photos:", updateError);
+            Alert.alert("Error", "Failed to save photo. Please try again.");
+            // Revert the state change
+            setPhotos(photos);
+            return;
+          }
+          
+          // Reload profile to ensure sync
+          await loadProfile();
         }
       } else {
-        setPhotos([...photos, url]);
+        const newPhotosArray = [...photos, url];
+        setPhotos(newPhotosArray);
         
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -174,8 +188,7 @@ export default function ProfileScreen() {
             : null;
 
           const updatePayload: any = {
-            id: user.id,
-            photos: [...photos, url],
+            photos: newPhotosArray,
             last_active_at: new Date().toISOString(),
           };
 
@@ -183,7 +196,21 @@ export default function ProfileScreen() {
             updatePayload.location = locationPoint;
           }
 
-          await supabase.from("users").upsert(updatePayload);
+          const { error: updateError } = await supabase
+            .from("users")
+            .update(updatePayload)
+            .eq("id", user.id);
+          
+          if (updateError) {
+            console.error("Error updating photos:", updateError);
+            Alert.alert("Error", "Failed to save photo. Please try again.");
+            // Revert the state change
+            setPhotos(photos);
+            return;
+          }
+          
+          // Reload profile to ensure sync
+          await loadProfile();
         }
       }
     } catch (e: any) {
@@ -201,28 +228,49 @@ export default function ProfileScreen() {
     const newPhotos = photos.filter((p) => p !== url);
     setPhotos(newPhotos);
     
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const locationPoint = profile?.location && 
-        typeof profile.location === 'object' &&
-        typeof profile.location.lon === 'number' &&
-        typeof profile.location.lat === 'number' &&
-        !isNaN(profile.location.lon) &&
-        !isNaN(profile.location.lat)
-        ? `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`
-        : null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const locationPoint = profile?.location && 
+          typeof profile.location === 'object' &&
+          typeof profile.location.lon === 'number' &&
+          typeof profile.location.lat === 'number' &&
+          !isNaN(profile.location.lon) &&
+          !isNaN(profile.location.lat)
+          ? `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`
+          : null;
 
-      const updatePayload: any = {
-        id: user.id,
-        photos: newPhotos,
-        last_active_at: new Date().toISOString(),
-      };
+          const updatePayload: any = {
+            photos: newPhotos,
+            last_active_at: new Date().toISOString(),
+          };
 
-      if (locationPoint) {
-        updatePayload.location = locationPoint;
+          if (locationPoint) {
+            updatePayload.location = locationPoint;
+          }
+
+          const { error: updateError } = await supabase
+            .from("users")
+            .update(updatePayload)
+            .eq("id", user.id);
+        
+        if (updateError) {
+          console.error("Error removing photo:", updateError);
+          Alert.alert("Error", "Failed to remove photo. Please try again.");
+          // Revert the state change
+          setPhotos(photos);
+          return;
+        }
+        
+        console.log("Photo removed successfully, reloading profile...");
+        // Reload profile to ensure sync
+        await loadProfile();
       }
-
-      await supabase.from("users").upsert(updatePayload);
+    } catch (e: any) {
+      console.error("Error removing photo:", e);
+      Alert.alert("Error", "Failed to remove photo. Please try again.");
+      // Revert the state change
+      setPhotos(photos);
     }
   };
 
