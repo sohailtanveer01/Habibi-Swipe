@@ -208,27 +208,6 @@ export default function ProfileCard({
             </View>
           )}
 
-          {/* Marriage Timeline */}
-          {(profile.get_to_know_timeline || profile.marriage_timeline) && (
-            <View style={{ gap: 8 }}>
-              {profile.get_to_know_timeline && (
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-white/70 text-base">💑</Text>
-                  <Text className="text-white/90 text-base flex-1">
-                    Get to know: {profile.get_to_know_timeline}
-                  </Text>
-                </View>
-              )}
-              {profile.marriage_timeline && (
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-white/70 text-base">💍</Text>
-                  <Text className="text-white/90 text-base flex-1">
-                    Married within: {profile.marriage_timeline}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
         </View>
       </View>
       )}

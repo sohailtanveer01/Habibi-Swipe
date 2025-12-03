@@ -52,8 +52,8 @@ const HOBBIES = [
   { emoji: "🌌", name: "Astronomy" },
 ];
 
-const TOTAL_STEPS = 9;
-const CURRENT_STEP = 4;
+const TOTAL_STEPS = 8;
+const CURRENT_STEP = 3;
 
 export default function Step4Hobbies() {
   const router = useRouter();
@@ -88,7 +88,7 @@ export default function Step4Hobbies() {
       ...d,
       hobbies: selectedHobbies,
     }));
-    router.push("/onboarding/step5-prompts");
+    router.push("/onboarding/step4-prompts");
   };
 
   return (
@@ -193,7 +193,7 @@ export default function Step4Hobbies() {
       <View className="px-6 pb-8 pt-4">
         <Pressable
           className="bg-white/10 p-5 rounded-2xl items-center mb-3"
-          onPress={() => router.push("/onboarding/step5-prompts")}
+          onPress={() => router.push("/onboarding/step4-prompts")}
         >
           <Text className="text-white/80 text-lg font-semibold">Skip</Text>
         </Pressable>

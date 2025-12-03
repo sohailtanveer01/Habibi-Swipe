@@ -8,8 +8,6 @@ type OnboardingData = {
   hasChildren: boolean | null;
   gender: string;
   dob: string; // ISO like "1998-06-14"
-  getToKnowTimeline: string; // "I would like to get to know someone for"
-  marriageTimeline: string; // "I would like to be married within"
   sect: string; // sunni, shia, sufi, other, prefer not to say
   bornMuslim: boolean | null; // yes or no
   religiousPractice: string; // actively practicing, moderately practicing, not practicing
@@ -45,8 +43,6 @@ const defaultData: OnboardingData = {
   hasChildren: null,
   gender: "",
   dob: "",
-  getToKnowTimeline: "",
-  marriageTimeline: "",
   sect: "",
   bornMuslim: null,
   religiousPractice: "",

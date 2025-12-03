@@ -69,8 +69,6 @@ export default function OnboardingDone() {
         has_children: data.hasChildren,
         gender: data.gender,
         dob: data.dob,
-        get_to_know_timeline: data.getToKnowTimeline,
-        marriage_timeline: data.marriageTimeline,
         sect: data.sect,
         born_muslim: data.bornMuslim,
         religious_practice: data.religiousPractice,

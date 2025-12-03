@@ -5,66 +5,82 @@ import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import OnboardingBackground from "@/components/OnboardingBackground";
 
-const PROFESSION_OPTIONS = [
-  "Unemployed",
-  "Accountant",
-  "Architect",
-  "Artist",
-  "Business Analyst",
-  "Chef",
-  "Consultant",
-  "Dentist",
-  "Designer",
-  "Doctor",
-  "Engineer",
-  "Entrepreneur",
-  "Financial Advisor",
-  "Graphic Designer",
-  "HR Manager",
-  "IT Professional",
-  "Journalist",
-  "Lawyer",
-  "Marketing Manager",
-  "Nurse",
-  "Pharmacist",
-  "Photographer",
-  "Physician",
-  "Project Manager",
-  "Real Estate Agent",
-  "Sales Manager",
-  "Software Developer",
-  "Teacher",
-  "Therapist",
-  "Veterinarian",
-  "Writer",
+const ETHNICITY_OPTIONS = [
+  "Arab",
+  "South Asian",
+  "African",
+  "East Asian",
+  "Central Asian",
+  "European",
+  "North African",
+  "Mixed",
+  "Other",
+  "Prefer not to say",
+];
+
+const NATIONALITY_OPTIONS = [
+  "Afghanistan",
+  "Algeria",
+  "Bahrain",
+  "Bangladesh",
+  "Egypt",
+  "India",
+  "Indonesia",
+  "Iran",
+  "Iraq",
+  "Jordan",
+  "Kazakhstan",
+  "Kuwait",
+  "Lebanon",
+  "Libya",
+  "Malaysia",
+  "Morocco",
+  "Nigeria",
+  "Oman",
+  "Pakistan",
+  "Palestine",
+  "Qatar",
+  "Saudi Arabia",
+  "Somalia",
+  "Sudan",
+  "Syria",
+  "Tunisia",
+  "Turkey",
+  "United Arab Emirates",
+  "United Kingdom",
+  "United States",
+  "Yemen",
   "Other",
 ];
 
-const TOTAL_STEPS = 9;
-const CURRENT_STEP = 9;
+const TOTAL_STEPS = 8;
+const CURRENT_STEP = 7;
 
-export default function Step8Background() {
+export default function Step7Ethnicity() {
   const router = useRouter();
   const { data, setData } = useOnboarding();
 
-  const [education, setEducation] = useState(data.education || "");
-  const [profession, setProfession] = useState(data.profession || "");
-  const [bio, setBio] = useState(data.bio || "");
-  const [showProfessionDropdown, setShowProfessionDropdown] = useState(false);
-  const [professionSearch, setProfessionSearch] = useState("");
+  const [ethnicity, setEthnicity] = useState(data.ethnicity);
+  const [nationality, setNationality] = useState(data.nationality);
+  const [showEthnicityDropdown, setShowEthnicityDropdown] = useState(false);
+  const [showNationalityDropdown, setShowNationalityDropdown] = useState(false);
+  const [nationalitySearch, setNationalitySearch] = useState("");
 
-  const filteredProfessions = PROFESSION_OPTIONS.filter((p) =>
-    p.toLowerCase().includes(professionSearch.toLowerCase())
+  const filteredNationalities = NATIONALITY_OPTIONS.filter((n) =>
+    n.toLowerCase().includes(nationalitySearch.toLowerCase())
   );
 
   const next = () => {
+    if (!ethnicity || !nationality) {
+      alert("Please select both ethnicity and nationality.");
+      return;
+    }
     setData((d) => ({
       ...d,
-      education: education.trim(),
-      profession: profession.trim(),
-      bio: bio.trim(),
+      ethnicity,
+      nationality,
     }));
-    router.push("/onboarding/done");
+    router.push("/onboarding/step8-background");
   };
 
   return (
@@ -120,68 +136,41 @@ export default function Step8Background() {
         {/* Header Section */}
         <View className="mb-10">
           <Text className="text-white text-4xl font-bold mb-3 leading-tight">
-            One Last Thing...
+            Background
           </Text>
-         
-          <Text className="text-white/60 text-sm">
-            Share your education, profession, and a bit about yourself
+          <Text className="text-white/80 text-xl font-medium">
+            Tell us about your heritage
           </Text>
         </View>
 
-        {/* Education Input */}
+        {/* Ethnicity Dropdown */}
         <View className="mb-8">
           <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
-            Education
-          </Text>
-          <TextInput
-            className="bg-white/5 text-white p-4 rounded-2xl border border-[#eebd2b]/40 text-lg"
-            placeholder="e.g., Bachelor's in Computer Science"
-            placeholderTextColor="#999"
-            value={education}
-            onChangeText={setEducation}
-            multiline={false}
-          />
-        </View>
-
-        {/* Profession Dropdown */}
-        <View className="mb-8">
-          <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
-            Profession
+            Ethnicity
           </Text>
           <Pressable
             onPress={() => {
-              setShowProfessionDropdown(!showProfessionDropdown);
+              setShowEthnicityDropdown(!showEthnicityDropdown);
+              setShowNationalityDropdown(false);
             }}
             className="bg-white/5 p-4 rounded-2xl border border-[#eebd2b]/30"
           >
             <Text className="text-white text-lg">
-              {profession || "Select profession"}
+              {ethnicity || "Select ethnicity"}
             </Text>
           </Pressable>
-          {showProfessionDropdown && (
-            <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/30 mt-2 overflow-hidden max-h-80">
-              {/* Search Input */}
-              <View className="p-3 border-b border-[#eebd2b]/20">
-                <TextInput
-                  className="bg-white/5 text-white p-3 rounded-xl border border-[#eebd2b]/30"
-                  placeholder="Search profession..."
-                  placeholderTextColor="#999"
-                  value={professionSearch}
-                  onChangeText={setProfessionSearch}
-                  autoFocus={false}
-                />
-              </View>
+          {showEthnicityDropdown && (
+            <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/30 mt-2 overflow-hidden max-h-64">
               <ScrollView showsVerticalScrollIndicator={false}>
-                {filteredProfessions.map((option) => (
+                {ETHNICITY_OPTIONS.map((option) => (
                   <Pressable
                     key={option}
                     onPress={() => {
-                      setProfession(option);
-                      setShowProfessionDropdown(false);
-                      setProfessionSearch("");
+                      setEthnicity(option);
+                      setShowEthnicityDropdown(false);
                     }}
                     className={`p-4 border-b border-white/5 ${
-                      profession === option ? "bg-[#B8860B]/20" : ""
+                      ethnicity === option ? "bg-[#B8860B]/20" : ""
                     }`}
                   >
                     <Text className="text-white text-lg">{option}</Text>
@@ -192,25 +181,54 @@ export default function Step8Background() {
           )}
         </View>
 
-        {/* Bio Input */}
+        {/* Nationality Dropdown */}
         <View className="mb-10">
           <Text className="text-white/70 text-sm font-medium mb-3 ml-1">
-            Bio
+            Nationality
           </Text>
-          <TextInput
-            className="bg-white/5 text-white p-4 rounded-2xl border border-[#eebd2b]/40 text-lg"
-            placeholder="Tell us about yourself..."
-            placeholderTextColor="#999"
-            value={bio}
-            onChangeText={setBio}
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-            style={{ minHeight: 120 }}
-          />
-          <Text className="text-white/50 text-xs mt-2 ml-1">
-            {bio.length} characters
-          </Text>
+          <Pressable
+            onPress={() => {
+              setShowNationalityDropdown(!showNationalityDropdown);
+              setShowEthnicityDropdown(false);
+            }}
+            className="bg-white/5 p-4 rounded-2xl border border-[#eebd2b]/30"
+          >
+            <Text className="text-white text-lg">
+              {nationality || "Select nationality"}
+            </Text>
+          </Pressable>
+          {showNationalityDropdown && (
+            <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/30 mt-2 overflow-hidden max-h-80">
+              {/* Search Input */}
+              <View className="p-3 border-b border-[#eebd2b]/20">
+                <TextInput
+                  className="bg-white/5 text-white p-3 rounded-xl border border-[#eebd2b]/30"
+                  placeholder="Search nationality..."
+                  placeholderTextColor="#999"
+                  value={nationalitySearch}
+                  onChangeText={setNationalitySearch}
+                  autoFocus={false}
+                />
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {filteredNationalities.map((option) => (
+                  <Pressable
+                    key={option}
+                    onPress={() => {
+                      setNationality(option);
+                      setShowNationalityDropdown(false);
+                      setNationalitySearch("");
+                    }}
+                    className={`p-4 border-b border-white/5 ${
+                      nationality === option ? "bg-[#B8860B]/20" : ""
+                    }`}
+                  >
+                    <Text className="text-white text-lg">{option}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </View>
       </View>
       </ScrollView>

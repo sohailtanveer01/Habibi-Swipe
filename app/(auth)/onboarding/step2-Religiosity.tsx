@@ -15,8 +15,8 @@ const RELIGIOUS_PRACTICE_OPTIONS = [
 const ALCOHOL_OPTIONS = ["never", "socially", "often"];
 const SMOKING_OPTIONS = ["never", "socially", "often"];
 
-const TOTAL_STEPS = 9;
-const CURRENT_STEP = 3;
+const TOTAL_STEPS = 8;
+const CURRENT_STEP = 2;
 
 export default function Step3Religiosity() {
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function Step3Religiosity() {
       alcoholHabit,
       smokingHabit,
     }));
-    router.push("/onboarding/step4-hobbies");
+    router.push("/onboarding/step3-hobbies");
   };
 
   return (
@@ -257,7 +257,7 @@ export default function Step3Religiosity() {
       <View className="px-6 pb-8 pt-4">
         <Pressable
           className="bg-white/10 p-5 rounded-2xl items-center mb-3"
-          onPress={() => router.push("/onboarding/step4-hobbies")}
+          onPress={() => router.push("/onboarding/step3-hobbies")}
         >
           <Text className="text-white/80 text-lg font-semibold">Skip</Text>
         </Pressable>

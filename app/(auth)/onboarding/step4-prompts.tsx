@@ -18,8 +18,8 @@ const DEFAULT_PROMPTS = [
   "A dream I'm chasing…",
 ];
 
-const TOTAL_STEPS = 9;
-const CURRENT_STEP = 5;
+const TOTAL_STEPS = 8;
+const CURRENT_STEP = 4;
 
 interface Prompt {
   id: string;
@@ -104,7 +104,7 @@ export default function Step5Prompts() {
       ...d,
       prompts: filledPrompts,
     }));
-    router.push("/onboarding/step6-photos");
+    router.push("/onboarding/step5-photos");
   };
 
   return (
@@ -284,7 +284,7 @@ export default function Step5Prompts() {
         <View className="px-6 pb-8 pt-4">
           <Pressable
             className="bg-white/10 p-5 rounded-2xl items-center mb-3"
-            onPress={() => router.push("/onboarding/step6-photos")}
+            onPress={() => router.push("/onboarding/step5-photos")}
           >
             <Text className="text-white/80 text-lg font-semibold">Skip</Text>
           </Pressable>

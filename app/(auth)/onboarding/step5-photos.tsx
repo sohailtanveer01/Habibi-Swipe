@@ -32,8 +32,8 @@ async function uploadPhoto(uri: string, userId: string) {
   return data.publicUrl;
 }
 
-const TOTAL_STEPS = 9;
-const CURRENT_STEP = 6;
+const TOTAL_STEPS = 8;
+const CURRENT_STEP = 5;
 
 export default function Step5Photos() {
   const router = useRouter();
@@ -175,7 +175,7 @@ export default function Step5Photos() {
     }
     // Filter out empty slots before saving
     setData((d) => ({ ...d, photos: filledPhotos }));
-    router.push("/onboarding/step7-location");
+    router.push("/onboarding/step6-location");
   };
 
   return (

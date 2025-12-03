@@ -6,7 +6,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import OnboardingBackground from "@/components/OnboardingBackground";
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 8;
 const CURRENT_STEP = 1;
 
 export default function Step1Basic() {
@@ -102,7 +102,7 @@ export default function Step1Basic() {
       maritalStatus,
       hasChildren,
     }));
-    router.push("/onboarding/step2-Marriage_Intent");
+    router.push("/onboarding/step2-Religiosity");
   };
 
   return (

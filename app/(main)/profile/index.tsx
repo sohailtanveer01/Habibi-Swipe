@@ -39,7 +39,7 @@ async function uploadPhoto(uri: string, userId: string) {
 export default function ProfileScreen() {
   const router = useRouter();
   const [editingSection, setEditingSection] = useState<string | null>(null); // 'photos' | 'about' | 'marriage' | 'bio' | null
-  const [editingField, setEditingField] = useState<string | null>(null); // 'name' | 'height' | 'maritalStatus' | 'children' | 'dob' | 'sect' | 'bornMuslim' | 'religiousPractice' | 'alcoholHabit' | 'smokingHabit' | 'education' | 'profession' | 'bio' | 'ethnicity' | 'nationality' | 'hobbies' | 'getToKnowTimeline' | 'marriageTimeline' | null
+  const [editingField, setEditingField] = useState<string | null>(null); // 'name' | 'height' | 'maritalStatus' | 'children' | 'dob' | 'sect' | 'bornMuslim' | 'religiousPractice' | 'alcoholHabit' | 'smokingHabit' | 'education' | 'profession' | 'bio' | 'ethnicity' | 'nationality' | 'hobbies' | null
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -57,18 +57,6 @@ export default function ProfileScreen() {
   const [religiousPractice, setReligiousPractice] = useState("");
   const [alcoholHabit, setAlcoholHabit] = useState("");
   const [smokingHabit, setSmokingHabit] = useState("");
-  const [getToKnowTimeline, setGetToKnowTimeline] = useState("");
-  const [marriageTimeline, setMarriageTimeline] = useState("");
-  
-  // Helper function to convert timeline string to index
-  const getTimelineIndex = (timeline: string) => {
-    const index = TIMELINE_OPTIONS.indexOf(timeline);
-    return index !== -1 ? index : 3; // Default to middle option
-  };
-  
-  // Slider indices for editing
-  const [getToKnowIndex, setGetToKnowIndex] = useState(3);
-  const [marriageIndex, setMarriageIndex] = useState(3);
   const [education, setEducation] = useState("");
   const [profession, setProfession] = useState("");
   const [religion, setReligion] = useState("");
@@ -121,11 +109,6 @@ export default function ProfileScreen() {
       setReligiousPractice(data.religious_practice || "");
       setAlcoholHabit(data.alcohol_habit || "");
       setSmokingHabit(data.smoking_habit || "");
-      setGetToKnowTimeline(data.get_to_know_timeline || "");
-      setMarriageTimeline(data.marriage_timeline || "");
-      // Set slider indices based on loaded values
-      setGetToKnowIndex(getTimelineIndex(data.get_to_know_timeline || ""));
-      setMarriageIndex(getTimelineIndex(data.marriage_timeline || ""));
       setEducation(data.education || "");
       setProfession(data.profession || "");
       setReligion(data.religion || "");
@@ -187,8 +170,6 @@ export default function ProfileScreen() {
         religious_practice: currentReligiousPractice,
         alcohol_habit: currentAlcoholHabit,
         smoking_habit: currentSmokingHabit,
-        get_to_know_timeline: getToKnowTimeline,
-        marriage_timeline: marriageTimeline,
         education: education.trim(),
         profession: profession.trim(),
         religion: religion.trim(),
@@ -1223,159 +1204,6 @@ export default function ProfileScreen() {
 
         {/* Bio Card */}
        
-
-        {/* Marriage Timeline Card */}
-        <View className="bg-white/10 rounded-2xl border border-white/10 p-5 mb-4">
-          <Text className="text-white text-xl font-semibold mb-5">Marriage Timeline</Text>
-          
-          {/* Get to Know Timeline Row */}
-          <Pressable
-            onPress={() => {
-              if (editingField !== 'getToKnowTimeline') {
-                setGetToKnowIndex(getTimelineIndex(getToKnowTimeline));
-                setEditingField('getToKnowTimeline');
-              } else {
-                setEditingField(null);
-              }
-            }}
-            className="py-3 border-b border-white/10"
-          >
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center flex-1 mr-3">
-                <Text className="text-xl mr-3">💑</Text>
-                <Text className="text-white/80 text-base flex-1" numberOfLines={2}>
-                  I would like to get to know someone for
-                </Text>
-              </View>
-              <View className="flex-row items-center flex-shrink-0">
-                {editingField !== 'getToKnowTimeline' && (
-                  <>
-                    <Text className="text-white text-base mr-2 text-right" numberOfLines={1}>
-                      {getToKnowTimeline || "Not set"}
-                    </Text>
-                    <Text className="text-white/40 text-lg">›</Text>
-                  </>
-                )}
-              </View>
-            </View>
-            {editingField === 'getToKnowTimeline' && (
-              <View className="mt-4 ml-10">
-                <View className="bg-white/5 rounded-xl border border-white/10 p-4 mb-2">
-                  <Text className="text-white text-xl font-bold text-center mb-4">
-                    {TIMELINE_OPTIONS[getToKnowIndex]}
-                  </Text>
-                  <Slider
-                    style={{ width: "100%", height: 40 }}
-                    minimumValue={0}
-                    maximumValue={TIMELINE_OPTIONS.length - 1}
-                    step={1}
-                    value={getToKnowIndex}
-                    onValueChange={(value) => {
-                      const index = Math.round(value);
-                      setGetToKnowIndex(index);
-                      setGetToKnowTimeline(TIMELINE_OPTIONS[index]);
-                    }}
-                    minimumTrackTintColor="#B8860B"
-                    maximumTrackTintColor="#ffffff40"
-                    thumbTintColor="#B8860B"
-                  />
-                  <View className="flex-row justify-between mt-2">
-                    <Text className="text-white/50 text-xs">{TIMELINE_OPTIONS[0]}</Text>
-                    <Text className="text-white/50 text-xs">{TIMELINE_OPTIONS[TIMELINE_OPTIONS.length - 1]}</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-          </Pressable>
-
-          {/* Marriage Timeline Row */}
-          <Pressable
-            onPress={() => {
-              if (editingField !== 'marriageTimeline') {
-                setMarriageIndex(getTimelineIndex(marriageTimeline));
-                setEditingField('marriageTimeline');
-              } else {
-                setEditingField(null);
-              }
-            }}
-            className="py-3"
-          >
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center flex-1 mr-3">
-                <Text className="text-xl mr-3">💍</Text>
-                <Text className="text-white/80 text-base flex-1" numberOfLines={2}>
-                  I would like to be married within
-                </Text>
-              </View>
-              <View className="flex-row items-center flex-shrink-0">
-                {editingField !== 'marriageTimeline' && (
-                  <>
-                    <Text className="text-white text-base mr-2 text-right" numberOfLines={1}>
-                      {marriageTimeline || "Not set"}
-                    </Text>
-                    <Text className="text-white/40 text-lg">›</Text>
-                  </>
-                )}
-              </View>
-            </View>
-            {editingField === 'marriageTimeline' && (
-              <View className="mt-4 ml-10">
-                <View className="bg-white/5 rounded-xl border border-white/10 p-4 mb-2">
-                  <Text className="text-white text-xl font-bold text-center mb-4">
-                    {TIMELINE_OPTIONS[marriageIndex]}
-                  </Text>
-                  <Slider
-                    style={{ width: "100%", height: 40 }}
-                    minimumValue={0}
-                    maximumValue={TIMELINE_OPTIONS.length - 1}
-                    step={1}
-                    value={marriageIndex}
-                    onValueChange={(value) => {
-                      const index = Math.round(value);
-                      setMarriageIndex(index);
-                      setMarriageTimeline(TIMELINE_OPTIONS[index]);
-                    }}
-                    minimumTrackTintColor="#B8860B"
-                    maximumTrackTintColor="#ffffff40"
-                    thumbTintColor="#B8860B"
-                  />
-                  <View className="flex-row justify-between mt-2">
-                    <Text className="text-white/50 text-xs">{TIMELINE_OPTIONS[0]}</Text>
-                    <Text className="text-white/50 text-xs">{TIMELINE_OPTIONS[TIMELINE_OPTIONS.length - 1]}</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-          </Pressable>
-          {/* Save button for sliders */}
-          {(editingField === 'getToKnowTimeline' || editingField === 'marriageTimeline') && (
-            <View className="flex-row gap-3 mt-4">
-              <Pressable
-                className="flex-1 bg-white/10 px-4 py-2 rounded-xl"
-                onPress={() => {
-                  setEditingField(null);
-                  loadProfile();
-                }}
-              >
-                <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
-              </Pressable>
-              <Pressable
-                className="flex-1 bg-[#B8860B] px-4 py-2 rounded-xl"
-                onPress={async () => {
-                  await handleSave();
-                  setEditingField(null);
-                }}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text className="text-white font-semibold text-center text-sm">Save</Text>
-                )}
-              </Pressable>
-            </View>
-          )}
-        </View>
 
         <View className="bg-white/5 rounded-2xl border border-white/10 p-5 mb-4">
           <View className="flex-row items-center justify-between mb-4">

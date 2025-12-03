@@ -34,8 +34,6 @@ export default function ProfilePreviewScreen() {
   const [ethnicity, setEthnicity] = useState("");
   const [nationality, setNationality] = useState("");
   const [hobbies, setHobbies] = useState<string[]>([]);
-  const [getToKnowTimeline, setGetToKnowTimeline] = useState("");
-  const [marriageTimeline, setMarriageTimeline] = useState("");
   const [bio, setBio] = useState("");
 
   useEffect(() => {
@@ -85,8 +83,6 @@ export default function ProfilePreviewScreen() {
       setEthnicity(data.ethnicity || "");
       setNationality(data.nationality || "");
       setHobbies(data.hobbies || []);
-      setGetToKnowTimeline(data.get_to_know_timeline || "");
-      setMarriageTimeline(data.marriage_timeline || "");
       setBio(data.bio || "");
       setPhotos(data.photos || []);
       
@@ -274,26 +270,6 @@ export default function ProfilePreviewScreen() {
                   </View>
                 )}
 
-                {(getToKnowTimeline || marriageTimeline) && (
-                  <View style={{ gap: 8 }}>
-                    {getToKnowTimeline && (
-                      <View className="flex-row items-center gap-2">
-                        <Text className="text-white/70 text-base">💑</Text>
-                        <Text className="text-white/90 text-base flex-1">
-                          Get to know: {getToKnowTimeline}
-                        </Text>
-                      </View>
-                    )}
-                    {marriageTimeline && (
-                      <View className="flex-row items-center gap-2">
-                        <Text className="text-white/70 text-base">💍</Text>
-                        <Text className="text-white/90 text-base flex-1">
-                          Married within: {marriageTimeline}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                )}
               </View>
             </View>
           </>

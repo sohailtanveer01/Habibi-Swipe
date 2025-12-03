@@ -6,8 +6,8 @@ import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import OnboardingBackground from "@/components/OnboardingBackground";
 
-const TOTAL_STEPS = 9;
-const CURRENT_STEP = 7;
+const TOTAL_STEPS = 8;
+const CURRENT_STEP = 6;
 
 export default function Step6Location() {
   const router = useRouter();
@@ -30,7 +30,7 @@ export default function Step6Location() {
     }));
 
     setLoading(false);
-    router.push("/onboarding/step8-ethnicity");
+    router.push("/onboarding/step7-ethnicity");
   };
 
   return (
@@ -114,7 +114,7 @@ export default function Step6Location() {
 
           <Pressable
             className="bg-white/10 p-4 rounded-2xl items-center"
-            onPress={() => router.push("/onboarding/step8-ethnicity")}
+            onPress={() => router.push("/onboarding/step7-ethnicity")}
           >
             <Text className="text-white/80">Skip for now</Text>
           </Pressable>
