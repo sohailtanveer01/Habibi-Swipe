@@ -255,6 +255,7 @@ export default function MainLayout() {
       <Tabs.Screen name="paywall" options={{ href: null }} />
       <Tabs.Screen name="profile/preview" options={{ href: null }} />
       <Tabs.Screen name="swipe/filters" options={{ href: null }} />
+      <Tabs.Screen name="profile/edit" options={{ href: null }} />
     </Tabs>
   );
 }

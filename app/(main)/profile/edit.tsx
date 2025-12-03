@@ -1,0 +1,1012 @@
+import { useState, useEffect } from "react";
+import { View, Text, TextInput, Pressable, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { supabase } from "../../../lib/supabase";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+
+const HOBBIES = [
+  { emoji: "📚", name: "Reading" },
+  { emoji: "🎬", name: "Movies" },
+  { emoji: "🎵", name: "Music" },
+  { emoji: "🎮", name: "Gaming" },
+  { emoji: "⚽", name: "Sports" },
+  { emoji: "🏋️", name: "Fitness" },
+  { emoji: "🥊", name: "Boxing" },
+  { emoji: "🍳", name: "Cooking" },
+  { emoji: "✈️", name: "Travel" },
+  { emoji: "📸", name: "Photography" },
+  { emoji: "🎨", name: "Art" },
+  { emoji: "🎤", name: "Singing" },
+  { emoji: "🎹", name: "Music Instruments" },
+  { emoji: "🧘", name: "Yoga" },
+  { emoji: "🏃", name: "Running" },
+  { emoji: "🚴", name: "Cycling" },
+  { emoji: "🏊", name: "Swimming" },
+  { emoji: "🎯", name: "Archery" },
+  { emoji: "🎲", name: "Board Games" },
+  { emoji: "🧩", name: "Puzzles" },
+  { emoji: "🛍️", name: "Shopping" },
+  { emoji: "🌱", name: "Gardening" },
+  { emoji: "🐕", name: "Pets" },
+  { emoji: "✍️", name: "Writing" },
+  { emoji: "🎪", name: "Theater" },
+  { emoji: "🍷", name: "Wine Tasting" },
+  { emoji: "☕", name: "Coffee" },
+  { emoji: "🍺", name: "Craft Beer" },
+  { emoji: "🎣", name: "Fishing" },
+  { emoji: "🏔️", name: "Hiking" },
+  { emoji: "⛷️", name: "Skiing" },
+  { emoji: "🏄", name: "Surfing" },
+  { emoji: "🤿", name: "Diving" },
+  { emoji: "🎭", name: "Drama" },
+  { emoji: "💃", name: "Dancing" },
+  { emoji: "🔬", name: "Science" },
+  { emoji: "🌍", name: "Languages" },
+  { emoji: "📱", name: "Technology" },
+  { emoji: "🚗", name: "Cars" },
+  { emoji: "✈️", name: "Aviation" },
+  { emoji: "🏰", name: "History" },
+  { emoji: "🌌", name: "Astronomy" },
+];
+
+const ETHNICITY_OPTIONS = [
+  "Arab",
+  "South Asian",
+  "African",
+  "East Asian",
+  "Central Asian",
+  "European",
+  "North African",
+  "Mixed",
+  "Other",
+  "Prefer not to say",
+];
+
+const NATIONALITY_OPTIONS = [
+  "Afghanistan",
+  "Algeria",
+  "Bahrain",
+  "Bangladesh",
+  "Egypt",
+  "India",
+  "Indonesia",
+  "Iran",
+  "Iraq",
+  "Jordan",
+  "Kazakhstan",
+  "Kuwait",
+  "Lebanon",
+  "Libya",
+  "Malaysia",
+  "Morocco",
+  "Nigeria",
+  "Oman",
+  "Pakistan",
+  "Palestine",
+  "Qatar",
+  "Saudi Arabia",
+  "Somalia",
+  "Sudan",
+  "Syria",
+  "Tunisia",
+  "Turkey",
+  "United Arab Emirates",
+  "United Kingdom",
+  "United States",
+  "Yemen",
+  "Other",
+];
+
+export default function ProfileEditScreen() {
+  const router = useRouter();
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+
+  // Form state
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [height, setHeight] = useState("");
+  const [maritalStatus, setMaritalStatus] = useState("");
+  const [hasChildren, setHasChildren] = useState<boolean | null>(null);
+  const [dob, setDob] = useState("");
+  const [sect, setSect] = useState("");
+  const [bornMuslim, setBornMuslim] = useState<boolean | null>(null);
+  const [religiousPractice, setReligiousPractice] = useState("");
+  const [alcoholHabit, setAlcoholHabit] = useState("");
+  const [smokingHabit, setSmokingHabit] = useState("");
+  const [education, setEducation] = useState("");
+  const [profession, setProfession] = useState("");
+  const [religion, setReligion] = useState("");
+  const [bio, setBio] = useState("");
+  const [ethnicity, setEthnicity] = useState("");
+  const [nationality, setNationality] = useState("");
+  const [hobbies, setHobbies] = useState<string[]>([]);
+
+  useEffect(() => {
+    loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace("/(auth)/login");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) throw error;
+
+      setProfile(data);
+      
+      if (data.first_name && data.last_name) {
+        setFirstName(data.first_name);
+        setLastName(data.last_name);
+      } else if (data.name) {
+        const nameParts = data.name.split(" ");
+        setFirstName(nameParts[0] || "");
+        setLastName(nameParts.slice(1).join(" ") || "");
+      }
+      
+      setHeight(data.height || "");
+      setMaritalStatus(data.marital_status || "");
+      setHasChildren(data.has_children !== undefined ? data.has_children : null);
+      setDob(data.dob || "");
+      setSect(data.sect || "");
+      setBornMuslim(data.born_muslim !== undefined ? data.born_muslim : null);
+      setReligiousPractice(data.religious_practice || "");
+      setAlcoholHabit(data.alcohol_habit || "");
+      setSmokingHabit(data.smoking_habit || "");
+      setEducation(data.education || "");
+      setProfession(data.profession || "");
+      setReligion(data.religion || "");
+      setBio(data.bio || "");
+      setEthnicity(data.ethnicity || "");
+      setNationality(data.nationality || "");
+      setHobbies(data.hobbies || []);
+    } catch (e: any) {
+      console.error("Error loading profile:", e);
+      Alert.alert("Error", "Failed to load profile.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (overrideValues?: {
+    sect?: string;
+    bornMuslim?: boolean | null;
+    religiousPractice?: string;
+    alcoholHabit?: string;
+    smokingHabit?: string;
+    ethnicity?: string;
+    nationality?: string;
+  }) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      setSaving(true);
+
+      const currentSect = overrideValues?.sect !== undefined ? overrideValues.sect : sect;
+      const currentBornMuslim = overrideValues?.bornMuslim !== undefined ? overrideValues.bornMuslim : bornMuslim;
+      const currentReligiousPractice = overrideValues?.religiousPractice !== undefined ? overrideValues.religiousPractice : religiousPractice;
+      const currentAlcoholHabit = overrideValues?.alcoholHabit !== undefined ? overrideValues.alcoholHabit : alcoholHabit;
+      const currentSmokingHabit = overrideValues?.smokingHabit !== undefined ? overrideValues.smokingHabit : smokingHabit;
+      const currentEthnicity = overrideValues?.ethnicity !== undefined ? overrideValues.ethnicity : ethnicity;
+      const currentNationality = overrideValues?.nationality !== undefined ? overrideValues.nationality : nationality;
+
+      const updatePayload: any = {
+        id: user.id,
+        name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        height: height.trim(),
+        marital_status: maritalStatus,
+        has_children: hasChildren,
+        dob,
+        sect: currentSect.trim(),
+        born_muslim: currentBornMuslim,
+        religious_practice: currentReligiousPractice,
+        alcohol_habit: currentAlcoholHabit,
+        smoking_habit: currentSmokingHabit,
+        education: education.trim(),
+        profession: profession.trim(),
+        religion: religion.trim(),
+        bio: bio.trim(),
+        ethnicity: currentEthnicity.trim(),
+        nationality: currentNationality.trim(),
+        hobbies,
+        last_active_at: new Date().toISOString(),
+      };
+
+      if (profile?.location && 
+          typeof profile.location === 'object' &&
+          typeof profile.location.lon === 'number' &&
+          typeof profile.location.lat === 'number' &&
+          !isNaN(profile.location.lon) &&
+          !isNaN(profile.location.lat)) {
+        updatePayload.location = `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`;
+      }
+
+      const { error } = await supabase.from("users").upsert(updatePayload);
+
+      if (error) throw error;
+
+      setEditingSection(null);
+      setEditingField(null);
+      await loadProfile();
+      Alert.alert("Success", "Profile updated!");
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Failed to save profile.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View className="flex-1 bg-black items-center justify-center">
+        <ActivityIndicator size="large" color="#B8860B" />
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1 bg-black">
+      {/* Header */}
+      <View className="pt-16 px-6 pb-4 bg-black border-b border-white/10">
+        <View className="flex-row items-center justify-between">
+          <Pressable
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-full items-center justify-center"
+          >
+            <Ionicons name="chevron-back" size={24} color="#fff" />
+          </Pressable>
+          <Text className="text-white text-xl font-bold">Edit Profile</Text>
+          <View className="w-10" />
+        </View>
+      </View>
+
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="px-6 pt-6 pb-8">
+          {/* About You Section */}
+          <View className="bg-white/10 rounded-2xl p-5 mb-4">
+            <Text className="text-white text-xl font-semibold mb-5">About You</Text>
+            
+            {/* Name Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'name' ? null : 'name')}
+              className="flex-row items-center justify-between py-3 border-b border-gray-200"
+            >
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">👤</Text>
+                <Text className="text-white/80 text-base">Name</Text>
+              </View>
+              {editingField === 'name' ? (
+                <View className="items-end">
+                  <TextInput
+                    className="bg-white/20 border border-white/30 text-white px-3 py-1.5 rounded-lg text-right min-w-[120] mb-2"
+                    placeholder="First Name"
+                    placeholderTextColor="#999"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    autoCapitalize="words"
+                    autoFocus
+                  />
+                  <TextInput
+                    className="bg-white/20 border border-white/30 text-white px-3 py-1.5 rounded-lg text-right min-w-[120]"
+                    placeholder="Last Name"
+                    placeholderTextColor="#999"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    autoCapitalize="words"
+                  />
+                </View>
+              ) : (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2">
+                    {firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || "Not set"}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </View>
+              )}
+            </Pressable>
+
+            {/* Height Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'height' ? null : 'height')}
+              className="flex-row items-center justify-between py-3 border-b border-white/10"
+            >
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">📏</Text>
+                <Text className="text-white/80 text-base">Height</Text>
+              </View>
+              {editingField === 'height' ? (
+                <TextInput
+                  className="bg-white/20 border border-white/30 text-white px-3 py-1.5 rounded-lg text-right min-w-[120]"
+                  placeholder="5'10\"
+                  placeholderTextColor="#999"
+                  value={height}
+                  onChangeText={setHeight}
+                  autoFocus
+                />
+              ) : (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2">{height || "Not set"}</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </View>
+              )}
+            </Pressable>
+
+            {/* Marital Status Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'maritalStatus' ? null : 'maritalStatus')}
+              className="py-3 border-b border-white/10"
+            >
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center flex-1">
+                  <Text className="text-xl mr-3">💍</Text>
+                  <Text className="text-white/80 text-base">Marital Status</Text>
+                </View>
+                {editingField !== 'maritalStatus' && (
+                  <View className="flex-row items-center">
+                    <Text className="text-white text-base mr-2 capitalize">{maritalStatus || "Not set"}</Text>
+                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  </View>
+                )}
+              </View>
+              {editingField === 'maritalStatus' && (
+                <View className="flex-row gap-2 flex-wrap ml-10">
+                  {["single", "divorced", "widowed", "separated"].map((status) => (
+                    <Pressable
+                      key={status}
+                      onPress={() => {
+                        setMaritalStatus(status);
+                        setEditingField(null);
+                      }}
+                      className={`px-3 py-1.5 rounded-full ${
+                        maritalStatus === status ? "bg-[#B8860B]" : "bg-white/20"
+                      }`}
+                    >
+                      <Text className={`text-sm capitalize ${maritalStatus === status ? "text-white" : "text-white"}`}>
+                        {status}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </Pressable>
+
+            {/* Children Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'children' ? null : 'children')}
+              className="py-3 border-b border-white/10"
+            >
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center flex-1">
+                  <Text className="text-xl mr-3">👶</Text>
+                  <Text className="text-white/80 text-base">Children</Text>
+                </View>
+                {editingField !== 'children' && (
+                  <View className="flex-row items-center">
+                    <Text className="text-white text-base mr-2">
+                      {hasChildren === null ? "Not set" : hasChildren ? "Yes" : "No"}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  </View>
+                )}
+              </View>
+              {editingField === 'children' && (
+                <View className="flex-row gap-2 ml-10">
+                  {[
+                    { value: true, label: "Yes" },
+                    { value: false, label: "No" },
+                  ].map((option) => (
+                    <Pressable
+                      key={option.label}
+                      onPress={() => {
+                        setHasChildren(option.value);
+                        setEditingField(null);
+                      }}
+                      className={`flex-1 px-3 py-2 rounded-full ${
+                        hasChildren === option.value ? "bg-[#B8860B]" : "bg-white/20"
+                      }`}
+                    >
+                      <Text className={`text-center text-sm font-semibold ${hasChildren === option.value ? "text-white" : "text-white"}`}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </Pressable>
+
+            {/* Date of Birth Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'dob' ? null : 'dob')}
+              className="flex-row items-center justify-between py-3"
+            >
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">📅</Text>
+                <Text className="text-white/80 text-base">Date of Birth</Text>
+              </View>
+              {editingField === 'dob' ? (
+                <TextInput
+                  className="bg-white/20 border border-white/30 text-white px-3 py-1.5 rounded-lg text-right min-w-[120]"
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#999"
+                  value={dob}
+                  onChangeText={setDob}
+                  autoFocus
+                />
+              ) : (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2">{dob || "Not set"}</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </View>
+              )}
+            </Pressable>
+
+            {/* Save button for text inputs */}
+            {(editingField === 'name' || editingField === 'height' || editingField === 'dob') && (
+              <View className="flex-row gap-3 mt-4">
+                <Pressable
+                  className="flex-1 bg-white/10 px-4 py-2 rounded-xl"
+                  onPress={() => {
+                    setEditingField(null);
+                    loadProfile();
+                  }}
+                >
+                  <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="flex-1 bg-[#B8860B] px-4 py-2 rounded-xl"
+                  onPress={async () => {
+                    await handleSave();
+                    setEditingField(null);
+                  }}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text className="text-white font-semibold text-center text-sm">Save</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
+          </View>
+
+          {/* Religiosity Section */}
+          <View className="bg-white/10 rounded-2xl p-5 mb-4">
+            <Text className="text-white text-xl font-semibold mb-5">Religiosity</Text>
+            
+            {/* Sect Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'sect' ? null : 'sect')}
+              className="flex-row items-center justify-between py-3 border-b border-gray-200"
+            >
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">🕌</Text>
+                <Text className="text-white/80 text-base">Sect</Text>
+              </View>
+              {editingField === 'sect' ? (
+                <View className="items-end">
+                  {["sunni", "shia", "sufi", "other", "prefer not to say"].map((option) => (
+                    <Pressable
+                      key={option}
+                      onPress={async () => {
+                        setSect(option);
+                        setEditingField(null);
+                        await handleSave({ sect: option });
+                      }}
+                      className={`px-3 py-1.5 rounded-full mb-2 ${
+                        sect === option ? "bg-[#B8860B]" : "bg-white/20"
+                      }`}
+                    >
+                      <Text className={`text-sm capitalize ${sect === option ? "text-white" : "text-white"}`}>
+                        {option}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2 capitalize">{sect || "Not set"}</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </View>
+              )}
+            </Pressable>
+
+            {/* Born Muslim Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'bornMuslim' ? null : 'bornMuslim')}
+              className="flex-row items-center justify-between py-3 border-b border-gray-200"
+            >
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">🌙</Text>
+                <Text className="text-white/80 text-base">Born Muslim?</Text>
+              </View>
+              {editingField === 'bornMuslim' ? (
+                <View className="flex-row gap-2">
+                  {[
+                    { value: true, label: "Yes" },
+                    { value: false, label: "No" },
+                  ].map((option) => (
+                    <Pressable
+                      key={option.label}
+                      onPress={async () => {
+                        setBornMuslim(option.value);
+                        setEditingField(null);
+                        await handleSave({ bornMuslim: option.value });
+                      }}
+                      className={`flex-1 px-3 py-2 rounded-full ${
+                        bornMuslim === option.value ? "bg-[#B8860B]" : "bg-white/20"
+                      }`}
+                    >
+                      <Text className={`text-center text-sm font-semibold ${bornMuslim === option.value ? "text-white" : "text-white"}`}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2">
+                    {bornMuslim === true ? "Yes" : bornMuslim === false ? "No" : "Not set"}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </View>
+              )}
+            </Pressable>
+
+            {/* Religious Practice Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'religiousPractice' ? null : 'religiousPractice')}
+              className="flex-row items-center justify-between py-3 border-b border-gray-200"
+            >
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">🤲</Text>
+                <Text className="text-white/80 text-base">Religious Practice</Text>
+              </View>
+              {editingField === 'religiousPractice' ? (
+                <View className="flex-row gap-2 flex-wrap">
+                  {["actively practicing", "moderately practicing", "not practicing", "Prays 5 times a day"].map((option) => (
+                    <Pressable
+                      key={option}
+                      onPress={async () => {
+                        setReligiousPractice(option);
+                        setEditingField(null);
+                        await handleSave({ religiousPractice: option });
+                      }}
+                      className={`px-3 py-1.5 rounded-full ${
+                        religiousPractice === option ? "bg-[#B8860B]" : "bg-white/20"
+                      }`}
+                    >
+                      <Text className={`text-sm capitalize ${religiousPractice === option ? "text-white" : "text-white"}`}>
+                        {option}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2 capitalize">{religiousPractice || "Not set"}</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </View>
+              )}
+            </Pressable>
+
+            {/* Alcohol Habit Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'alcoholHabit' ? null : 'alcoholHabit')}
+              className="py-3 border-b border-gray-200"
+            >
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center flex-1">
+                  <Text className="text-xl mr-3">🍷</Text>
+                  <Text className="text-white/80 text-base">Alcohol</Text>
+                </View>
+                {editingField !== 'alcoholHabit' && (
+                  <View className="flex-row items-center">
+                    <Text className="text-white text-base mr-2 capitalize">{alcoholHabit || "Not set"}</Text>
+                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  </View>
+                )}
+              </View>
+              {editingField === 'alcoholHabit' && (
+                <View className="flex-row gap-2 flex-wrap ml-10">
+                  {["never", "socially", "often"].map((option) => (
+                    <Pressable
+                      key={option}
+                      onPress={async () => {
+                        setAlcoholHabit(option);
+                        setEditingField(null);
+                        await handleSave({ alcoholHabit: option });
+                      }}
+                      className={`px-3 py-1.5 rounded-full ${
+                        alcoholHabit === option ? "bg-[#B8860B]" : "bg-white/20"
+                      }`}
+                    >
+                      <Text className={`text-sm capitalize ${alcoholHabit === option ? "text-white" : "text-white"}`}>
+                        {option}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </Pressable>
+
+            {/* Smoking Habit Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'smokingHabit' ? null : 'smokingHabit')}
+              className="py-3"
+            >
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center flex-1">
+                  <Text className="text-xl mr-3">🚬</Text>
+                  <Text className="text-white/80 text-base">Smoking</Text>
+                </View>
+                {editingField !== 'smokingHabit' && (
+                  <View className="flex-row items-center">
+                    <Text className="text-white text-base mr-2 capitalize">{smokingHabit || "Not set"}</Text>
+                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  </View>
+                )}
+              </View>
+              {editingField === 'smokingHabit' && (
+                <View className="flex-row gap-2 flex-wrap ml-10">
+                  {["never", "socially", "often"].map((option) => (
+                    <Pressable
+                      key={option}
+                      onPress={async () => {
+                        setSmokingHabit(option);
+                        setEditingField(null);
+                        await handleSave({ smokingHabit: option });
+                      }}
+                      className={`px-3 py-1.5 rounded-full ${
+                        smokingHabit === option ? "bg-[#B8860B]" : "bg-white/20"
+                      }`}
+                    >
+                      <Text className={`text-sm capitalize ${smokingHabit === option ? "text-white" : "text-white"}`}>
+                        {option}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </Pressable>
+          </View>
+
+          {/* Background Section */}
+          <View className="bg-white/10 rounded-2xl p-5 mb-4">
+            <Text className="text-white text-xl font-semibold mb-5">Background</Text>
+            
+            {/* Education Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'education' ? null : 'education')}
+              className="flex-row items-center justify-between py-3 border-b border-gray-200"
+            >
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">🎓</Text>
+                <Text className="text-white/80 text-base">Education</Text>
+              </View>
+              {editingField === 'education' ? (
+                <TextInput
+                  className="bg-white/20 border border-white/30 text-white px-3 py-1.5 rounded-lg text-right min-w-[120]"
+                  placeholder="Enter education"
+                  placeholderTextColor="#999"
+                  value={education}
+                  onChangeText={setEducation}
+                  autoCapitalize="words"
+                  autoFocus
+                />
+              ) : (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2">{education || "Not set"}</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </View>
+              )}
+            </Pressable>
+
+            {/* Profession Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'profession' ? null : 'profession')}
+              className="flex-row items-center justify-between py-3"
+            >
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">💼</Text>
+                <Text className="text-white/80 text-base">Profession</Text>
+              </View>
+              {editingField === 'profession' ? (
+                <TextInput
+                  className="bg-white/20 border border-white/30 text-white px-3 py-1.5 rounded-lg text-right min-w-[120]"
+                  placeholder="Enter profession"
+                  placeholderTextColor="#999"
+                  value={profession}
+                  onChangeText={setProfession}
+                  autoCapitalize="words"
+                  autoFocus
+                />
+              ) : (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2">{profession || "Not set"}</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </View>
+              )}
+            </Pressable>
+
+            {/* Save button for text inputs */}
+            {(editingField === 'education' || editingField === 'profession') && (
+              <View className="flex-row gap-3 mt-4">
+                <Pressable
+                  className="flex-1 bg-white/10 px-4 py-2 rounded-xl"
+                  onPress={() => {
+                    setEditingField(null);
+                    loadProfile();
+                  }}
+                >
+                  <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="flex-1 bg-[#B8860B] px-4 py-2 rounded-xl"
+                  onPress={async () => {
+                    await handleSave();
+                    setEditingField(null);
+                  }}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text className="text-white font-semibold text-center text-sm">Save</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
+          </View>
+
+          {/* Ethnicity & Nationality Section */}
+          <View className="bg-white/10 rounded-2xl p-5 mb-4">
+            <Text className="text-white text-xl font-semibold mb-5">Ethnicity & Nationality</Text>
+            
+            {/* Ethnicity Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'ethnicity' ? null : 'ethnicity')}
+              className="flex-row items-center justify-between py-3 border-b border-gray-200"
+            >
+              <View className="flex-row items-center flex-1">
+                <Text className="text-xl mr-3">🌍</Text>
+                <Text className="text-white/80 text-base">Ethnicity</Text>
+              </View>
+              {editingField === 'ethnicity' ? (
+                <View className="items-end">
+                  {ETHNICITY_OPTIONS.map((option) => (
+                    <Pressable
+                      key={option}
+                      onPress={async () => {
+                        setEthnicity(option);
+                        setEditingField(null);
+                        await handleSave({ ethnicity: option });
+                      }}
+                      className={`px-3 py-1.5 rounded-full mb-2 ${
+                        ethnicity === option ? "bg-[#B8860B]" : "bg-white/20"
+                      }`}
+                    >
+                      <Text className={`text-sm ${ethnicity === option ? "text-white" : "text-white"}`}>
+                        {option}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <View className="flex-row items-center">
+                  <Text className="text-white text-base mr-2">{ethnicity || "Not set"}</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </View>
+              )}
+            </Pressable>
+
+            {/* Nationality Row */}
+            <Pressable
+              onPress={() => setEditingField(editingField === 'nationality' ? null : 'nationality')}
+              className="py-3"
+            >
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center flex-1">
+                  <Text className="text-xl mr-3">🏳️</Text>
+                  <Text className="text-white/80 text-base">Nationality</Text>
+                </View>
+                {editingField !== 'nationality' && (
+                  <View className="flex-row items-center">
+                    <Text className="text-white text-base mr-2">{nationality || "Not set"}</Text>
+                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  </View>
+                )}
+              </View>
+              {editingField === 'nationality' && (
+                <ScrollView className="max-h-64 ml-10" showsVerticalScrollIndicator={false}>
+                  {NATIONALITY_OPTIONS.map((option) => (
+                    <Pressable
+                      key={option}
+                      onPress={async () => {
+                        setNationality(option);
+                        setEditingField(null);
+                        await handleSave({ nationality: option });
+                      }}
+                      className={`px-3 py-2 rounded-lg mb-1 ${
+                        nationality === option ? "bg-[#B8860B]" : "bg-white/20"
+                      }`}
+                    >
+                      <Text className={`text-sm ${nationality === option ? "text-white" : "text-white"}`}>
+                        {option}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
+            </Pressable>
+          </View>
+
+          {/* Hobbies Section */}
+          <View className="bg-white/10 rounded-2xl p-5 mb-4">
+            <Text className="text-white text-xl font-semibold mb-5">Hobbies</Text>
+            
+            {editingField === 'hobbies' ? (
+              <ScrollView className="max-h-96" showsVerticalScrollIndicator={false}>
+                <View className="flex-row flex-wrap gap-3">
+                  {HOBBIES.map((hobby) => {
+                    const isSelected = hobbies.includes(hobby.name);
+                    return (
+                      <Pressable
+                        key={hobby.name}
+                        onPress={() => {
+                          if (isSelected) {
+                            setHobbies(hobbies.filter((h) => h !== hobby.name));
+                          } else {
+                            if (hobbies.length < 3) {
+                              setHobbies([...hobbies, hobby.name]);
+                            } else {
+                              Alert.alert("Limit Reached", "You can only select up to 3 hobbies.");
+                            }
+                          }
+                        }}
+                        className={`px-3 py-2 rounded-full flex-row items-center gap-2 ${
+                          isSelected ? "bg-[#B8860B]" : "bg-white/20"
+                        } ${hobbies.length >= 3 && !isSelected ? "opacity-50" : ""}`}
+                      >
+                        <Text className="text-base">{hobby.emoji}</Text>
+                        <Text className={`text-sm ${isSelected ? "text-white" : "text-white"}`}>
+                          {hobby.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            ) : (
+              <Pressable
+                onPress={() => setEditingField(editingField === 'hobbies' ? null : 'hobbies')}
+                className="py-3"
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center flex-1 mr-3">
+                    <Text className="text-xl mr-3">🎯</Text>
+                    <Text className="text-white/80 text-base">Hobbies</Text>
+                  </View>
+                  <View className="flex-row items-center flex-shrink-0">
+                    {hobbies.length > 0 ? (
+                      <View className="flex-row flex-wrap gap-1.5 mr-2 items-center" style={{ maxWidth: 180 }}>
+                        {hobbies.map((hobbyName) => {
+                          const hobby = HOBBIES.find((h) => h.name === hobbyName);
+                          return (
+                            <View key={hobbyName} className="bg-[#B8860B]/20 px-2 py-1 rounded-full flex-row items-center gap-1">
+                              {hobby && <Text className="text-xs">{hobby.emoji}</Text>}
+                              <Text className="text-white text-xs" numberOfLines={1}>{hobbyName}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ) : (
+                      <Text className="text-white/50 text-base mr-2">Not set</Text>
+                    )}
+                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  </View>
+                </View>
+              </Pressable>
+            )}
+            {editingField === 'hobbies' && (
+              <View className="flex-row gap-3 mt-4">
+                <Pressable
+                  className="flex-1 bg-white/10 px-4 py-2 rounded-xl"
+                  onPress={() => {
+                    setEditingField(null);
+                    loadProfile();
+                  }}
+                >
+                  <Text className="text-white font-semibold text-center text-sm">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="flex-1 bg-[#B8860B] px-4 py-2 rounded-xl"
+                  onPress={async () => {
+                    await handleSave();
+                    setEditingField(null);
+                  }}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text className="text-white font-semibold text-center text-sm">Save</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
+          </View>
+
+          {/* Bio Section */}
+          <View className="bg-white/10 rounded-2xl p-5 mb-4">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-white text-xl font-semibold">Bio</Text>
+              {editingSection !== 'bio' && (
+                <Pressable
+                  onPress={() => setEditingSection('bio')}
+                  className="px-3 py-1 bg-[#B8860B]/20 rounded-lg"
+                >
+                  <Text className="text-[#B8860B] text-xs font-semibold">Edit</Text>
+                </Pressable>
+              )}
+            </View>
+            {editingSection === 'bio' ? (
+              <TextInput
+                className="bg-white/20 border border-white/30 text-white p-3 rounded-xl h-24"
+                placeholder="Tell us about yourself"
+                placeholderTextColor="#999"
+                value={bio}
+                onChangeText={setBio}
+                multiline
+                textAlignVertical="top"
+              />
+            ) : (
+              <Text className="text-white/80 text-base">{bio || "No bio yet"}</Text>
+            )}
+            {editingSection === 'bio' && (
+              <View className="flex-row gap-3 mt-4">
+                <Pressable
+                  className="flex-1 bg-gray-200 px-4 py-2 rounded-xl"
+                  onPress={() => {
+                    setEditingSection(null);
+                    loadProfile();
+                  }}
+                >
+                  <Text className="text-black font-semibold text-center text-sm">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="flex-1 bg-[#B8860B] px-4 py-2 rounded-xl"
+                  onPress={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text className="text-white font-semibold text-center text-sm">Save</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
+          </View>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
