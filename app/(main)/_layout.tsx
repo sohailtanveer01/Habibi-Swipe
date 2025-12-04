@@ -1,6 +1,7 @@
 import { Tabs, usePathname } from "expo-router";
 import { useEffect, useState } from "react";
-import { Image, View, Text, Platform, StyleSheet } from "react-native";
+import { View, Text, Platform, StyleSheet } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
 import { BlurView } from "expo-blur";
@@ -121,43 +122,50 @@ export default function MainLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#F5F573",
-        tabBarInactiveTintColor: "#000000",
+        tabBarActiveTintColor: "#000000", // Black for active icon
+        tabBarInactiveTintColor: "#FFFFFF", // White for inactive icons
         tabBarStyle: hideTabBar ? { display: "none" } : {
           position: "absolute",
-          bottom: Platform.OS === "ios" ? 60 : 28,
-          left: 30,
-          right: 30,
+          bottom: Platform.OS === "ios" ? 34 : 20,
+          left: 20,
+          right: 20,
           elevation: 20,
-          backgroundColor: "#EDEDED",
+          backgroundColor: "rgba(237, 237, 237, 0.6)", // More transparent
           borderTopWidth: 0,
-          height: Platform.OS === "ios" ? 65 : 58,
-          borderRadius: 28,
-          overflow: "hidden",
-          // Premium shadow
+          height: Platform.OS === "ios" ? 70 : 65,
+          borderRadius: 35,
+          paddingTop: 8,
+          paddingBottom: Platform.OS === "ios" ? 20 : 12,
+          paddingHorizontal: 8,
+          overflow: "hidden", // Clip content to prevent shadow bleed
+          // Minimal shadow to prevent visible shade outside
           ...Platform.select({
             ios: {
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: 10 },
-              shadowOpacity: 0.35,
-              shadowRadius: 20,
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.03,
+              shadowRadius: 4,
             },
             android: {
-              elevation: 12,
+              elevation: 2,
             },
           }),
         },
         tabBarBackground: () =>
           Platform.OS === "ios" ? (
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill}  >
-              <View style={styles.premiumGlass} />
+            <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill}>
+              <View style={styles.tabBarBackground} />
             </BlurView>
           ) : (
-            <View style={styles.androidGlass} />
+            <View style={styles.tabBarBackground} />
           ),
         tabBarItemStyle: {
           paddingTop: 4,
           paddingBottom: 4,
+          borderRadius: 20,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
         },
       }}
     >
@@ -167,11 +175,13 @@ export default function MainLayout() {
           title: "Swipe",
           tabBarLabel: "",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "home" : "home-outline"} 
-              size={24} 
-              color={color} 
-            />
+            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+              <Ionicons 
+                name={focused ? "home" : "home-outline"} 
+                size={28} 
+                color={focused ? "#B8860B" : "#9CA3AF"} 
+              />
+            </View>
           ),
         }}
       />
@@ -181,11 +191,13 @@ export default function MainLayout() {
           title: "Likes",
           tabBarLabel: "",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "heart" : "heart-outline"} 
-              size={24} 
-              color={color} 
-            />
+            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+              <Ionicons 
+                name={focused ? "heart" : "heart-outline"} 
+                size={28} 
+                color={focused ? "#B8860B" : "#9CA3AF"} 
+              />
+            </View>
           ),
         }}
       />
@@ -195,11 +207,11 @@ export default function MainLayout() {
           title: "Chats",
           tabBarLabel: "",
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ position: "relative" }}>
+            <View style={[styles.iconContainer, focused && styles.activeIconContainer, { position: "relative" }]}>
               <Ionicons 
                 name={focused ? "chatbubble" : "chatbubble-outline"} 
-                size={24} 
-                color={color} 
+                size={28} 
+                color={focused ? "#B8860B" : "#9CA3AF"} 
               />
               {unreadCount > 0 && (
                 <View style={styles.notificationBadge}>
@@ -215,36 +227,38 @@ export default function MainLayout() {
         options={{
           title: "Profile",
           tabBarLabel: "",
-          tabBarIcon: ({ size }) => {
+          tabBarIcon: ({ size, focused }) => {
             if (profilePhoto) {
               return (
-                <Image
-                  source={{ uri: profilePhoto }}
-                  style={{
-                    width: size + 8,
-                    height: size + 8,
-                    borderRadius: (size + 4) / 2,
-                    borderWidth: 2,
-                    borderColor: "#ffffff",
-                  }}
-                  resizeMode="cover"
-                />
+                <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+                  <Image
+                    source={{ uri: profilePhoto }}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                    }}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                  />
+                </View>
               );
             }
             return (
-              <View
-                style={{
-                  width: size + 4,
-                  height: size + 4,
-                  borderRadius: (size + 4) / 2,
-                  backgroundColor: "#9ca3af",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 2,
-                  borderColor: "#ffffff",
-                }}
-              >
-                <Text style={{ fontSize: (size + 4) * 0.6, color: "#ffffff" }}>👤</Text>
+              <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: "#9CA3AF",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 18, color: "#FFFFFF" }}>👤</Text>
+                </View>
               </View>
             );
           },
@@ -261,12 +275,28 @@ export default function MainLayout() {
 }
 
 const styles = StyleSheet.create({
+  tabBarBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(237, 237, 237, 0.6)",
+    borderRadius: 35,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activeIconContainer: {
+    borderWidth: 2,
+    borderColor: "#B8860B", // Gold border for active tab
+  },
   notificationBadge: {
     position: "absolute",
-    top: -2,
-    right: -2,
-    width: 12,
-    height: 12,
+    top: 2,
+    right: 2,
+    width: 10,
+    height: 10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -274,6 +304,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#ef4444", // Red dot
+    backgroundColor: "#EF4444", // Red dot for notifications
   },
 });
