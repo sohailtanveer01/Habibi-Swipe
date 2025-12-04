@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Pressable, Image, ActivityIndicator, Dimensions, RefreshControl } from "react-native";
+import { View, Text, FlatList, Pressable, ActivityIndicator, Dimensions, RefreshControl } from "react-native";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { supabase } from "../../../lib/supabase";
 
@@ -578,15 +579,11 @@ export default function LikesScreen() {
                   <View style={{ width: '100%', height: '100%', position: 'relative' }}>
                     <Image
                       source={{ uri: mainPhoto }}
-                      className="w-full h-full"
-                      resizeMode="cover"
-                      onError={(e) => {
-                        console.log("Image load error for:", mainPhoto);
-                        console.log("Error details:", e.nativeEvent);
-                      }}
-                      onLoad={() => {
-                        console.log("Image loaded successfully:", mainPhoto);
-                      }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="memory-disk"
+                      priority="normal"
                     />
                     {/* Gradient overlay for text readability */}
                     <View 

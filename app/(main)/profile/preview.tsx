@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, Pressable, Image, Dimensions } from "react-native";
+import { View, Text, ScrollView, Pressable, Dimensions } from "react-native";
+import { Image } from "expo-image";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
@@ -154,8 +155,11 @@ export default function ProfilePreviewScreen() {
               >
                 <Image 
                   source={{ uri: photo }} 
-                  className="w-full h-full" 
-                  resizeMode="cover" 
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
+                  priority={index === 0 ? "high" : "normal"}
                 />
                 
                 {/* Show name and age only on first photo */}

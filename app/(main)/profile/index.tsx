@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { View, Text, ScrollView, Image, ActivityIndicator, Pressable, Alert, Dimensions, LayoutChangeEvent } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Pressable, Alert, Dimensions, LayoutChangeEvent } from "react-native";
+import { Image } from "expo-image";
 import { supabase } from "../../../lib/supabase";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -251,8 +252,11 @@ function DraggablePhotoCard({
           >
             <Image
               source={{ uri: photo }}
-              className="w-full h-full rounded-3xl"
-              resizeMode="cover"
+              style={{ width: '100%', height: '100%', borderRadius: 24 }}
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
+              priority={isMainPhoto ? "high" : "normal"}
             />
             {isMainPhoto && (
               <View className="absolute top-3 left-3 bg-[#B8860B] px-2 py-1 rounded-full">
@@ -628,8 +632,11 @@ export default function ProfileScreen() {
               {mainPhoto ? (
                 <Image
                   source={{ uri: mainPhoto }}
-                  className="w-32 h-32 rounded-full"
-                  resizeMode="cover"
+                  style={{ width: 128, height: 128, borderRadius: 64 }}
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
+                  placeholder={{ blurhash: "LKO2?U%2Tw=w]~RBVZRi};RPxuwH" }}
                 />
               ) : (
                 <View className="w-32 h-32 rounded-full bg-white/10 items-center justify-center">

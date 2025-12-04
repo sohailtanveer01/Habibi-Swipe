@@ -1,4 +1,5 @@
-import { View, Text, Image, Dimensions, StyleSheet, ScrollView } from "react-native";
+import { View, Text, Dimensions, StyleSheet, ScrollView } from "react-native";
+import { Image } from "expo-image";
 
 const { width, height } = Dimensions.get("window");
 
@@ -37,7 +38,10 @@ export default function SwipeCard({ profile }: any) {
               <Image
                 source={{ uri: photo }}
                 style={styles.image}
-                resizeMode="cover"
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
+                priority="high"
               />
 
               {/* Name & age only on the first (main) photo */}

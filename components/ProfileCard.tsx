@@ -1,4 +1,5 @@
-import { View, Text, Image, ScrollView, Dimensions } from "react-native";
+import { View, Text, ScrollView, Dimensions } from "react-native";
+import { Image } from "expo-image";
 import { useState } from "react";
 
 const { width } = Dimensions.get("window");
@@ -47,8 +48,11 @@ export default function ProfileCard({
           >
             <Image 
               source={{ uri: photo }} 
-              className="w-full h-full" 
-              resizeMode="cover" 
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
+              priority={index === 0 ? "high" : "normal"}
             />
             
             {/* Show name and age only on first photo */}
