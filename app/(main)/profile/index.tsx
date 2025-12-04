@@ -1,9 +1,16 @@
-import { useState, useEffect } from "react";
-import { View, Text, ScrollView, Image, ActivityIndicator, Pressable, Alert, Dimensions } from "react-native";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { View, Text, ScrollView, Image, ActivityIndicator, Pressable, Alert, Dimensions, LayoutChangeEvent } from "react-native";
 import { supabase } from "../../../lib/supabase";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  runOnJS,
+} from "react-native-reanimated";
 
 async function uploadPhoto(uri: string, userId: string) {
   const ext = uri.split(".").pop() || "jpg";
@@ -45,6 +52,235 @@ function calculateProfileCompletion(profile: any): number {
   return Math.round((completed / total) * 100);
 }
 
+// Draggable Photo Card Component
+interface DraggablePhotoCardProps {
+  photo: string;
+  index: number;
+  isMainPhoto: boolean;
+  isDragging: boolean;
+  onLayout: (event: LayoutChangeEvent) => void;
+  onLongPress: () => void;
+  onDragUpdate?: (targetIndex: number | null) => void;
+  onDragEnd: (targetIndex: number | null) => void;
+  onRemove: () => void;
+  hoverTargetIndex: number | null;
+  draggingIndex: number | null;
+  layoutPositions: { [key: number]: { x: number; y: number; width: number; height: number } };
+  layoutVersion: number;
+  maxPhotos: number;
+}
+
+function DraggablePhotoCard({
+  photo,
+  index,
+  isMainPhoto,
+  isDragging,
+  onLayout,
+  onLongPress,
+  onDragUpdate,
+  onDragEnd,
+  onRemove,
+  hoverTargetIndex,
+  draggingIndex,
+  layoutPositions,
+  layoutVersion,
+  maxPhotos,
+}: DraggablePhotoCardProps) {
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+  const shiftX = useSharedValue(0);
+  const shiftY = useSharedValue(0);
+
+  const findTargetIndex = (x: number, y: number, maxPhotos: number): number | null => {
+    "worklet";
+    let closestIndex: number | null = null;
+    let minDistance = Infinity;
+    
+    // Check only actual photo positions (0 to maxPhotos - 1)
+    for (let i = 0; i < maxPhotos; i++) {
+      const pos = layoutPositions[i];
+      if (pos) {
+        const centerX = pos.x + pos.width / 2;
+        const centerY = pos.y + pos.height / 2;
+        const distance = Math.sqrt(
+          Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)
+        );
+        if (distance < Math.max(pos.width, pos.height) / 2 && distance < minDistance) {
+          minDistance = distance;
+          closestIndex = i;
+        }
+      }
+    }
+    return closestIndex;
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      scale.value = withSpring(1.1);
+      opacity.value = withSpring(0.8);
+    } else {
+      scale.value = withSpring(1);
+      opacity.value = withSpring(1);
+    }
+  }, [isDragging]);
+
+  // Calculate shift for non-dragging items - use effect to update when hover target changes
+  // Access layoutPositions prop (which is a snapshot of layoutPositions.current)
+  useEffect(() => {
+    if (draggingIndex !== null && draggingIndex !== index && hoverTargetIndex !== null && hoverTargetIndex !== draggingIndex) {
+      // Access layoutPositions from the prop (snapshot)
+      const currentPos = layoutPositions[index];
+      if (!currentPos) {
+        shiftX.value = withSpring(0);
+        shiftY.value = withSpring(0);
+        return;
+      }
+
+      // Determine which direction to shift based on array indices
+      if (draggingIndex < hoverTargetIndex) {
+        // Dragging forward: items between draggingIndex and hoverTargetIndex shift backward
+        if (index > draggingIndex && index <= hoverTargetIndex) {
+          // Shift to previous position in array
+          const prevIndex = index - 1;
+          const prevPos = layoutPositions[prevIndex];
+          if (prevPos) {
+            shiftX.value = withSpring(prevPos.x - currentPos.x);
+            shiftY.value = withSpring(prevPos.y - currentPos.y);
+          } else {
+            shiftX.value = withSpring(0);
+            shiftY.value = withSpring(0);
+          }
+        } else {
+          shiftX.value = withSpring(0);
+          shiftY.value = withSpring(0);
+        }
+      } else if (draggingIndex > hoverTargetIndex) {
+        // Dragging backward: items between hoverTargetIndex and draggingIndex shift forward
+        if (index >= hoverTargetIndex && index < draggingIndex) {
+          // Shift to next position in array
+          const nextIndex = index + 1;
+          const nextPos = layoutPositions[nextIndex];
+          if (nextPos) {
+            shiftX.value = withSpring(nextPos.x - currentPos.x);
+            shiftY.value = withSpring(nextPos.y - currentPos.y);
+          } else {
+            shiftX.value = withSpring(0);
+            shiftY.value = withSpring(0);
+          }
+        } else {
+          shiftX.value = withSpring(0);
+          shiftY.value = withSpring(0);
+        }
+      } else {
+        shiftX.value = withSpring(0);
+        shiftY.value = withSpring(0);
+      }
+    } else {
+      shiftX.value = withSpring(0);
+      shiftY.value = withSpring(0);
+    }
+    // layoutPositions prop updates when layoutVersion changes (via useMemo in parent)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoverTargetIndex, draggingIndex, index, layoutVersion, layoutPositions]);
+
+  const panGesture = Gesture.Pan()
+    .enabled(isDragging)
+    .onUpdate((e) => {
+      translateX.value = e.translationX;
+      translateY.value = e.translationY;
+      
+      // Find current hover target and notify parent
+      const currentPos = layoutPositions[index];
+      if (currentPos) {
+        const targetX = currentPos.x + currentPos.width / 2 + e.translationX;
+        const targetY = currentPos.y + currentPos.height / 2 + e.translationY;
+        const targetIndex = findTargetIndex(targetX, targetY, maxPhotos);
+        if (onDragUpdate) {
+          runOnJS(onDragUpdate)(targetIndex);
+        }
+      }
+    })
+    .onEnd((e) => {
+      const currentPos = layoutPositions[index];
+      let targetIndex: number | null = null;
+      
+      if (currentPos) {
+        const targetX = currentPos.x + currentPos.width / 2 + e.translationX;
+        const targetY = currentPos.y + currentPos.height / 2 + e.translationY;
+        targetIndex = findTargetIndex(targetX, targetY, maxPhotos);
+      }
+      
+      runOnJS(onDragEnd)(targetIndex);
+      
+      translateX.value = withSpring(0);
+      translateY.value = withSpring(0);
+      scale.value = withSpring(1);
+      opacity.value = withSpring(1);
+      shiftX.value = withSpring(0);
+      shiftY.value = withSpring(0);
+    });
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: translateX.value + shiftX.value },
+        { translateY: translateY.value + shiftY.value },
+        { scale: scale.value },
+      ],
+      opacity: opacity.value,
+      zIndex: isDragging ? 1000 : 1,
+    };
+  });
+
+  // Check if this is the hover target
+  const isHoverTarget = hoverTargetIndex === index && draggingIndex !== null && draggingIndex !== index;
+
+  return (
+    <View 
+      className="w-[48%]"
+      style={{ aspectRatio: 0.8 }}
+      onLayout={onLayout}
+    >
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={animatedStyle}>
+          <Pressable
+            onLongPress={onLongPress}
+            className="w-full h-full relative"
+          >
+            <Image
+              source={{ uri: photo }}
+              className="w-full h-full rounded-3xl"
+              resizeMode="cover"
+            />
+            {isMainPhoto && (
+              <View className="absolute top-3 left-3 bg-[#B8860B] px-2 py-1 rounded-full">
+                <Text className="text-white text-xs font-bold">Main</Text>
+              </View>
+            )}
+            {isDragging && (
+              <View className="absolute inset-0 bg-[#B8860B]/20 border-2 border-[#B8860B] rounded-3xl" />
+            )}
+            {isHoverTarget && (
+              <View className="absolute inset-0 bg-[#B8860B]/10 border-2 border-dashed border-[#B8860B] rounded-3xl" />
+            )}
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              className="absolute top-3 right-3 bg-red-500 w-7 h-7 rounded-full items-center justify-center"
+            >
+              <Ionicons name="close" size={16} color="#fff" />
+            </Pressable>
+          </Pressable>
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -53,10 +289,33 @@ export default function ProfileScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [hoverTargetIndex, setHoverTargetIndex] = useState<number | null>(null);
+  const layoutPositions = useRef<{ [key: number]: { x: number; y: number; width: number; height: number } }>({});
+  const [layoutVersion, setLayoutVersion] = useState(0); // Track layout changes to trigger re-renders
+  const previousPhotosRef = useRef<string>(""); // Track previous photos array to detect reorders
 
   useEffect(() => {
     loadProfile();
   }, []);
+
+  // Clear layout positions when photos array order changes (after reorder)
+  // This ensures positions are recalculated with the new order
+  // Only clear if the order actually changed, not just on every render
+  useEffect(() => {
+    const photosString = JSON.stringify(photos);
+    if (previousPhotosRef.current && previousPhotosRef.current !== photosString) {
+      // Photos order changed - clear positions but give components time to re-render first
+      // Use requestAnimationFrame to ensure it happens after the render cycle
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          layoutPositions.current = {};
+          setLayoutVersion(prev => prev + 1);
+        });
+      });
+    }
+    previousPhotosRef.current = photosString;
+  }, [photos]);
 
   const loadProfile = async () => {
     try {
@@ -87,6 +346,8 @@ export default function ProfileScreen() {
       }
       
       setPhotos(data.photos || []);
+      // Reset layout positions when photos change
+      layoutPositions.current = {};
     } catch (e: any) {
       console.error("Error loading profile:", e);
     } finally {
@@ -274,6 +535,75 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleReorder = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    
+    const newPhotos = [...photos];
+    const [movedPhoto] = newPhotos.splice(fromIndex, 1);
+    newPhotos.splice(toIndex, 0, movedPhoto);
+    
+    setPhotos(newPhotos);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const locationPoint = profile?.location && 
+          typeof profile.location === 'object' &&
+          typeof profile.location.lon === 'number' &&
+          typeof profile.location.lat === 'number' &&
+          !isNaN(profile.location.lon) &&
+          !isNaN(profile.location.lat)
+          ? `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`
+          : null;
+
+        const updatePayload: any = {
+          photos: newPhotos,
+          last_active_at: new Date().toISOString(),
+        };
+
+        if (locationPoint) {
+          updatePayload.location = locationPoint;
+        }
+
+        const { error: updateError } = await supabase
+          .from("users")
+          .update(updatePayload)
+          .eq("id", user.id);
+      
+        if (updateError) {
+          console.error("Error reordering photos:", updateError);
+          // Revert the state change
+          setPhotos(photos);
+          return;
+        }
+        
+        console.log("Photos reordered successfully");
+      }
+    } catch (e: any) {
+      console.error("Error reordering photos:", e);
+      // Revert the state change
+      setPhotos(photos);
+    }
+  };
+
+  const onLayout = (index: number, event: LayoutChangeEvent) => {
+    const { x, y, width, height } = event.nativeEvent.layout;
+    // Create a new object to avoid mutation issues
+    layoutPositions.current = {
+      ...layoutPositions.current,
+      [index]: { x, y, width, height },
+    };
+    // Increment version to trigger re-renders
+    setLayoutVersion(prev => prev + 1);
+  };
+
+  // Create a memoized snapshot of layoutPositions that updates when layoutVersion changes
+  // This ensures DraggablePhotoCard components get fresh position data
+  // Must be called before any conditional returns to follow Rules of Hooks
+  const layoutPositionsSnapshot = useMemo(() => {
+    return { ...layoutPositions.current };
+  }, [layoutVersion]);
+
   if (loading) {
     return (
       <View className="flex-1 bg-black items-center justify-center">
@@ -313,96 +643,116 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </View>
-            {/* Edit Button - Pencil Icon positioned next to profile picture */}
-            <Pressable
-              onPress={() => router.push("/(main)/profile/edit")}
-              className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-white/10 border-2 border-white/20 items-center justify-center"
-              style={{ elevation: 4 }}
-            >
-              <Ionicons name="pencil" size={18} color="#B8860B" />
-            </Pressable>
           </View>
 
           {/* Name */}
-          <Text className="text-white text-3xl font-bold mb-2">
+          <Text className="text-white text-3xl font-bold mb-4">
             {fullName}
           </Text>
           
-          {/* Preview Profile Button */}
-          <Pressable
-            onPress={() => router.push("/(main)/profile/preview")}
-            className="mt-2 px-6 py-2 bg-[#B8860B]/10 rounded-full border border-[#B8860B]/30"
-          >
-            <Text className="text-[#B8860B] text-base font-semibold">
-              Preview my profile
-            </Text>
-          </Pressable>
+          {/* Action Buttons */}
+          <View className="flex-row gap-3 items-center justify-center">
+            {/* Edit Profile Button */}
+            <Pressable
+              onPress={() => router.push("/(main)/profile/edit")}
+              className="px-6 py-2.5 bg-[#B8860B]/10 rounded-full border border-[#B8860B]/30"
+            >
+              <Text className="text-[#B8860B] text-base font-semibold">
+                Edit Profile
+              </Text>
+            </Pressable>
+            
+            {/* Preview Profile Button */}
+            <Pressable
+              onPress={() => router.push("/(main)/profile/preview")}
+              className="px-6 py-2.5 bg-[#B8860B]/10 rounded-full border border-[#B8860B]/30"
+            >
+              <Text className="text-[#B8860B] text-base font-semibold">
+                Preview Profile
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Photos Section */}
         <View className="mb-6">
           {/* Section Title */}
-          <Text className="text-white text-xl font-bold mb-4">My Photos</Text>
+          {/* <Text className="text-white text-xl font-bold mb-4">My Photos</Text> */}
           
           {/* 2x2 Grid Layout */}
           <View className="flex-row flex-wrap gap-4">
             {/* New Photo Card - Always show if less than 6 photos */}
             {photos.length < 6 && (
-              <Pressable
-                onPress={() => {
-                  // Find first empty slot
-                  const firstEmptyIndex = photos.length;
-                  pickImage(firstEmptyIndex);
-                }}
-                disabled={uploading}
+              <View
                 className="w-[48%]"
                 style={{ aspectRatio: 0.8 }}
+                onLayout={(e) => {
+                  // Track layout for "New Photo" card at index -1 (or photos.length)
+                  const newPhotoIndex = photos.length;
+                  const { x, y, width, height } = e.nativeEvent.layout;
+                  // Create a new object to avoid mutation issues
+                  layoutPositions.current = {
+                    ...layoutPositions.current,
+                    [newPhotoIndex]: { x, y, width, height },
+                  };
+                }}
               >
-                <View 
-                  className="rounded-3xl items-center justify-center w-full h-full"
-                  style={{ 
-                    backgroundColor: '#B8860B', // Gold color
+                <Pressable
+                  onPress={() => {
+                    // Find first empty slot
+                    const firstEmptyIndex = photos.length;
+                    pickImage(firstEmptyIndex);
                   }}
+                  disabled={uploading}
+                  className="w-full h-full"
                 >
-                  {uploading ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <>
-                      <Ionicons name="camera" size={48} color="#fff" style={{ marginBottom: 8 }} />
-                      <Text className="text-white text-base font-semibold">New Photo</Text>
-                      <Text className="text-white/80 text-xs mt-1 text-center">
-                        {6 - photos.length} slot{6 - photos.length > 1 ? 's' : ''} left
-                      </Text>
-                    </>
-                  )}
-                </View>
-              </Pressable>
+                  <View 
+                    className="rounded-3xl items-center justify-center w-full h-full"
+                    style={{ 
+                      backgroundColor: '#B8860B', // Gold color
+                    }}
+                  >
+                    {uploading ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons name="camera" size={48} color="#fff" style={{ marginBottom: 8 }} />
+                        <Text className="text-white text-base font-semibold">New Photo</Text>
+                        <Text className="text-white/80 text-xs mt-1 text-center">
+                          {6 - photos.length} slot{6 - photos.length > 1 ? 's' : ''} left
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                </Pressable>
+              </View>
             )}
             
             {/* Existing Photo Cards */}
             {photos.map((photo, index) => (
-              <View 
-                key={`photo-${index}`} 
-                className="w-[48%] relative"
-                style={{ aspectRatio: 0.8 }}
-              >
-                <Image
-                  source={{ uri: photo }}
-                  className="w-full h-full rounded-3xl"
-                  resizeMode="cover"
-                />
-                {index === 0 && (
-                  <View className="absolute top-3 left-3 bg-[#B8860B] px-2 py-1 rounded-full">
-                    <Text className="text-white text-xs font-bold">Main</Text>
-                  </View>
-                )}
-                <Pressable
-                  className="absolute top-3 right-3 bg-red-500 w-7 h-7 rounded-full items-center justify-center"
-                  onPress={() => removePhoto(photo)}
-                >
-                  <Ionicons name="close" size={16} color="#fff" />
-                </Pressable>
-              </View>
+              <DraggablePhotoCard
+                key={`photo-${index}`}
+                photo={photo}
+                index={index}
+                isMainPhoto={index === 0}
+                isDragging={draggingIndex === index}
+                onLayout={(e) => onLayout(index, e)}
+                onLongPress={() => setDraggingIndex(index)}
+                onDragUpdate={(targetIndex) => setHoverTargetIndex(targetIndex)}
+                onDragEnd={(targetIndex) => {
+                  setDraggingIndex(null);
+                  setHoverTargetIndex(null);
+                  if (targetIndex !== null && targetIndex !== index) {
+                    handleReorder(index, targetIndex);
+                  }
+                }}
+                onRemove={() => removePhoto(photo)}
+                hoverTargetIndex={hoverTargetIndex}
+                draggingIndex={draggingIndex}
+                layoutPositions={layoutPositionsSnapshot}
+                layoutVersion={layoutVersion}
+                maxPhotos={photos.length}
+              />
             ))}
           </View>
         </View>
@@ -410,3 +760,4 @@ export default function ProfileScreen() {
     </ScrollView>
   );
 }
+
