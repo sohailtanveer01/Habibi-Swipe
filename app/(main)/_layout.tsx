@@ -149,7 +149,7 @@ export default function MainLayout() {
         },
         tabBarBackground: () =>
           Platform.OS === "ios" ? (
-            <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill}  >
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill}  >
               <View style={styles.premiumGlass} />
             </BlurView>
           ) : (

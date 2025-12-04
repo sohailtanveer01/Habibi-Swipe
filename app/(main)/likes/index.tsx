@@ -144,6 +144,7 @@ export default function LikesScreen() {
     }
     
     console.log("Parsed my likes array:", myLikesArray.length);
+    console.log("First my like item:", myLikesArray[0] ? JSON.stringify(myLikesArray[0], null, 2) : "none");
     setMyLikes(myLikesArray);
     setLoading(false);
   };
@@ -354,8 +355,11 @@ export default function LikesScreen() {
                     <View style={{ width: '100%', height: '100%', position: 'relative' }}>
                       <Image
                         source={{ uri: mainPhoto }}
-                        className="w-full h-full"
-                        resizeMode="cover"
+                        style={{ width: '100%', height: '100%' }}
+                        contentFit="cover"
+                        transition={200}
+                        cachePolicy="memory-disk"
+                        priority="normal"
                       />
                       {/* Gradient overlay for text readability */}
                       <View 
@@ -459,8 +463,11 @@ export default function LikesScreen() {
                     <View style={{ width: '100%', height: '100%', position: 'relative' }}>
                       <Image
                         source={{ uri: mainPhoto }}
-                        className="w-full h-full"
-                        resizeMode="cover"
+                        style={{ width: '100%', height: '100%' }}
+                        contentFit="cover"
+                        transition={200}
+                        cachePolicy="memory-disk"
+                        priority="normal"
                       />
                       {/* Gradient overlay for text readability */}
                       <View 

@@ -628,7 +628,7 @@ export default function ProfileScreen() {
           {/* Profile Picture with Gold Circle and Completion Percentage */}
           <View className="relative mb-4">
             {/* Gold Circle Border */}
-            <View className="w-36 h-36 rounded-full border-4 border-[#B8860B] items-center justify-center">
+            <View className="w-40 h-40 rounded-full border-4 border-[#B8860B] items-center justify-center overflow-hidden">
               {mainPhoto ? (
                 <Image
                   source={{ uri: mainPhoto }}
