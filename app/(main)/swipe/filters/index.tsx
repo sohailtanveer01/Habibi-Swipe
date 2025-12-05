@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { supabase } from "../../../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -9,11 +9,7 @@ export default function FiltersListScreen() {
   const [preferences, setPreferences] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadPreferences();
-  }, []);
-
-  const loadPreferences = async () => {
+  const loadPreferences = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -21,21 +17,39 @@ export default function FiltersListScreen() {
         return;
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_preferences")
         .select("*")
         .eq("user_id", user.id)
         .single();
 
+      if (error && error.code !== "PGRST116") {
+        console.error("Error loading preferences:", error);
+      }
+
       if (data) {
         setPreferences(data);
+      } else {
+        // If no preferences exist, set to empty object
+        setPreferences(null);
       }
     } catch (error) {
       console.error("Error loading preferences:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    loadPreferences();
+  }, [loadPreferences]);
+
+  // Reload preferences when screen comes into focus (e.g., after saving a filter)
+  useFocusEffect(
+    useCallback(() => {
+      loadPreferences();
+    }, [loadPreferences])
+  );
 
   const getLocationFilterValue = () => {
     if (!preferences?.location_enabled) return "Not set";
