@@ -1,8 +1,9 @@
-import { View, Text, ScrollView, Pressable, Dimensions } from "react-native";
+import { View, Text, ScrollView, Pressable, Dimensions, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
+import { Ionicons } from "@expo/vector-icons";
 
 function calculateAge(dob: string | null): number | null {
   if (!dob) return null;
@@ -36,19 +37,13 @@ export default function ProfilePreviewScreen() {
   const [nationality, setNationality] = useState("");
   const [hobbies, setHobbies] = useState<string[]>([]);
   const [bio, setBio] = useState("");
+  const [prompts, setPrompts] = useState<any[]>([]);
+  const [location, setLocation] = useState<string | null>(null);
+  const [bornMuslim, setBornMuslim] = useState<boolean | null>(null);
+  const [alcoholHabit, setAlcoholHabit] = useState("");
+  const [smokingHabit, setSmokingHabit] = useState("");
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  // Reload profile when screen comes into focus (e.g., after removing a photo)
-  useFocusEffect(
-    useCallback(() => {
-      loadProfile();
-    }, [userId])
-  );
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -67,6 +62,17 @@ export default function ProfilePreviewScreen() {
         .single();
 
       if (error) throw error;
+
+      // Fetch prompts from user_prompts table
+      const { data: promptsData } = await supabase
+        .from("user_prompts")
+        .select("question, answer, display_order")
+        .eq("user_id", profileUserId)
+        .order("display_order", { ascending: true });
+
+      if (promptsData) {
+        setPrompts(promptsData);
+      }
 
       setProfile(data);
       
@@ -93,6 +99,21 @@ export default function ProfilePreviewScreen() {
       setHobbies(data.hobbies || []);
       setBio(data.bio || "");
       setPhotos(data.photos || []);
+      setBornMuslim(data.born_muslim ?? null);
+      setAlcoholHabit(data.alcohol_habit || "");
+      setSmokingHabit(data.smoking_habit || "");
+      
+      // Handle location data (could be PostGIS point, object, or string)
+      if (data.location) {
+        if (typeof data.location === 'string') {
+          setLocation(data.location);
+        } else if (data.location.city || data.location.country) {
+          setLocation(`${data.location.city || ''}${data.location.city && data.location.country ? ', ' : ''}${data.location.country || ''}`);
+        } else if (data.location.lat && data.location.lon) {
+          // PostGIS point - could reverse geocode or show coordinates
+          setLocation(`${data.location.lat.toFixed(2)}, ${data.location.lon.toFixed(2)}`);
+        }
+      }
       
       // Track view if viewing someone else's profile
       if (isViewingOtherProfile) {
@@ -112,181 +133,441 @@ export default function ProfilePreviewScreen() {
       console.error("Error loading profile:", error);
       setLoading(false);
     }
-  };
+  }, [userId, router]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  // Reload profile when screen comes into focus (e.g., after removing a photo)
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
 
   if (loading) {
     return (
-      <View className="flex-1 bg-black items-center justify-center">
-        <Text className="text-white">Loading...</Text>
+      <View style={{ flex: 1, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: '#FFFFFF' }}>Loading...</Text>
       </View>
     );
   }
 
+  if (!profile) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: '#FFFFFF' }}>No profile found</Text>
+      </View>
+    );
+  }
+
+  const fullName = firstName && lastName ? `${firstName} ${lastName}` : profile?.name || "Unknown";
+  const age = calculateAge(dob);
+
+  // Helper functions to check if sections should be shown
+  const hasPersonalInfo = height || maritalStatus || hasChildren !== null;
+  const hasReligiousInfo = sect || bornMuslim !== null || religiousPractice || alcoholHabit || smokingHabit;
+  const hasProfessionalInfo = education || profession;
+  const hasLifestyleInfo = (hobbies && hobbies.length > 0) || location;
+  const hasBackgroundInfo = ethnicity || nationality;
+  const hasPrompts = prompts && prompts.length > 0 && prompts.some((p: any) => p.question && p.answer);
+
+
+  // Render image with optional name/age overlay (only for first image)
+  const renderImage = (photo: string, index: number) => {
+    const isMainPhoto = index === 0;
+    
+    return (
+      <View 
+        key={index} 
+        style={[
+          isMainPhoto ? styles.mainImageContainer : styles.secondaryImageContainer
+        ]}
+      >
+        <Image 
+          source={{ uri: photo }} 
+          style={[
+            isMainPhoto ? styles.mainImage : styles.secondaryImage
+          ]}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+          priority={isMainPhoto ? "high" : "normal"}
+        />
+        
+        {/* Name and Age overlay on first image only */}
+        {isMainPhoto && (
+          <View style={styles.nameOverlay}>
+            <Text style={styles.nameOverlayText}>
+              {fullName}{age !== null ? `, ${age}` : ''}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
-    <View className="flex-1 bg-black">
-      {/* Header with Back Button */}
-      <View className="pt-12 pb-4 px-4 flex-row items-center">
-        <Pressable
-          onPress={() => router.back()}
-          className="mr-4"
-        >
-          <Text className="text-white text-2xl">←</Text>
+    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      {/* Back Button - Fixed at top */}
+      <View style={styles.topBar}>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
-        <Text className="text-white text-xl font-bold">Profile Preview</Text>
       </View>
 
       {/* Scrollable Profile Preview */}
       <ScrollView 
-        className="flex-1"
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {profile && (
-          <>
-            {/* All Photos */}
-            {photos.map((photo: string, index: number) => (
-              <View 
-                key={index} 
-                style={{ 
-                  width: '100%', 
-                  height: Dimensions.get('window').height * 0.75,
-                  position: 'relative' 
-                }}
-              >
-                <Image 
-                  source={{ uri: photo }} 
-                  style={{ width: '100%', height: '100%' }}
-                  contentFit="cover"
-                  transition={200}
-                  cachePolicy="memory-disk"
-                  priority={index === 0 ? "high" : "normal"}
-                />
-                
-                {/* Show name and age only on first photo */}
-                {index === 0 && (
-                  <>
-                    {/* Gradient Overlay */}
-                    <View 
-                      style={{ 
-                        position: 'absolute', 
-                        bottom: 0, 
-                        left: 0, 
-                        right: 0, 
-                        height: 120, 
-                        backgroundColor: 'rgba(0,0,0,0.6)' 
-                      }} 
-                    />
-                    
-                    {/* Name and Age */}
-                    <View style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
-                      <View className="flex-row items-baseline gap-2">
-                        <Text className="text-white text-3xl font-bold">
-                          {firstName && lastName ? `${firstName} ${lastName}` : profile.name || "Unknown"}
-                        </Text>
-                        {calculateAge(dob) !== null && (
-                          <Text className="text-white/90 text-2xl">
-                            {calculateAge(dob)}
-                          </Text>
-                        )}
-                      </View>
+        {/* Build alternating layout: Image -> Data -> Image -> Data... */}
+        {(() => {
+          const sections: JSX.Element[] = [];
+          let imageIndex = 0;
+          let sectionIndex = 0;
+
+          // Always start with first image (with name/age overlay)
+          if (photos.length > 0) {
+            sections.push(renderImage(photos[0], 0));
+            imageIndex = 1;
+          }
+
+          // Collect all data sections
+          const dataSections: JSX.Element[] = [];
+
+          if (hasPersonalInfo) {
+            dataSections.push(
+              <View key="personal" style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Personal Info</Text>
+                <View style={styles.sectionContent}>
+                  {height && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="resize" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>{height}</Text>
                     </View>
-                  </>
-                )}
-              </View>
-            ))}
-            
-            {/* Profile Details */}
-            <View className="bg-white/10 rounded-t-3xl -mt-4 px-4 pt-6 pb-8">
-              {/* Bio */}
-              {bio && (
-                <View className="mb-6">
-                  <Text className="text-white text-base leading-6">
-                    {bio}
-                  </Text>
+                  )}
+                  {maritalStatus && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="heart" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>{maritalStatus.charAt(0).toUpperCase() + maritalStatus.slice(1)}</Text>
+                    </View>
+                  )}
+                  {hasChildren !== null && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="people" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>{hasChildren ? "Has children" : "No children"}</Text>
+                    </View>
+                  )}
                 </View>
-              )}
+              </View>
+            );
+          }
 
-              {/* Key Details */}
-              <View style={{ gap: 12 }}>
-                {height && (
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-white/70 text-base">📏</Text>
-                    <Text className="text-white/90 text-base">{height}</Text>
-                  </View>
-                )}
+          if (hasReligiousInfo) {
+            dataSections.push(
+              <View key="religious" style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Religious</Text>
+                <View style={styles.sectionContent}>
+                  {sect && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="book" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>{sect.charAt(0).toUpperCase() + sect.slice(1)}</Text>
+                    </View>
+                  )}
+                  {bornMuslim !== null && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="star" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>{bornMuslim ? "Born Muslim" : "Converted to Islam"}</Text>
+                    </View>
+                  )}
+                  {religiousPractice && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="flame" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>{religiousPractice.charAt(0).toUpperCase() + religiousPractice.slice(1)}</Text>
+                    </View>
+                  )}
+                  {alcoholHabit && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="wine" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>Alcohol: {alcoholHabit.charAt(0).toUpperCase() + alcoholHabit.slice(1)}</Text>
+                    </View>
+                  )}
+                  {smokingHabit && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="cafe" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>Smoking: {smokingHabit.charAt(0).toUpperCase() + smokingHabit.slice(1)}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
+          }
 
-                {maritalStatus && (
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-white/70 text-base">💍</Text>
-                    <Text className="text-white/90 text-base capitalize">{maritalStatus}</Text>
-                  </View>
-                )}
+          if (hasProfessionalInfo) {
+            dataSections.push(
+              <View key="professional" style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Professional</Text>
+                <View style={styles.sectionContent}>
+                  {education && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="school" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>{education}</Text>
+                    </View>
+                  )}
+                  {profession && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="briefcase" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>{profession}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
+          }
 
-                {hasChildren !== null && (
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-white/70 text-base">👶</Text>
-                    <Text className="text-white/90 text-base">
-                      {hasChildren ? "Has children" : "No children"}
-                    </Text>
-                  </View>
-                )}
-
-                {education && (
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-white/70 text-base">🎓</Text>
-                    <Text className="text-white/90 text-base">{education}</Text>
-                  </View>
-                )}
-
-                {profession && (
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-white/70 text-base">💼</Text>
-                    <Text className="text-white/90 text-base">{profession}</Text>
-                  </View>
-                )}
-
-                {(sect || religiousPractice) && (
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-white/70 text-base">🕌</Text>
-                    <Text className="text-white/90 text-base">
-                      {[sect, religiousPractice].filter(Boolean).join(" • ")}
-                    </Text>
-                  </View>
-                )}
-
-                {(ethnicity || nationality) && (
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-white/70 text-base">🌍</Text>
-                    <Text className="text-white/90 text-base">
-                      {[ethnicity, nationality].filter(Boolean).join(" • ")}
-                    </Text>
-                  </View>
-                )}
-
-                {hobbies && hobbies.length > 0 && (
-                  <View className="flex-row items-start gap-2">
-                    <Text className="text-white/70 text-base">🎯</Text>
-                    <View className="flex-1 flex-row flex-wrap gap-2">
-                      {hobbies.slice(0, 5).map((hobby: string, index: number) => (
-                        <View key={index} className="bg-white/10 px-3 py-1 rounded-full">
-                          <Text className="text-white/90 text-sm">{hobby}</Text>
+          if (hasLifestyleInfo) {
+            dataSections.push(
+              <View key="lifestyle" style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Lifestyle</Text>
+                <View style={styles.sectionContent}>
+                  {hobbies && hobbies.length > 0 && (
+                    <View style={styles.hobbiesContainer}>
+                      {hobbies.map((hobby: string, index: number) => (
+                        <View key={index} style={styles.hobbyChip}>
+                          <Text style={styles.hobbyChipText}>{hobby}</Text>
                         </View>
                       ))}
-                      {hobbies.length > 5 && (
-                        <View className="bg-white/10 px-3 py-1 rounded-full">
-                          <Text className="text-white/90 text-sm">+{hobbies.length - 5} more</Text>
-                        </View>
-                      )}
                     </View>
-                  </View>
-                )}
-
+                  )}
+                  {location && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="location" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>{location}</Text>
+                    </View>
+                  )}
+                </View>
               </View>
-            </View>
-          </>
-        )}
+            );
+          }
+
+          if (hasBackgroundInfo) {
+            dataSections.push(
+              <View key="background" style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Background</Text>
+                <View style={styles.sectionContent}>
+                  {ethnicity && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="globe" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>{ethnicity}</Text>
+                    </View>
+                  )}
+                  {nationality && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="flag" size={18} color="#B8860B" />
+                      <Text style={styles.infoText}>{nationality}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
+          }
+
+          if (bio) {
+            dataSections.push(
+              <View key="about" style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>About Me</Text>
+                <Text style={styles.bioText}>{bio}</Text>
+              </View>
+            );
+          }
+
+          if (hasPrompts) {
+            dataSections.push(
+              <View key="prompts" style={styles.promptsContainer}>
+                {prompts
+                  .filter((p: any) => p.question && p.answer)
+                  .map((prompt: any, index: number) => (
+                    <View key={index} style={styles.promptCard}>
+                      <Text style={styles.promptQuestion}>{prompt.question}</Text>
+                      <Text style={styles.promptAnswer}>{prompt.answer}</Text>
+                    </View>
+                  ))}
+              </View>
+            );
+          }
+
+          // Alternate between images and data sections
+          while (imageIndex < photos.length || sectionIndex < dataSections.length) {
+            // Add data section if available
+            if (sectionIndex < dataSections.length) {
+              sections.push(dataSections[sectionIndex]);
+              sectionIndex++;
+            }
+            
+            // Add image if available
+            if (imageIndex < photos.length) {
+              sections.push(renderImage(photos[imageIndex], imageIndex));
+              imageIndex++;
+            }
+          }
+
+          return sections;
+        })()}
       </ScrollView>
     </View>
   );
 }
 
+const getStyles = () => {
+  const screenHeight = Dimensions.get('window').height;
+  
+  return StyleSheet.create({
+    topBar: {
+      paddingTop: 50,
+      paddingBottom: 12,
+      paddingHorizontal: 20,
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 10,
+      backgroundColor: 'transparent',
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    mainImageContainer: {
+      width: '100%',
+      height: screenHeight * 0.65,
+      position: 'relative',
+      marginBottom: 16,
+    },
+    mainImage: {
+      width: '100%',
+      height: '100%',
+    },
+    secondaryImageContainer: {
+      marginHorizontal: 20,
+      marginBottom: 16,
+      borderRadius: 20,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    secondaryImage: {
+      width: '100%',
+      height: screenHeight * 0.5,
+      borderRadius: 20,
+    },
+    nameOverlay: {
+      position: 'absolute',
+      bottom: 20,
+      left: 20,
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 12,
+    },
+    nameOverlayText: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: '#FFFFFF',
+    },
+    sectionCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 20,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 16,
+  },
+  sectionContent: {
+    gap: 12,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  infoText: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    opacity: 0.9,
+  },
+  hobbiesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  hobbyChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#B8860B',
+  },
+  hobbyChipText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  bioText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#FFFFFF',
+    opacity: 0.9,
+  },
+  promptsContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    gap: 12,
+  },
+  promptCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 18,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(184, 134, 11, 0.2)',
+  },
+  promptQuestion: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+    promptAnswer: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: '#FFFFFF',
+      opacity: 0.85,
+    },
+  });
+};
+
+const styles = getStyles();
