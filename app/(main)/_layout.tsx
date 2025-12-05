@@ -143,7 +143,7 @@ export default function MainLayout() {
             ios: {
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.03,
+              shadowOpacity: 0.01,
               shadowRadius: 4,
             },
             android: {
@@ -153,7 +153,7 @@ export default function MainLayout() {
         },
         tabBarBackground: () =>
           Platform.OS === "ios" ? (
-            <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill}>
+            <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill}>
               <View style={styles.tabBarBackground} />
             </BlurView>
           ) : (
