@@ -223,7 +223,17 @@ export default function SwipeScreen() {
 
   const handleMatchCelebrationClose = (navigateToChat: boolean) => {
     if (navigateToChat && matchData?.matchId) {
-      router.replace(`/(main)/chat/${matchData.matchId}`);
+      // Capture matchId before clearing state
+      const matchIdToNavigate = matchData.matchId;
+      console.log("Navigating to chat with matchId:", matchIdToNavigate);
+      // Close modal first
+      setMatchData(null);
+      // Move to next card
+      setIndex((i) => i + 1);
+      // Navigate to chat
+      setTimeout(() => {
+        router.push(`/(main)/chat/${matchIdToNavigate}`);
+      }, 100);
     } else {
       // Keep swiping - move to next card
       setIndex((i) => i + 1);
@@ -468,9 +478,9 @@ const matchModalStyles = {
     justifyContent: "center" as const,
   },
   keepSwipingButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "#1F1F1F",
     borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "#FFFFFF",
   },
   keepSwipingText: {
     fontSize: 18,
