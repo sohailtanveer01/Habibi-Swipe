@@ -270,6 +270,11 @@ export default function MainLayout() {
       <Tabs.Screen name="profile/preview" options={{ href: null }} />
       <Tabs.Screen name="swipe/filters" options={{ href: null }} />
       <Tabs.Screen name="profile/edit" options={{ href: null }} />
+      <Tabs.Screen name="swipe/filters/index" options={{ href: null }} />
+      <Tabs.Screen name="swipe/filters/location" options={{ href: null }} />
+      <Tabs.Screen name="swipe/filters/age" options={{ href: null }} />
+      <Tabs.Screen name="swipe/filters/height" options={{ href: null }} />
+      <Tabs.Screen name="swipe/filters/ethnicity" options={{ href: null }} />
     </Tabs>
   );
 }

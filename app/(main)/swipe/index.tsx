@@ -177,7 +177,7 @@ export default function SwipeScreen() {
         </Text>
         <Pressable
           className="mt-4 bg-[#B8860B] px-6 py-3 rounded-full"
-          onPress={() => router.push("/(main)/swipe/filters")}
+          onPress={() => router.push("/(main)/swipe/filters/")}
         >
           <Text className="text-white font-semibold">Adjust Filters for More Profiles</Text>
         </Pressable>
@@ -194,12 +194,12 @@ export default function SwipeScreen() {
   return (
     <View className="flex-1 bg-black">
       {/* Apply Filters Button - Top Left */}
-      <Pressable
-        className="absolute top-12 left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
-        onPress={() => router.push("/(main)/swipe/filters")}
-      >
-        <Text className="text-white font-semibold text-sm">Apply Filters</Text>
-      </Pressable>
+        <Pressable
+          className="absolute top-12 left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
+          onPress={() => router.push("/(main)/swipe/filters/")}
+        >
+          <Text className="text-white font-semibold text-sm">Apply Filters</Text>
+        </Pressable>
 
       <GestureDetector gesture={pan}>
         <Animated.View
