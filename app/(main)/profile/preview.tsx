@@ -166,9 +166,8 @@ export default function ProfilePreviewScreen() {
   const age = calculateAge(dob);
 
   // Helper functions to check if sections should be shown
-  const hasPersonalInfo = height || maritalStatus || hasChildren !== null;
+  const hasPersonalInfo = height || maritalStatus || hasChildren !== null || education || profession;
   const hasReligiousInfo = sect || bornMuslim !== null || religiousPractice || alcoholHabit || smokingHabit;
-  const hasProfessionalInfo = education || profession;
   const hasLifestyleInfo = (hobbies && hobbies.length > 0) || location;
   const hasBackgroundInfo = ethnicity || nationality;
   const hasPrompts = prompts && prompts.length > 0 && prompts.some((p: any) => p.question && p.answer);
@@ -241,27 +240,37 @@ export default function ProfilePreviewScreen() {
           if (hasPersonalInfo) {
             dataSections.push(
               <View key="personal" style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Personal Info</Text>
-                <View style={styles.sectionContent}>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalChipsContainer}
+                >
                   {height && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="resize" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>{height}</Text>
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>📏 {height}</Text>
                     </View>
                   )}
                   {maritalStatus && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="heart" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>{maritalStatus.charAt(0).toUpperCase() + maritalStatus.slice(1)}</Text>
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>💍 {maritalStatus.charAt(0).toUpperCase() + maritalStatus.slice(1)}</Text>
                     </View>
                   )}
                   {hasChildren !== null && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="people" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>{hasChildren ? "Has children" : "No children"}</Text>
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>{hasChildren ? "👶 Has children" : "👶 No children"}</Text>
                     </View>
                   )}
-                </View>
+                  {education && (
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>🎓 {education}</Text>
+                    </View>
+                  )}
+                  {profession && (
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>💼 {profession}</Text>
+                    </View>
+                  )}
+                </ScrollView>
               </View>
             );
           }
@@ -270,57 +279,30 @@ export default function ProfilePreviewScreen() {
             dataSections.push(
               <View key="religious" style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>Religious</Text>
-                <View style={styles.sectionContent}>
+                <View style={styles.chipsContainer}>
                   {sect && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="book" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>{sect.charAt(0).toUpperCase() + sect.slice(1)}</Text>
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>🕌 {sect.charAt(0).toUpperCase() + sect.slice(1)}</Text>
                     </View>
                   )}
                   {bornMuslim !== null && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="star" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>{bornMuslim ? "Born Muslim" : "Converted to Islam"}</Text>
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>{bornMuslim ? "⭐ Born Muslim" : "⭐ Converted to Islam"}</Text>
                     </View>
                   )}
                   {religiousPractice && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="flame" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>{religiousPractice.charAt(0).toUpperCase() + religiousPractice.slice(1)}</Text>
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>📿 {religiousPractice.charAt(0).toUpperCase() + religiousPractice.slice(1)}</Text>
                     </View>
                   )}
                   {alcoholHabit && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="wine" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>Alcohol: {alcoholHabit.charAt(0).toUpperCase() + alcoholHabit.slice(1)}</Text>
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>🍷 Alcohol: {alcoholHabit.charAt(0).toUpperCase() + alcoholHabit.slice(1)}</Text>
                     </View>
                   )}
                   {smokingHabit && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="cafe" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>Smoking: {smokingHabit.charAt(0).toUpperCase() + smokingHabit.slice(1)}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            );
-          }
-
-          if (hasProfessionalInfo) {
-            dataSections.push(
-              <View key="professional" style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Professional</Text>
-                <View style={styles.sectionContent}>
-                  {education && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="school" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>{education}</Text>
-                    </View>
-                  )}
-                  {profession && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="briefcase" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>{profession}</Text>
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>🚬 Smoking: {smokingHabit.charAt(0).toUpperCase() + smokingHabit.slice(1)}</Text>
                     </View>
                   )}
                 </View>
@@ -332,20 +314,15 @@ export default function ProfilePreviewScreen() {
             dataSections.push(
               <View key="lifestyle" style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>Lifestyle</Text>
-                <View style={styles.sectionContent}>
-                  {hobbies && hobbies.length > 0 && (
-                    <View style={styles.hobbiesContainer}>
-                      {hobbies.map((hobby: string, index: number) => (
-                        <View key={index} style={styles.hobbyChip}>
-                          <Text style={styles.hobbyChipText}>{hobby}</Text>
-                        </View>
-                      ))}
+                <View style={styles.chipsContainer}>
+                  {hobbies && hobbies.length > 0 && hobbies.map((hobby: string, index: number) => (
+                    <View key={index} style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>🎯 {hobby}</Text>
                     </View>
-                  )}
+                  ))}
                   {location && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="location" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>{location}</Text>
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>📍 {location}</Text>
                     </View>
                   )}
                 </View>
@@ -357,17 +334,15 @@ export default function ProfilePreviewScreen() {
             dataSections.push(
               <View key="background" style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>Background</Text>
-                <View style={styles.sectionContent}>
+                <View style={styles.chipsContainer}>
                   {ethnicity && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="globe" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>{ethnicity}</Text>
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>🌍 {ethnicity}</Text>
                     </View>
                   )}
                   {nationality && (
-                    <View style={styles.infoRow}>
-                      <Ionicons name="flag" size={18} color="#B8860B" />
-                      <Text style={styles.infoText}>{nationality}</Text>
+                    <View style={styles.infoChip}>
+                      <Text style={styles.infoChipText}>🏳️ {nationality}</Text>
                     </View>
                   )}
                 </View>
@@ -378,7 +353,7 @@ export default function ProfilePreviewScreen() {
           if (bio) {
             dataSections.push(
               <View key="about" style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>About Me</Text>
+                <Text style={styles.sectionTitle}>Bio</Text>
                 <Text style={styles.bioText}>{bio}</Text>
               </View>
             );
@@ -502,36 +477,31 @@ const getStyles = () => {
     color: '#FFFFFF',
     marginBottom: 16,
   },
-  sectionContent: {
-    gap: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  infoText: {
-    fontSize: 15,
-    color: '#FFFFFF',
-    opacity: 0.9,
-  },
-  hobbiesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  hobbyChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#B8860B',
-  },
-  hobbyChipText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
+    sectionContent: {
+      gap: 12,
+    },
+    chipsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    horizontalChipsContainer: {
+      flexDirection: 'row',
+      gap: 10,
+      paddingRight: 20,
+    },
+    infoChip: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: '#B8860B',
+    },
+    infoChipText: {
+      fontSize: 14,
+      color: '#FFFFFF',
+      fontWeight: '500',
+    },
   bioText: {
     fontSize: 16,
     lineHeight: 24,
