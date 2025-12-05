@@ -67,11 +67,46 @@ serve(async (req) => {
     // Get unique user IDs that were liked
     const likedUserIds = [...new Set(swipes.map((swipe) => swipe.swiped_id))];
 
-    // Fetch full user profiles for the liked users
+    // Get all matches for the current user to exclude matched users
+    const { data: matches, error: matchesError } = await supabaseClient
+      .from("matches")
+      .select("user1, user2")
+      .or(`user1.eq.${user.id},user2.eq.${user.id}`);
+
+    if (matchesError) {
+      console.error("❌ Error fetching matches:", matchesError);
+    }
+
+    // Extract matched user IDs
+    const matchedUserIds = new Set<string>();
+    if (matches) {
+      matches.forEach((match) => {
+        if (match.user1 === user.id) {
+          matchedUserIds.add(match.user2);
+        } else {
+          matchedUserIds.add(match.user1);
+        }
+      });
+    }
+
+    // Filter out matched users from likedUserIds
+    const unmatchedLikedIds = likedUserIds.filter((id) => !matchedUserIds.has(id));
+
+    if (unmatchedLikedIds.length === 0) {
+      return new Response(
+        JSON.stringify({ myLikes: [] }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Fetch full user profiles for the liked users (excluding matched users)
     const { data: likedProfiles, error: profilesError } = await supabaseClient
       .from("users")
       .select("id, first_name, last_name, name, photos")
-      .in("id", likedUserIds);
+      .in("id", unmatchedLikedIds);
 
     if (profilesError) {
       console.error("❌ Error fetching liked user profiles:", profilesError);

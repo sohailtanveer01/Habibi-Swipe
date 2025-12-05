@@ -20,7 +20,6 @@ serve(async (req) => {
       );
     }
 
-    // Create client for user authentication
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -39,24 +38,55 @@ serve(async (req) => {
 
     console.log("Fetching users who liked:", user.id);
 
+    // First, let's check all swipes where the current user was swiped on (for debugging)
+    const { data: allSwipes, error: allSwipesError } = await supabaseClient
+      .from("swipes")
+      .select("swiper_id, swiped_id, action, created_at")
+      .eq("swiped_id", user.id);
+
+    console.log("📊 All swipes where current user was swiped:", JSON.stringify(allSwipes, null, 2));
+    if (allSwipesError) {
+      console.error("❌ Error fetching all swipes:", allSwipesError);
+    }
+
     // Get all swipes where someone liked the current user (swiped_id = current user, action = 'like')
-    const { data: swipes, error: swipesError } = await supabaseClient
+    // Try with exact match first
+    let { data: swipes, error: swipesError } = await supabaseClient
       .from("swipes")
       .select("swiper_id, action, created_at")
       .eq("swiped_id", user.id)
       .eq("action", "like")
       .order("created_at", { ascending: false });
 
-    console.log("📊 Swipes with action='like':", JSON.stringify(swipes, null, 2));
+    console.log("📊 Swipes with action='like' (exact match):", JSON.stringify(swipes, null, 2));
     console.log("📊 Number of swipes found:", swipes?.length || 0);
 
-    if (swipesError) {
+    // If no results, try case-insensitive or check what actions exist
+    if ((!swipes || swipes.length === 0) && allSwipes && allSwipes.length > 0) {
+      console.log("⚠️ No exact 'like' matches, checking all actions...");
+      const uniqueActions = [...new Set(allSwipes.map(s => s.action))];
+      console.log("📊 Unique actions found:", uniqueActions);
+      
+      // Try filtering in memory - check for 'like' in any case
+      const filteredSwipes = allSwipes
+        .filter(s => s.action && s.action.toLowerCase() === 'like')
+        .map(s => ({ swiper_id: s.swiper_id, created_at: s.created_at }));
+      
+      if (filteredSwipes.length > 0) {
+        console.log("✅ Found swipes with case-insensitive match:", filteredSwipes.length);
+        swipes = filteredSwipes;
+        swipesError = null; // Clear error since we found results
+      }
+    }
+
+    if (swipesError && (!swipes || swipes.length === 0)) {
       console.error("❌ Error fetching swipes:", swipesError);
       return new Response(
         JSON.stringify({ 
           error: swipesError.message,
           debug: {
-            userId: user.id
+            userId: user.id,
+            allSwipesCount: allSwipes?.length || 0
           }
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -67,7 +97,12 @@ serve(async (req) => {
       console.log("⚠️ No swipes found for user:", user.id);
       return new Response(
         JSON.stringify({ 
-          likedMe: []
+          likedMe: [],
+          debug: {
+            userId: user.id,
+            allSwipesCount: allSwipes?.length || 0,
+            likedSwipesCount: 0
+          }
         }),
         {
           status: 200,
@@ -79,11 +114,46 @@ serve(async (req) => {
     // Get unique user IDs who liked the current user
     const likerUserIds = [...new Set(swipes.map((swipe) => swipe.swiper_id))];
 
-    // Fetch full user profiles for the users who liked
+    // Get all matches for the current user to exclude matched users
+    const { data: matches, error: matchesError } = await supabaseClient
+      .from("matches")
+      .select("user1, user2")
+      .or(`user1.eq.${user.id},user2.eq.${user.id}`);
+
+    if (matchesError) {
+      console.error("❌ Error fetching matches:", matchesError);
+    }
+
+    // Extract matched user IDs
+    const matchedUserIds = new Set<string>();
+    if (matches) {
+      matches.forEach((match) => {
+        if (match.user1 === user.id) {
+          matchedUserIds.add(match.user2);
+        } else {
+          matchedUserIds.add(match.user1);
+        }
+      });
+    }
+
+    // Filter out matched users from likerUserIds
+    const unmatchedLikerIds = likerUserIds.filter((id) => !matchedUserIds.has(id));
+
+    if (unmatchedLikerIds.length === 0) {
+      return new Response(
+        JSON.stringify({ likedMe: [] }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Fetch full user profiles for the users who liked (excluding matched users)
     const { data: likerProfiles, error: profilesError } = await supabaseClient
       .from("users")
       .select("id, first_name, last_name, name, photos")
-      .in("id", likerUserIds);
+      .in("id", unmatchedLikerIds);
 
     if (profilesError) {
       console.error("❌ Error fetching liker user profiles:", profilesError);

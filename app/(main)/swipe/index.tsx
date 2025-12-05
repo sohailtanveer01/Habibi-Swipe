@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text, Dimensions, Pressable } from "react-native";
+import { View, Text, Dimensions, Pressable, Modal } from "react-native";
+import { Image } from "expo-image";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,6 +21,10 @@ export default function SwipeScreen() {
   const [index, setIndex] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false); // prevents double swipe
   const viewedProfileIds = useRef<Set<string>>(new Set()); // Track which profiles have been viewed
+  const [matchData, setMatchData] = useState<{
+    matchId: string;
+    otherUser: any;
+  } | null>(null);
 
   const x = useSharedValue(0);
   const y = useSharedValue(0);
@@ -105,30 +110,55 @@ export default function SwipeScreen() {
     setIsSwiping(true);
 
     const currentProfile = profiles[index];
-    if (!currentProfile) return;
-
-    const { data, error } = await supabase.functions.invoke("send_swipe", {
-      body: {
-        swiped_id: currentProfile.id,
-        action,
-      },
-    });
-
-    if (error) {
-      console.error("Swipe error:", error);
+    if (!currentProfile) {
       setIsSwiping(false);
       return;
     }
 
-    // If matched, you can trigger a popup
-    if (data?.matched) {
-      console.log("🎉 MATCHED with", currentProfile.name);
-      // TODO: Show match modal
-    }
+    try {
+      const { data, error } = await supabase.functions.invoke("send_swipe", {
+        body: {
+          swiped_id: currentProfile.id,
+          action,
+        },
+      });
 
-    // Move to next card
-    setIndex((i) => i + 1);
-    setIsSwiping(false);
+      if (error) {
+        console.error("Swipe error:", error);
+        setIsSwiping(false);
+        return;
+      }
+
+      // Parse response if it's a string
+      let responseData = data;
+      if (typeof data === 'string') {
+        try {
+          responseData = JSON.parse(data);
+        } catch (e) {
+          console.error("Error parsing response:", e);
+        }
+      }
+
+      console.log("Swipe response:", responseData);
+
+      // If matched, show celebration screen
+      if (responseData?.matched && responseData?.matchId) {
+        console.log("🎉 MATCHED with", currentProfile.name || currentProfile.first_name);
+        console.log("Match data:", responseData);
+        setMatchData({
+          matchId: responseData.matchId,
+          otherUser: responseData.otherUser || currentProfile,
+        });
+        // Don't move to next card yet - wait for user to dismiss celebration
+      } else {
+        // Move to next card if no match
+        setIndex((i) => i + 1);
+      }
+    } catch (err) {
+      console.error("Error in sendSwipe:", err);
+    } finally {
+      setIsSwiping(false);
+    }
   };
 
   // Gesture handler
@@ -191,8 +221,35 @@ export default function SwipeScreen() {
     );
   }
 
+  const handleMatchCelebrationClose = (navigateToChat: boolean) => {
+    if (navigateToChat && matchData?.matchId) {
+      router.replace(`/(main)/chat/${matchData.matchId}`);
+    } else {
+      // Keep swiping - move to next card
+      setIndex((i) => i + 1);
+      setMatchData(null);
+    }
+  };
+
   return (
     <View className="flex-1 bg-black">
+      {/* Match Celebration Modal */}
+      <Modal
+        visible={!!matchData}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => handleMatchCelebrationClose(false)}
+      >
+        {matchData && (
+          <MatchCelebrationModal
+            matchId={matchData.matchId}
+            otherUser={matchData.otherUser}
+            onSendMessage={() => handleMatchCelebrationClose(true)}
+            onKeepSwiping={() => handleMatchCelebrationClose(false)}
+          />
+        )}
+      </Modal>
+
       {/* Apply Filters Button - Top Left */}
         <Pressable
           className="absolute top-12 left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
@@ -259,3 +316,178 @@ export default function SwipeScreen() {
     </View>
   );
 }
+
+// Match Celebration Modal Component
+function MatchCelebrationModal({
+  matchId,
+  otherUser,
+  onSendMessage,
+  onKeepSwiping,
+}: {
+  matchId: string;
+  otherUser: any;
+  onSendMessage: () => void;
+  onKeepSwiping: () => void;
+}) {
+  const fullName =
+    otherUser?.first_name && otherUser?.last_name
+      ? `${otherUser.first_name} ${otherUser.last_name}`
+      : otherUser?.name || "Someone";
+
+  const mainPhoto =
+    otherUser?.photos && otherUser.photos.length > 0
+      ? otherUser.photos[0]
+      : null;
+
+  return (
+    <View style={matchModalStyles.container}>
+      <View style={matchModalStyles.content}>
+        <Text style={matchModalStyles.title}>🎉</Text>
+        <Text style={matchModalStyles.congratsText}>It&apos;s a Match!</Text>
+        <Text style={matchModalStyles.subtitle}>
+          You and {fullName} liked each other
+        </Text>
+
+        {/* Matched User Photo */}
+        <View style={matchModalStyles.photoContainer}>
+          {mainPhoto ? (
+            <Image
+              source={{ uri: mainPhoto }}
+              style={matchModalStyles.photo}
+              contentFit="cover"
+              transition={200}
+            />
+          ) : (
+            <View style={matchModalStyles.photoPlaceholder}>
+              <Text style={matchModalStyles.photoPlaceholderText}>👤</Text>
+            </View>
+          )}
+          <View style={matchModalStyles.photoRing} />
+        </View>
+
+        <Text style={matchModalStyles.nameText}>{fullName}</Text>
+
+        {/* Action Buttons */}
+        <View style={matchModalStyles.buttonContainer}>
+          <Pressable
+            style={[matchModalStyles.button, matchModalStyles.keepSwipingButton]}
+            onPress={onKeepSwiping}
+          >
+            <Text style={matchModalStyles.keepSwipingText}>Keep Swiping</Text>
+          </Pressable>
+
+          <Pressable
+            style={[matchModalStyles.button, matchModalStyles.sendMessageButton]}
+            onPress={onSendMessage}
+          >
+            <Text style={matchModalStyles.sendMessageText}>Send Message</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const matchModalStyles = {
+  container: {
+    flex: 1,
+    backgroundColor: "#000000",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  content: {
+    alignItems: "center",
+    width: "100%",
+  },
+  title: {
+    fontSize: 80,
+    marginBottom: 20,
+  },
+  congratsText: {
+    fontSize: 36,
+    fontWeight: "bold" as const,
+    color: "#FFFFFF",
+    marginBottom: 12,
+    textAlign: "center" as const,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: "#9CA3AF",
+    marginBottom: 40,
+    textAlign: "center" as const,
+  },
+  photoContainer: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    marginBottom: 24,
+    position: "relative" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  photo: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+  },
+  photoPlaceholder: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: "#B8860B",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  photoPlaceholderText: {
+    fontSize: 80,
+  },
+  photoRing: {
+    position: "absolute" as const,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 4,
+    borderColor: "#B8860B",
+  },
+  nameText: {
+    fontSize: 24,
+    fontWeight: "600" as const,
+    color: "#FFFFFF",
+    marginBottom: 60,
+  },
+  buttonContainer: {
+    gap: 16,
+    width: "100%",
+  },
+  button: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  keepSwipingButton: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  keepSwipingText: {
+    fontSize: 18,
+    fontWeight: "600" as const,
+    color: "#FFFFFF",
+  },
+  sendMessageButton: {
+    backgroundColor: "#B8860B",
+    shadowColor: "#B8860B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  sendMessageText: {
+    fontSize: 18,
+    fontWeight: "bold" as const,
+    color: "#000000",
+  },
+};
