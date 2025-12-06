@@ -41,11 +41,14 @@ serve(async (req)=>{
         headers: corsHeaders
       });
     }
-    // Insert swipe
-    const { error: swipeError } = await supabase.from("swipes").insert({
+    // Upsert swipe (insert or update if exists)
+    // This allows users to change their mind (e.g., unlike someone by passing)
+    const { error: swipeError } = await supabase.from("swipes").upsert({
       swiper_id: user.id,
       swiped_id,
       action
+    }, {
+      onConflict: "swiper_id,swiped_id"
     });
     if (swipeError) {
       return new Response(JSON.stringify({

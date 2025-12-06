@@ -128,6 +128,11 @@ export default function SwipeScreen() {
       return { showLike: true, showPass: true };
     }
     
+    if (source === "passedOn") {
+      // User previously passed on them - only show Like button (allow changing mind)
+      return { showLike: true, showPass: false };
+    }
+    
     if (source === "viewers") {
       // Check existing swipe status
       if (existingSwipe?.action === "like" || existingSwipe?.action === "superlike") {
@@ -430,7 +435,7 @@ export default function SwipeScreen() {
       </Modal>
 
       {/* Back Button - Top Left (when viewing from likes) */}
-      {source && (source === "myLikes" || source === "likedMe" || source === "viewers") && (
+      {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn") && (
         <Pressable
           className="absolute top-12 left-4 z-50 bg-black/50 w-10 h-10 rounded-full items-center justify-center"
           onPress={() => {
@@ -444,7 +449,7 @@ export default function SwipeScreen() {
       )}
 
       {/* Apply Filters Button - Top Left (only for normal swipe feed) */}
-      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers")) && (
+      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn")) && (
         <Pressable
           className="absolute top-12 left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
           onPress={() => router.push("/(main)/swipe/filters/")}
@@ -454,7 +459,7 @@ export default function SwipeScreen() {
       )}
 
       {/* Conditionally wrap with gesture detector only for normal swipe feed */}
-      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers")) ? (
+      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn")) ? (
         <>
           <GestureDetector gesture={pan}>
             <Animated.View
@@ -496,29 +501,31 @@ export default function SwipeScreen() {
           </View>
           
           {/* Action buttons - only show when viewing from likes section */}
-          <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center ${availableActions.showLike && availableActions.showPass ? 'gap-24' : ''}`}>
-            {/* Pass - only show if available */}
-            {availableActions.showPass && (
-              <Pressable
-                className="bg-white w-16 h-16 rounded-full items-center justify-center"
-                onPress={() => sendSwipe("pass")}
-                disabled={isSwiping}
-              >
-                <Text className="text-black text-2xl">✕</Text>
-              </Pressable>
-            )}
+          {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn") && (
+            <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center ${availableActions.showLike && availableActions.showPass ? 'gap-24' : ''}`}>
+              {/* Pass - only show if available */}
+              {availableActions.showPass && (
+                <Pressable
+                  className="bg-white w-16 h-16 rounded-full items-center justify-center"
+                  onPress={() => sendSwipe("pass")}
+                  disabled={isSwiping}
+                >
+                  <Text className="text-black text-2xl">✕</Text>
+                </Pressable>
+              )}
 
-            {/* Like - only show if available */}
-            {availableActions.showLike && (
-              <Pressable
-                className="bg-[#B8860B] w-16 h-16 rounded-full items-center justify-center"
-                onPress={() => sendSwipe("like")}
-                disabled={isSwiping}
-              >
-                <Text className="text-white text-2xl">♥</Text>
-              </Pressable>
-            )}
-          </View>
+              {/* Like - only show if available */}
+              {availableActions.showLike && (
+                <Pressable
+                  className="bg-[#B8860B] w-16 h-16 rounded-full items-center justify-center"
+                  onPress={() => sendSwipe("like")}
+                  disabled={isSwiping}
+                >
+                  <Text className="text-white text-2xl">♥</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
         </>
       )}
 

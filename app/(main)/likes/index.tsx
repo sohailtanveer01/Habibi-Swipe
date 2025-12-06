@@ -34,8 +34,9 @@ export default function LikesScreen() {
   const [likes, setLikes] = useState<any[]>([]);
   const [myLikes, setMyLikes] = useState<any[]>([]);
   const [viewers, setViewers] = useState<any[]>([]);
+  const [passedOn, setPassedOn] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"myLikes" | "likedMe" | "viewers">("likedMe");
+  const [activeTab, setActiveTab] = useState<"myLikes" | "likedMe" | "viewers" | "passedOn">("likedMe");
 
   const loadLikes = async () => {
     setLoading(true);
@@ -200,6 +201,58 @@ export default function LikesScreen() {
     setLoading(false);
   };
 
+  const loadPassedOn = async () => {
+    setLoading(true);
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) {
+      console.log("No user found");
+      setLoading(false);
+      return;
+    }
+
+    console.log("Fetching users passed on by user:", user.id);
+
+    const { data, error } = await supabase.functions.invoke("get-passed-on");
+
+    if (error) {
+      console.error("Error fetching passed on:", error);
+      alert(`Error loading passed on: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    console.log("Passed on response:", data);
+    
+    // Parse the response if it's a string
+    let parsedData = data;
+    if (typeof data === 'string') {
+      try {
+        parsedData = JSON.parse(data);
+        console.log("Parsed response:", parsedData);
+      } catch (e) {
+        console.error("Error parsing response:", e);
+        setLoading(false);
+        return;
+      }
+    }
+    
+    // Handle different response formats
+    let passedOnArray = [];
+    if (parsedData) {
+      if (Array.isArray(parsedData)) {
+        passedOnArray = parsedData;
+      } else if (parsedData.passedOn && Array.isArray(parsedData.passedOn)) {
+        passedOnArray = parsedData.passedOn;
+      } else if (parsedData.data && Array.isArray(parsedData.data)) {
+        passedOnArray = parsedData.data;
+      }
+    }
+    
+    console.log("Parsed passed on array:", passedOnArray.length);
+    setPassedOn(passedOnArray);
+    setLoading(false);
+  };
+
   useEffect(() => {
     if (activeTab === "myLikes") {
       loadMyLikes();
@@ -207,6 +260,8 @@ export default function LikesScreen() {
       loadLikes();
     } else if (activeTab === "viewers") {
       loadViewers();
+    } else if (activeTab === "passedOn") {
+      loadPassedOn();
     }
   }, [activeTab]);
 
@@ -259,7 +314,9 @@ export default function LikesScreen() {
               ? loadMyLikes 
               : activeTab === "likedMe" 
               ? loadLikes 
-              : loadViewers
+              : activeTab === "viewers"
+              ? loadViewers
+              : loadPassedOn
           }
           disabled={loading}
           className="bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
@@ -272,12 +329,13 @@ export default function LikesScreen() {
         </Pressable>
       </View>
 
-      {/* Top tabs: My Likes / Liked Me / Viewers */}
+      {/* Top tabs: My Likes / Liked Me / Viewers / Passed On */}
       <View className="flex-row bg-white/5 rounded-full p-1 mb-4">
         {[
           { key: "myLikes", label: "my likes" },
           { key: "likedMe", label: "liked me" },
           { key: "viewers", label: "viewers" },
+          { key: "passedOn", label: "passed on" },
         ].map((tab) => {
           const isActive = activeTab === tab.key;
           return (
@@ -515,6 +573,104 @@ export default function LikesScreen() {
                             Viewed {viewCount} times
                           </Text>
                         )}
+                      </View>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            }}
+          />
+        )
+      )}
+
+      {activeTab === "passedOn" && (
+        passedOn.length === 0 ? (
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-white/60 text-base">No passed profiles yet</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={passedOn}
+            numColumns={2}
+            columnWrapperStyle={{ gap: 12 }}
+            contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
+            keyExtractor={(item, index) => item.id || `passed-${index}`}
+            refreshControl={
+              <RefreshControl refreshing={loading} onRefresh={loadPassedOn} tintColor="#fff" />
+            }
+            renderItem={({ item }) => {
+              // Clean and get the first valid photo
+              let mainPhoto: string | null = null;
+              if (item.photos && Array.isArray(item.photos) && item.photos.length > 0) {
+                for (const photo of item.photos) {
+                  const cleaned = cleanPhotoUrl(photo);
+                  if (cleaned) {
+                    mainPhoto = cleaned;
+                    break;
+                  }
+                }
+              }
+              
+              const fullName = item.first_name && item.last_name
+                ? `${item.first_name} ${item.last_name}`
+                : item.name || "Unknown";
+              
+              return (
+                <Pressable
+                  className="bg-white/10 rounded-2xl overflow-hidden"
+                  style={{ width: CARD_WIDTH, height: CARD_WIDTH * 1.4 }}
+                  onPress={async () => {
+                    // Navigate to swipe screen with this user's profile
+                    // From passed on, user can change their mind and like them
+                    router.push(`/(main)/swipe?userId=${item.id}&source=passedOn`);
+                  }}
+                >
+                  {mainPhoto ? (
+                    <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                      <Image
+                        source={{ uri: mainPhoto }}
+                        style={{ width: '100%', height: '100%' }}
+                        contentFit="cover"
+                        transition={200}
+                        cachePolicy="memory-disk"
+                        priority="normal"
+                      />
+                      {/* Gradient overlay for text readability */}
+                      <View 
+                        style={{ 
+                          position: 'absolute', 
+                          bottom: 0, 
+                          left: 0, 
+                          right: 0, 
+                          height: 80, 
+                          backgroundColor: 'rgba(0,0,0,0.6)' 
+                        }} 
+                      />
+                      {/* Name on bottom left */}
+                      <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
+                        <Text className="text-white text-lg font-bold" numberOfLines={1}>
+                          {fullName}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View className="w-full h-full bg-white/5 items-center justify-center" style={{ position: 'relative' }}>
+                      <Text className="text-white/60 text-4xl">👤</Text>
+                      {/* Name on bottom left even without photo */}
+                      <View 
+                        style={{ 
+                          position: 'absolute', 
+                          bottom: 0, 
+                          left: 0, 
+                          right: 0, 
+                          height: 80, 
+                          backgroundColor: 'rgba(0,0,0,0.6)' 
+                        }} 
+                      />
+                      <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
+                        <Text className="text-white text-lg font-bold" numberOfLines={1}>
+                          {fullName}
+                        </Text>
                       </View>
                     </View>
                   )}
