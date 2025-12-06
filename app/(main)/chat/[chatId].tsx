@@ -215,7 +215,7 @@ export default function ChatScreen() {
   // Show loading state
   if (isLoading) {
     return (
-      <View className="flex-1 bg-white items-center justify-center">
+      <View className="flex-1 bg-black items-center justify-center">
         <ActivityIndicator size="large" color="#B8860B" />
       </View>
     );
@@ -224,12 +224,12 @@ export default function ChatScreen() {
   // Show error state
   if (error) {
     return (
-      <View className="flex-1 bg-white items-center justify-center px-4">
+      <View className="flex-1 bg-black items-center justify-center px-4">
         <Text className="text-red-500 text-center mb-4">
           Error loading chat: {error.message}
         </Text>
         <Pressable 
-          className="bg-purple-600 px-6 py-3 rounded-full"
+          className="bg-[#B8860B] px-6 py-3 rounded-full"
           onPress={() => queryClient.invalidateQueries({ queryKey: ["chat", chatId] })}
         >
           <Text className="text-white font-semibold">Retry</Text>
@@ -240,12 +240,12 @@ export default function ChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
+      className="flex-1 bg-black"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
     >
       {/* Header */}
-      <View className="bg-white px-4 pt-12 pb-3 flex-row items-center justify-between border-b border-gray-100">
+      <View className="bg-black px-4 pt-12 pb-3 flex-row items-center justify-between border-b border-white/10">
         <Pressable 
           onPress={() => {
             // Invalidate chat list cache to refresh unread counts
@@ -254,7 +254,7 @@ export default function ChatScreen() {
           }} 
           className="mr-3"
         >
-          <Text className="text-gray-900 text-2xl font-semibold">←</Text>
+          <Text className="text-white text-2xl font-semibold">←</Text>
         </Pressable>
         
         <View className="flex-1 flex-row items-center">
@@ -265,41 +265,41 @@ export default function ChatScreen() {
               resizeMode="cover"
             />
           ) : (
-            <View className="w-10 h-10 rounded-full bg-gray-200 mr-3 items-center justify-center">
-              <Text className="text-gray-500 text-lg">👤</Text>
+            <View className="w-10 h-10 rounded-full bg-white/10 mr-3 items-center justify-center">
+              <Text className="text-white/60 text-lg">👤</Text>
             </View>
           )}
-          <Text className="text-gray-900 text-lg font-semibold">{fullName}</Text>
+          <Text className="text-white text-lg font-semibold">{fullName}</Text>
         </View>
 
         <View className="flex-row items-center gap-4">
           <Pressable>
-            <Text className="text-purple-600 text-xl">📞</Text>
+            <Text className="text-[#B8860B] text-xl">📞</Text>
           </Pressable>
           <Pressable>
-            <Text className="text-purple-600 text-xl">⋯</Text>
+            <Text className="text-[#B8860B] text-xl">⋯</Text>
           </Pressable>
         </View>
       </View>
 
       {/* Notification Banner */}
       {showNotificationBanner && (
-        <View className="bg-purple-50 px-4 py-3 flex-row items-center justify-between border-b border-purple-100">
+        <View className="bg-[#B8860B]/20 px-4 py-3 flex-row items-center justify-between border-b border-[#B8860B]/30">
           <View className="flex-row items-center flex-1">
             <View className="relative mr-3">
-              <Text className="text-purple-600 text-lg">🔔</Text>
+              <Text className="text-[#B8860B] text-lg">🔔</Text>
               <View className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
             </View>
             <View className="flex-1">
-              <Text className="text-gray-900 font-semibold text-sm">Get notified instantly</Text>
-              <Text className="text-gray-600 text-xs">Do not let any chances slip away</Text>
+              <Text className="text-white font-semibold text-sm">Get notified instantly</Text>
+              <Text className="text-white/70 text-xs">Do not let any chances slip away</Text>
             </View>
           </View>
           <View className="flex-row items-center gap-2">
             <Pressable onPress={() => setShowNotificationBanner(false)}>
-              <Text className="text-gray-400 text-lg">✕</Text>
+              <Text className="text-white/60 text-lg">✕</Text>
             </Pressable>
-            <Pressable className="bg-purple-600 px-3 py-1.5 rounded-full">
+            <Pressable className="bg-[#B8860B] px-3 py-1.5 rounded-full">
               <Text className="text-white text-xs font-semibold">Enable</Text>
             </Pressable>
           </View>
@@ -331,7 +331,7 @@ export default function ChatScreen() {
           if (item.type === 'timestamp') {
             return (
               <View className="items-center my-4">
-                <Text className="text-gray-400 text-xs">
+                <Text className="text-white/50 text-xs">
                   {item.date.toLocaleDateString([], { 
                     month: 'short', 
                     day: 'numeric',
@@ -356,8 +356,8 @@ export default function ChatScreen() {
                       resizeMode="cover"
                     />
                   ) : (
-                    <View className="w-8 h-8 rounded-full bg-gray-200 items-center justify-center">
-                      <Text className="text-gray-400 text-xs">👤</Text>
+                    <View className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
+                      <Text className="text-white/60 text-xs">👤</Text>
                     </View>
                   )}
                 </View>
@@ -367,13 +367,13 @@ export default function ChatScreen() {
                 <View
                   className={`px-4 py-2.5 rounded-2xl ${
                     isMe
-                      ? "bg-purple-600 rounded-br-sm"
-                      : "bg-gray-100 rounded-bl-sm"
+                      ? "bg-[#B8860B] rounded-br-sm"
+                      : "bg-white/10 rounded-bl-sm"
                   }`}
                 >
                   <Text
                     className={`text-base ${
-                      isMe ? "text-white" : "text-gray-900"
+                      isMe ? "text-white" : "text-white"
                     }`}
                   >
                     {item.content}
@@ -386,8 +386,8 @@ export default function ChatScreen() {
         }}
         ListEmptyComponent={
           <View className="items-center justify-center py-20">
-            <View className="bg-gray-100 px-4 py-3 rounded-2xl mb-4">
-              <Text className="text-gray-600 text-sm text-center">
+            <View className="bg-white/10 px-4 py-3 rounded-2xl mb-4">
+              <Text className="text-white/70 text-sm text-center">
                 Start the chat with {fullName}
               </Text>
             </View>
@@ -396,9 +396,9 @@ export default function ChatScreen() {
       />
 
       {/* Input */}
-      <View className="bg-white border-t border-gray-200 px-4 py-2 flex-row items-center" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
+      <View className="bg-black border-t border-white/10 px-4 py-2 flex-row items-center" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
         <TextInput
-          className="flex-1 bg-gray-100 text-gray-900 px-4 py-3 rounded-full"
+          className="flex-1 bg-white/10 text-white px-4 py-3 rounded-full"
           placeholder="Type a message..."
           placeholderTextColor="#999"
           value={text}
@@ -411,7 +411,7 @@ export default function ChatScreen() {
         />
         {text.trim() ? (
           <Pressable onPress={send} disabled={sendMessageMutation.isPending} className="ml-3">
-            <View className="bg-purple-600 w-10 h-10 rounded-full items-center justify-center">
+            <View className="bg-[#B8860B] w-10 h-10 rounded-full items-center justify-center">
               <Text className="text-white text-lg">✓</Text>
             </View>
           </Pressable>

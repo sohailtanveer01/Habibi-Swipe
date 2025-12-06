@@ -105,7 +105,7 @@ export default function ChatListScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-white items-center justify-center">
+      <View className="flex-1 bg-black items-center justify-center">
         <ActivityIndicator size="large" color="#B8860B" />
       </View>
     );
@@ -113,12 +113,12 @@ export default function ChatListScreen() {
 
   if (error) {
     return (
-      <View className="flex-1 bg-white items-center justify-center px-4">
+      <View className="flex-1 bg-black items-center justify-center px-4">
         <Text className="text-red-500 text-center mb-4">
           Error loading chats: {error.message}
         </Text>
         <Pressable 
-          className="bg-purple-600 px-6 py-3 rounded-full"
+          className="bg-[#B8860B] px-6 py-3 rounded-full"
           onPress={() => refetch()}
         >
           <Text className="text-white font-semibold">Retry</Text>
@@ -128,9 +128,9 @@ export default function ChatListScreen() {
   }
 
   return (
-    <View className="flex-1 bg-white pt-12">
+    <View className="flex-1 bg-black pt-12">
       <View className="px-4 mb-4">
-        <Text className="text-gray-900 text-2xl font-bold">Chats</Text>
+        <Text className="text-white text-2xl font-bold">Chats</Text>
       </View>
 
       {/* Notification Banner */}
@@ -152,8 +152,8 @@ export default function ChatListScreen() {
 
       {matches.length === 0 ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-gray-500 text-base">No matches yet</Text>
-          <Text className="text-gray-400 text-sm mt-2">Start swiping to find your Habibi! 💕</Text>
+          <Text className="text-white/60 text-base">No matches yet</Text>
+          <Text className="text-white/50 text-sm mt-2">Start swiping to find your Habibi! 💕</Text>
         </View>
       ) : (
         <FlatList
@@ -180,7 +180,7 @@ export default function ChatListScreen() {
 
             return (
               <Pressable
-                className="bg-gray-50 p-4 rounded-2xl mb-3 flex-row items-center border border-gray-100"
+                className="bg-white/10 p-4 rounded-2xl mb-3 flex-row items-center border border-white/10"
                 onPress={() => router.push(`/(main)/chat/${item.id}`)}
               >
                 {mainPhoto ? (
@@ -190,15 +190,14 @@ export default function ChatListScreen() {
                     resizeMode="cover"
                   />
                 ) : (
-                  <View className="w-16 h-16 rounded-full bg-gray-200 mr-4 items-center justify-center border-2 border-[#B8860B]">
-                    <Text className="text-gray-500 text-2xl">👤</Text>
+                  <View className="w-16 h-16 rounded-full bg-white/10 mr-4 items-center justify-center border-2 border-[#B8860B]">
+                    <Text className="text-white/60 text-2xl">👤</Text>
                   </View>
                 )}
                 <View className="flex-1">
                   <View className="flex-row items-center gap-2">
                     <Text 
-                      className={`text-lg ${hasUnread ? 'font-bold' : 'font-semibold'}`}
-                      style={{ color: '#111827' }}
+                      className={`text-lg ${hasUnread ? 'font-bold' : 'font-semibold'} text-white`}
                       numberOfLines={1}
                     >
                       {fullName}
@@ -213,7 +212,7 @@ export default function ChatListScreen() {
                   </View>
                   {item.lastMessage ? (
                     <Text 
-                      className={`text-sm mt-1 ${hasUnread ? 'text-gray-900 font-medium' : 'text-gray-500'}`}
+                      className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
                       numberOfLines={1}
                     >
                       {item.lastMessage.content}
@@ -226,7 +225,7 @@ export default function ChatListScreen() {
                 </View>
                 <View className="items-end">
                   {item.lastMessage && (
-                    <Text className="text-gray-400 text-xs mb-1">
+                    <Text className="text-white/50 text-xs mb-1">
                       {new Date(item.lastMessage.created_at).toLocaleTimeString([], { 
                         hour: '2-digit', 
                         minute: '2-digit' 
