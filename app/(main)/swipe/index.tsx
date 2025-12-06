@@ -8,8 +8,9 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import SwipeCard from "../../../components/SwipeCard";
+import LikesProfileView from "../../../components/LikesProfileView";
 import { supabase } from "../../../lib/supabase";
 
 const { width } = Dimensions.get("window");
@@ -17,6 +18,7 @@ const SWIPE_THRESHOLD = 120;
 
 export default function SwipeScreen() {
   const router = useRouter();
+  const { userId, source } = useLocalSearchParams<{ userId?: string; source?: string }>();
   const [profiles, setProfiles] = useState<any[]>([]);
   const [index, setIndex] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false); // prevents double swipe
@@ -25,9 +27,69 @@ export default function SwipeScreen() {
     matchId: string;
     otherUser: any;
   } | null>(null);
+  const [loadingSpecificProfile, setLoadingSpecificProfile] = useState(false);
+  const [existingSwipe, setExistingSwipe] = useState<{ action: "like" | "pass" | "superlike" } | null>(null);
+  const [availableActions, setAvailableActions] = useState<{ showLike: boolean; showPass: boolean }>({ showLike: true, showPass: true });
 
   const x = useSharedValue(0);
   const y = useSharedValue(0);
+
+  // Fetch a specific user's profile
+  const fetchSpecificProfile = async (targetUserId: string) => {
+    setLoadingSpecificProfile(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch the specific user's profile
+      const { data: profile, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", targetUserId)
+        .single();
+
+      if (error) {
+        console.error("Error fetching specific profile:", error);
+        alert(`Error loading profile: ${error.message}`);
+        setLoadingSpecificProfile(false);
+        return;
+      }
+
+      if (profile) {
+        // Fetch prompts for this user
+        const { data: promptsData } = await supabase
+          .from("user_prompts")
+          .select("question, answer, display_order")
+          .eq("user_id", targetUserId)
+          .order("display_order", { ascending: true });
+
+        // Check if current user has already swiped on this profile
+        const { data: existingSwipeData } = await supabase
+          .from("swipes")
+          .select("action")
+          .eq("swiper_id", user.id)
+          .eq("swiped_id", targetUserId)
+          .maybeSingle();
+        
+        setExistingSwipe(existingSwipeData);
+
+        // Add prompts to profile object (SwipeCard expects it this way)
+        const profileWithPrompts = {
+          ...profile,
+          prompts: promptsData || []
+        };
+
+        // Set this profile as the first (and only) profile in the feed
+        setProfiles([profileWithPrompts]);
+        setIndex(0);
+        viewedProfileIds.current.clear();
+      }
+    } catch (error) {
+      console.error("Error in fetchSpecificProfile:", error);
+    } finally {
+      setLoadingSpecificProfile(false);
+    }
+  };
 
   // Fetch swipe feed
   const fetchFeed = async () => {
@@ -54,15 +116,78 @@ export default function SwipeScreen() {
     }
   };
 
+  // Determine available actions based on source and existing swipe
+  const determineAvailableActions = (source: string | undefined, existingSwipe: { action: string } | null) => {
+    if (source === "myLikes") {
+      // User already liked them - only show Pass button
+      return { showLike: false, showPass: true };
+    }
+    
+    if (source === "likedMe") {
+      // User hasn't swiped yet - show both buttons
+      return { showLike: true, showPass: true };
+    }
+    
+    if (source === "viewers") {
+      // Check existing swipe status
+      if (existingSwipe?.action === "like" || existingSwipe?.action === "superlike") {
+        // Already liked - show no buttons
+        return { showLike: false, showPass: false };
+      } else if (existingSwipe?.action === "pass") {
+        // Already passed - show both (allow changing mind)
+        return { showLike: true, showPass: true };
+      } else {
+        // No swipe yet - show both
+        return { showLike: true, showPass: true };
+      }
+    }
+    
+    // Default (normal swipe feed) - show both
+    return { showLike: true, showPass: true };
+  };
+
   useEffect(() => {
-    fetchFeed();
-  }, []);
+    // If userId and source are both provided, fetch that specific profile
+    if (userId && source) {
+      fetchSpecificProfile(userId);
+    } else if (!userId && !source) {
+      // Otherwise, fetch the normal swipe feed
+      fetchFeed();
+    } else {
+      // If we have one but not the other, clear both and fetch normal feed
+      // This handles cases where parameters are lingering from previous navigation
+      if (userId || source) {
+        router.setParams({ userId: undefined, source: undefined });
+        fetchFeed();
+      }
+    }
+  }, [userId, source, router]);
+
+  // Update available actions when source or existingSwipe changes
+  useEffect(() => {
+    const actions = determineAvailableActions(source, existingSwipe);
+    setAvailableActions(actions);
+  }, [source, existingSwipe]);
 
   // Refresh feed when screen comes into focus (e.g., returning from filters)
+  // Clear userId and source if navigating to normal swipe feed
   useFocusEffect(
     useCallback(() => {
-      fetchFeed();
-    }, [])
+      // When screen comes into focus, if we have parameters, it means we're viewing from likes
+      // But if user tapped the swipe tab directly, we should clear parameters and show normal feed
+      // We detect this by checking if both userId and source exist - if only one exists, it's stale
+      if (userId && source) {
+        // Both exist - this is intentional (viewing from likes), do nothing
+        // The useEffect above will handle fetching the specific profile
+      } else if (userId || source) {
+        // Only one exists - this is stale state, clear both and fetch normal feed
+        router.setParams({ userId: undefined, source: undefined });
+        fetchFeed();
+      } else {
+        // No parameters - fetch normal feed
+        fetchFeed();
+      }
+    }, [userId, source, router])
   );
 
   // Track profile views when a profile becomes current in the swipe feed
@@ -152,10 +277,20 @@ export default function SwipeScreen() {
         // Don't move to next card yet - wait for user to dismiss celebration
       } else {
         // Move to next card if no match
-        setIndex((i) => i + 1);
+        // If we're viewing a specific user, navigate to likes screen after swiping
+        if (userId) {
+          setTimeout(() => {
+            router.push("/(main)/likes");
+          }, 300); // Small delay to show the swipe animation
+        } else {
+          setIndex((i) => i + 1);
+        }
       }
     } catch (err) {
       console.error("Error in sendSwipe:", err);
+      // Don't navigate on error - just reset the swiping state
+      setIsSwiping(false);
+      return;
     } finally {
       setIsSwiping(false);
     }
@@ -174,8 +309,8 @@ export default function SwipeScreen() {
     .onEnd(() => {
       if (isSwiping) return;
 
-      const shouldLike = x.value > SWIPE_THRESHOLD;
-      const shouldPass = x.value < -SWIPE_THRESHOLD;
+      const shouldLike = x.value > SWIPE_THRESHOLD && availableActions.showLike;
+      const shouldPass = x.value < -SWIPE_THRESHOLD && availableActions.showPass;
 
       if (shouldLike) {
         x.value = withSpring(width * 1.5);
@@ -199,24 +334,44 @@ export default function SwipeScreen() {
 
   const current = profiles[index];
 
+  if (loadingSpecificProfile) {
+    return (
+      <View className="flex-1 bg-black items-center justify-center">
+        <Text className="text-white">Loading profile...</Text>
+      </View>
+    );
+  }
+
   if (!current) {
     return (
       <View className="flex-1 bg-black items-center justify-center px-6">
         <Text className="text-white/70 text-center mb-4">
-          No profiles found matching your filters.
+          {userId ? "Profile not found" : "No profiles found matching your filters."}
         </Text>
-        <Pressable
-          className="mt-4 bg-[#B8860B] px-6 py-3 rounded-full"
-          onPress={() => router.push("/(main)/swipe/filters/")}
-        >
-          <Text className="text-white font-semibold">Adjust Filters for More Profiles</Text>
-        </Pressable>
-        <Pressable
-          className="mt-4 bg-white/10 px-6 py-3 rounded-full"
-          onPress={fetchFeed}
-        >
-          <Text className="text-white/70">Refresh</Text>
-        </Pressable>
+        {!userId && (
+          <>
+            <Pressable
+              className="mt-4 bg-[#B8860B] px-6 py-3 rounded-full"
+              onPress={() => router.push("/(main)/swipe/filters/")}
+            >
+              <Text className="text-white font-semibold">Adjust Filters for More Profiles</Text>
+            </Pressable>
+            <Pressable
+              className="mt-4 bg-white/10 px-6 py-3 rounded-full"
+              onPress={fetchFeed}
+            >
+              <Text className="text-white/70">Refresh</Text>
+            </Pressable>
+          </>
+        )}
+        {userId && (
+          <Pressable
+            className="mt-4 bg-white/10 px-6 py-3 rounded-full"
+            onPress={() => router.back()}
+          >
+            <Text className="text-white/70">Go Back</Text>
+          </Pressable>
+        )}
       </View>
     );
   }
@@ -228,16 +383,30 @@ export default function SwipeScreen() {
       console.log("Navigating to chat with matchId:", matchIdToNavigate);
       // Close modal first
       setMatchData(null);
-      // Move to next card
-      setIndex((i) => i + 1);
-      // Navigate to chat
-      setTimeout(() => {
-        router.push(`/(main)/chat/${matchIdToNavigate}`);
-      }, 100);
+      // If we're viewing a specific user, navigate to likes screen; otherwise move to next card
+      if (userId) {
+        setTimeout(() => {
+          router.push(`/(main)/chat/${matchIdToNavigate}`);
+        }, 100);
+      } else {
+        // Move to next card
+        setIndex((i) => i + 1);
+        // Navigate to chat
+        setTimeout(() => {
+          router.push(`/(main)/chat/${matchIdToNavigate}`);
+        }, 100);
+      }
     } else {
-      // Keep swiping - move to next card
-      setIndex((i) => i + 1);
+      // Keep swiping
       setMatchData(null);
+      // If we're viewing a specific user, navigate to likes screen; otherwise move to next card
+      if (userId) {
+        setTimeout(() => {
+          router.push("/(main)/likes");
+        }, 100);
+      } else {
+        setIndex((i) => i + 1);
+      }
     }
   };
 
@@ -260,42 +429,98 @@ export default function SwipeScreen() {
         )}
       </Modal>
 
-      {/* Apply Filters Button - Top Left */}
+      {/* Back Button - Top Left (when viewing from likes) */}
+      {source && (source === "myLikes" || source === "likedMe" || source === "viewers") && (
+        <Pressable
+          className="absolute top-12 left-4 z-50 bg-black/50 w-10 h-10 rounded-full items-center justify-center"
+          onPress={() => {
+            // Clear parameters before navigating to ensure clean state
+            router.setParams({ userId: undefined, source: undefined });
+            router.push("/(main)/likes");
+          }}
+        >
+          <Text className="text-white text-xl">←</Text>
+        </Pressable>
+      )}
+
+      {/* Apply Filters Button - Top Left (only for normal swipe feed) */}
+      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers")) && (
         <Pressable
           className="absolute top-12 left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
           onPress={() => router.push("/(main)/swipe/filters/")}
         >
           <Text className="text-white font-semibold text-sm">Apply Filters</Text>
         </Pressable>
+      )}
 
-      <GestureDetector gesture={pan}>
-        <Animated.View
-          style={[{ width: "100%", height: "100%" }, cardStyle]}
-        >
-          <SwipeCard profile={current} />
-
-          {/* Action buttons overlaid well above bottom tab bar */}
-          <View className="absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-24">
-            {/* Pass */}
-            <Pressable
-              className="bg-white w-16 h-16 rounded-full items-center justify-center"
-              onPress={() => sendSwipe("pass")}
-              disabled={isSwiping}
+      {/* Conditionally wrap with gesture detector only for normal swipe feed */}
+      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers")) ? (
+        <>
+          <GestureDetector gesture={pan}>
+            <Animated.View
+              style={[{ width: "100%", height: "100%" }, cardStyle]}
             >
-              <Text className="text-black text-2xl">✕</Text>
-            </Pressable>
+              <SwipeCard profile={current} />
+            </Animated.View>
+          </GestureDetector>
+          
+          {/* Action buttons for normal swipe feed */}
+          <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center ${availableActions.showLike && availableActions.showPass ? 'gap-24' : ''}`}>
+            {/* Pass - only show if available */}
+            {availableActions.showPass && (
+              <Pressable
+                className="bg-white w-16 h-16 rounded-full items-center justify-center"
+                onPress={() => sendSwipe("pass")}
+                disabled={isSwiping}
+              >
+                <Text className="text-black text-2xl">✕</Text>
+              </Pressable>
+            )}
 
-            {/* Like */}
-            <Pressable
-              className="bg-[#B8860B] w-16 h-16 rounded-full items-center justify-center"
-              onPress={() => sendSwipe("like")}
-              disabled={isSwiping}
-            >
-              <Text className="text-white text-2xl">♥</Text>
-            </Pressable>
+            {/* Like - only show if available */}
+            {availableActions.showLike && (
+              <Pressable
+                className="bg-[#B8860B] w-16 h-16 rounded-full items-center justify-center"
+                onPress={() => sendSwipe("like")}
+                disabled={isSwiping}
+              >
+                <Text className="text-white text-2xl">♥</Text>
+              </Pressable>
+            )}
           </View>
-        </Animated.View>
-      </GestureDetector>
+        </>
+      ) : (
+        <>
+          <View style={{ width: "100%", height: "100%" }}>
+            <LikesProfileView profile={current} />
+          </View>
+          
+          {/* Action buttons - only show when viewing from likes section */}
+          <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center ${availableActions.showLike && availableActions.showPass ? 'gap-24' : ''}`}>
+            {/* Pass - only show if available */}
+            {availableActions.showPass && (
+              <Pressable
+                className="bg-white w-16 h-16 rounded-full items-center justify-center"
+                onPress={() => sendSwipe("pass")}
+                disabled={isSwiping}
+              >
+                <Text className="text-black text-2xl">✕</Text>
+              </Pressable>
+            )}
+
+            {/* Like - only show if available */}
+            {availableActions.showLike && (
+              <Pressable
+                className="bg-[#B8860B] w-16 h-16 rounded-full items-center justify-center"
+                onPress={() => sendSwipe("like")}
+                disabled={isSwiping}
+              >
+                <Text className="text-white text-2xl">♥</Text>
+              </Pressable>
+            )}
+          </View>
+        </>
+      )}
 
       {/* Legacy buttons container removed since buttons are now overlaid */}
       {/* <View className="flex-row justify-around mt-6">

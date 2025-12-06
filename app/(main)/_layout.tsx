@@ -1,4 +1,4 @@
-import { Tabs, usePathname } from "expo-router";
+import { Tabs, usePathname, useGlobalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { View, Text, Platform, StyleSheet } from "react-native";
 import { Image } from "expo-image";
@@ -10,10 +10,14 @@ export default function MainLayout() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const pathname = usePathname();
+  const searchParams = useGlobalSearchParams();
   
   // Check if we're on a chat detail screen or filters screen
   const isChatDetail = pathname?.includes("/chat/") && pathname !== "/chat";
   const isFiltersScreen = pathname?.includes("/swipe/filters");
+  
+  // Check if viewing from likes section (has source parameter in URL)
+  const isViewingFromLikes = pathname?.includes("/swipe") && (searchParams?.source === "myLikes" || searchParams?.source === "likedMe" || searchParams?.source === "viewers");
   
   // Hide tab bar on chat detail or filters screen
   const hideTabBar = isChatDetail || isFiltersScreen;
@@ -174,15 +178,19 @@ export default function MainLayout() {
         options={{
           title: "Swipe",
           tabBarLabel: "",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <Ionicons 
-                name={focused ? "home" : "home-outline"} 
-                size={28} 
-                color={focused ? "#B8860B" : "#9CA3AF"} 
-              />
-            </View>
-          ),
+          tabBarIcon: ({ color, focused }) => {
+            // If viewing from likes, make swipe tab inactive
+            const isActive = !isViewingFromLikes && focused;
+            return (
+              <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
+                <Ionicons 
+                  name={isActive ? "home" : "home-outline"} 
+                  size={28} 
+                  color={isActive ? "#B8860B" : "#9CA3AF"} 
+                />
+              </View>
+            );
+          },
         }}
       />
       <Tabs.Screen
@@ -190,15 +198,19 @@ export default function MainLayout() {
         options={{
           title: "Likes",
           tabBarLabel: "",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <Ionicons 
-                name={focused ? "heart" : "heart-outline"} 
-                size={28} 
-                color={focused ? "#B8860B" : "#9CA3AF"} 
-              />
-            </View>
-          ),
+          tabBarIcon: ({ color, focused }) => {
+            // If viewing from likes, make likes tab active
+            const isActive = isViewingFromLikes || focused;
+            return (
+              <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
+                <Ionicons 
+                  name={isActive ? "heart" : "heart-outline"} 
+                  size={28} 
+                  color={isActive ? "#B8860B" : "#9CA3AF"} 
+                />
+              </View>
+            );
+          },
         }}
       />
       <Tabs.Screen

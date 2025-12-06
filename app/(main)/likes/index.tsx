@@ -348,7 +348,7 @@ export default function LikesScreen() {
                       console.error("Error recording profile view from my likes tab:", error);
                       // Continue with navigation even if view tracking fails
                     }
-                    router.push(`/(main)/profile/preview?userId=${item.id}`);
+                    router.push(`/(main)/swipe?userId=${item.id}&source=myLikes`);
                   }}
                 >
                   {mainPhoto ? (
@@ -456,7 +456,8 @@ export default function LikesScreen() {
                       console.error("Error recording profile view from viewers tab:", error);
                       // Continue with navigation even if view tracking fails
                     }
-                    router.push(`/(main)/profile/preview?userId=${item.id}`);
+                    // Navigate to swipe screen with this user's profile
+                    router.push(`/(main)/swipe?userId=${item.id}&source=viewers`);
                   }}
                 >
                   {mainPhoto ? (
@@ -568,19 +569,20 @@ export default function LikesScreen() {
               <Pressable
                 className="bg-white/10 rounded-2xl overflow-hidden"
                 style={{ width: CARD_WIDTH, height: CARD_WIDTH * 1.4 }}
-                onPress={async () => {
-                  // Track profile view when tapping from likes tab
-                  try {
-                    await supabase.functions.invoke("create-profile-view", {
-                      body: { viewed_id: item.id },
-                    });
-                    console.log("✅ Profile view recorded from likes tab:", item.id);
-                  } catch (error) {
-                    console.error("Error recording profile view from likes tab:", error);
-                    // Continue with navigation even if view tracking fails
-                  }
-                  router.push(`/(main)/profile/preview?userId=${item.id}`);
-                }}
+                  onPress={async () => {
+                    // Track profile view when tapping from likes tab
+                    try {
+                      await supabase.functions.invoke("create-profile-view", {
+                        body: { viewed_id: item.id },
+                      });
+                      console.log("✅ Profile view recorded from likes tab:", item.id);
+                    } catch (error) {
+                      console.error("Error recording profile view from likes tab:", error);
+                      // Continue with navigation even if view tracking fails
+                    }
+                    // Navigate to swipe screen with this user's profile
+                    router.push(`/(main)/swipe?userId=${item.id}&source=likedMe`);
+                  }}
               >
                 {mainPhoto ? (
                   <View style={{ width: '100%', height: '100%', position: 'relative' }}>
