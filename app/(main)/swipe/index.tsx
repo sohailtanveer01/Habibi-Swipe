@@ -133,6 +133,11 @@ export default function SwipeScreen() {
       return { showLike: true, showPass: false };
     }
     
+    if (source === "chat") {
+      // Viewing from chat - they're already matched, show no buttons (just view profile)
+      return { showLike: false, showPass: false };
+    }
+    
     if (source === "viewers") {
       // Check existing swipe status
       if (existingSwipe?.action === "like" || existingSwipe?.action === "superlike") {
@@ -282,10 +287,15 @@ export default function SwipeScreen() {
         // Don't move to next card yet - wait for user to dismiss celebration
       } else {
         // Move to next card if no match
-        // If we're viewing a specific user, navigate to likes screen after swiping
+        // If we're viewing a specific user, navigate back based on source
         if (userId) {
           setTimeout(() => {
-            router.push("/(main)/likes");
+            // Navigate back to the appropriate section based on source
+            if (source === "chat") {
+              router.back(); // Go back to chat
+            } else {
+              router.push("/(main)/likes");
+            }
           }, 300); // Small delay to show the swipe animation
         } else {
           setIndex((i) => i + 1);
@@ -404,10 +414,15 @@ export default function SwipeScreen() {
     } else {
       // Keep swiping
       setMatchData(null);
-      // If we're viewing a specific user, navigate to likes screen; otherwise move to next card
+      // If we're viewing a specific user, navigate back based on source; otherwise move to next card
       if (userId) {
         setTimeout(() => {
-          router.push("/(main)/likes");
+          // Navigate back to the appropriate section based on source
+          if (source === "chat") {
+            router.back(); // Go back to chat
+          } else {
+            router.push("/(main)/likes");
+          }
         }, 100);
       } else {
         setIndex((i) => i + 1);
@@ -434,14 +449,19 @@ export default function SwipeScreen() {
         )}
       </Modal>
 
-      {/* Back Button - Top Left (when viewing from likes) */}
-      {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn") && (
+      {/* Back Button - Top Left (when viewing from likes or chat) */}
+      {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn" || source === "chat") && (
         <Pressable
           className="absolute top-12 left-4 z-50 bg-black/50 w-10 h-10 rounded-full items-center justify-center"
           onPress={() => {
             // Clear parameters before navigating to ensure clean state
             router.setParams({ userId: undefined, source: undefined });
-            router.push("/(main)/likes");
+            // Navigate back to the appropriate section based on source
+            if (source === "chat") {
+              router.back(); // Go back to chat
+            } else {
+              router.push("/(main)/likes");
+            }
           }}
         >
           <Text className="text-white text-xl">←</Text>
@@ -449,7 +469,7 @@ export default function SwipeScreen() {
       )}
 
       {/* Apply Filters Button - Top Left (only for normal swipe feed) */}
-      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn")) && (
+      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) && (
         <Pressable
           className="absolute top-12 left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
           onPress={() => router.push("/(main)/swipe/filters/")}
@@ -459,7 +479,7 @@ export default function SwipeScreen() {
       )}
 
       {/* Conditionally wrap with gesture detector only for normal swipe feed */}
-      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn")) ? (
+      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) ? (
         <>
           <GestureDetector gesture={pan}>
             <Animated.View
@@ -500,7 +520,7 @@ export default function SwipeScreen() {
             <LikesProfileView profile={current} />
           </View>
           
-          {/* Action buttons - only show when viewing from likes section */}
+          {/* Action buttons - only show when viewing from likes section (not from chat) */}
           {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn") && (
             <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center ${availableActions.showLike && availableActions.showPass ? 'gap-24' : ''}`}>
               {/* Pass - only show if available */}

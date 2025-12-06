@@ -257,7 +257,14 @@ export default function ChatScreen() {
           <Text className="text-white text-2xl font-semibold">←</Text>
         </Pressable>
         
-        <View className="flex-1 flex-row items-center">
+        <Pressable 
+          className="flex-1 flex-row items-center"
+          onPress={() => {
+            if (otherUser?.id) {
+              router.push(`/(main)/swipe?userId=${otherUser.id}&source=chat`);
+            }
+          }}
+        >
           {mainPhoto ? (
             <Image
               source={{ uri: mainPhoto }}
@@ -270,7 +277,7 @@ export default function ChatScreen() {
             </View>
           )}
           <Text className="text-white text-lg font-semibold">{fullName}</Text>
-        </View>
+        </Pressable>
 
         <View className="flex-row items-center gap-4">
           <Pressable>

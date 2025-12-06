@@ -17,7 +17,7 @@ export default function MainLayout() {
   const isFiltersScreen = pathname?.includes("/swipe/filters");
   
   // Check if viewing from likes section (has source parameter in URL)
-  const isViewingFromLikes = pathname?.includes("/swipe") && (searchParams?.source === "myLikes" || searchParams?.source === "likedMe" || searchParams?.source === "viewers" || searchParams?.source === "passedOn");
+  const isViewingFromLikes = pathname?.includes("/swipe") && (searchParams?.source === "myLikes" || searchParams?.source === "likedMe" || searchParams?.source === "viewers" || searchParams?.source === "passedOn" || searchParams?.source === "chat");
   
   // Hide tab bar on chat detail or filters screen
   const hideTabBar = isChatDetail || isFiltersScreen;
