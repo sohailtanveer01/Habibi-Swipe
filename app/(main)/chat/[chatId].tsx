@@ -3,6 +3,7 @@ import { View, TextInput, FlatList, Text, Pressable, Image, KeyboardAvoidingView
 import { supabase } from "../../../lib/supabase";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Ionicons } from "@expo/vector-icons";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -20,7 +21,6 @@ export default function ChatScreen() {
   const { chatId } = useLocalSearchParams();
   const router = useRouter();
   const [text, setText] = useState("");
-  const [showNotificationBanner, setShowNotificationBanner] = useState(true);
   const flatListRef = useRef<FlatList>(null);
   const queryClient = useQueryClient();
 
@@ -245,14 +245,14 @@ export default function ChatScreen() {
       keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
     >
       {/* Header */}
-      <View className="bg-black px-4 pt-12 pb-3 flex-row items-center justify-between border-b border-white/10">
+      <View className="bg-black px-4 pt-12 pb-4 flex-row items-start border-b border-white/10">
         <Pressable 
           onPress={() => {
             // Invalidate chat list cache to refresh unread counts
             queryClient.invalidateQueries({ queryKey: ["chat-list"] });
             router.back();
           }} 
-          className="mr-3"
+          className="mr-3 mt-1"
         >
           <Text className="text-white text-2xl font-semibold">←</Text>
         </Pressable>
@@ -268,50 +268,17 @@ export default function ChatScreen() {
           {mainPhoto ? (
             <Image
               source={{ uri: mainPhoto }}
-              className="w-10 h-10 rounded-full mr-3"
+              className="w-14 h-14 rounded-full mr-3"
               resizeMode="cover"
             />
           ) : (
-            <View className="w-10 h-10 rounded-full bg-white/10 mr-3 items-center justify-center">
-              <Text className="text-white/60 text-lg">👤</Text>
+            <View className="w-14 h-14 rounded-full bg-white/10 mr-3 items-center justify-center">
+              <Text className="text-white/60 text-xl">👤</Text>
             </View>
           )}
           <Text className="text-white text-lg font-semibold">{fullName}</Text>
         </Pressable>
-
-        <View className="flex-row items-center gap-4">
-          <Pressable>
-            <Text className="text-[#B8860B] text-xl">📞</Text>
-          </Pressable>
-          <Pressable>
-            <Text className="text-[#B8860B] text-xl">⋯</Text>
-          </Pressable>
-        </View>
       </View>
-
-      {/* Notification Banner */}
-      {showNotificationBanner && (
-        <View className="bg-[#B8860B]/20 px-4 py-3 flex-row items-center justify-between border-b border-[#B8860B]/30">
-          <View className="flex-row items-center flex-1">
-            <View className="relative mr-3">
-              <Text className="text-[#B8860B] text-lg">🔔</Text>
-              <View className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-white font-semibold text-sm">Get notified instantly</Text>
-              <Text className="text-white/70 text-xs">Do not let any chances slip away</Text>
-            </View>
-          </View>
-          <View className="flex-row items-center gap-2">
-            <Pressable onPress={() => setShowNotificationBanner(false)}>
-              <Text className="text-white/60 text-lg">✕</Text>
-            </Pressable>
-            <Pressable className="bg-[#B8860B] px-3 py-1.5 rounded-full">
-              <Text className="text-white text-xs font-semibold">Enable</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
 
       {/* Messages */}
       <FlatList
@@ -403,26 +370,45 @@ export default function ChatScreen() {
       />
 
       {/* Input */}
-      <View className="bg-black border-t border-white/10 px-4 py-2 flex-row items-center" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
+      <View className="bg-black px-4 py-3 flex-row items-center gap-3" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
+        {/* Add/Attachment Button */}
+        <Pressable 
+          className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-[#B8860B]/30"
+          onPress={() => {
+            // TODO: Add attachment functionality
+          }}
+        >
+          <Ionicons name="add" size={24} color="#B8860B" />
+        </Pressable>
+
+        {/* Message Input Field */}
         <TextInput
-          className="flex-1 bg-white/10 text-white px-4 py-3 rounded-full"
+          className="flex-1 bg-white/10 text-white px-4 py-3 rounded-2xl border border-[#B8860B]/30"
           placeholder="Type a message..."
-          placeholderTextColor="#999"
+          placeholderTextColor="#9CA3AF"
           value={text}
           onChangeText={setText}
           multiline
           maxLength={500}
-          style={{ maxHeight: 100 }}
+          style={{ maxHeight: 100, fontSize: 16 }}
           returnKeyType="send"
           onSubmitEditing={send}
         />
-        {text.trim() ? (
-          <Pressable onPress={send} disabled={sendMessageMutation.isPending} className="ml-3">
-            <View className="bg-[#B8860B] w-10 h-10 rounded-full items-center justify-center">
-              <Text className="text-white text-lg">✓</Text>
-            </View>
-          </Pressable>
-        ) : null}
+
+        {/* Send Button */}
+        <Pressable 
+          onPress={send} 
+          disabled={!text.trim() || sendMessageMutation.isPending}
+          className={`w-10 h-10 rounded-full bg-[#B8860B] items-center justify-center ${
+            !text.trim() ? 'opacity-50' : ''
+          }`}
+        >
+          <Ionicons 
+            name="send" 
+            size={18} 
+            color="#FFFFFF" 
+          />
+        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
