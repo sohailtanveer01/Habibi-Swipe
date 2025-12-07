@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Image as ExpoImage } from "expo-image";
+import { isUserActive } from "../../../lib/useActiveStatus";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -103,6 +104,58 @@ export default function ChatScreen() {
   const otherUser = chatData?.otherUser || null;
   const currentUser = chatData?.currentUserId ? { id: chatData.currentUserId } : null;
   const messages = chatData?.messages || [];
+  
+  // Track OTHER USER's active status with real-time updates
+  const [otherUserActive, setOtherUserActive] = useState<boolean>(false);
+  
+  // Check initial active status of OTHER USER
+  useEffect(() => {
+    if (otherUser?.last_active_at) {
+      const active = isUserActive(otherUser.last_active_at);
+      setOtherUserActive(active);
+      console.log("🔍 Other user active status:", {
+        userId: otherUser.id,
+        lastActiveAt: otherUser.last_active_at,
+        isActive: active,
+      });
+    } else {
+      setOtherUserActive(false);
+    }
+  }, [otherUser?.last_active_at, otherUser?.id]);
+  
+  // Real-time subscription for OTHER USER's last_active_at changes
+  useEffect(() => {
+    if (!otherUser?.id) return;
+    
+    const channel = supabase
+      .channel(`user-active-${otherUser.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "users",
+          filter: `id=eq.${otherUser.id}`,
+        },
+        (payload) => {
+          const newLastActive = payload.new.last_active_at;
+          if (newLastActive) {
+            const active = isUserActive(newLastActive);
+            setOtherUserActive(active);
+            console.log("🔄 Other user activity updated:", {
+              userId: otherUser.id,
+              lastActiveAt: newLastActive,
+              isActive: active,
+            });
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [otherUser?.id]);
 
   // Debug: Log messages to see if media_url is present
   useEffect(() => {
@@ -454,18 +507,29 @@ export default function ChatScreen() {
             }
           }}
         >
-          {mainPhoto ? (
-            <Image
-              source={{ uri: mainPhoto }}
-              className="w-14 h-14 rounded-full mr-3"
-              resizeMode="cover"
-            />
-          ) : (
-            <View className="w-14 h-14 rounded-full bg-white/10 mr-3 items-center justify-center">
-              <Text className="text-white/60 text-xl">👤</Text>
-            </View>
-          )}
-          <Text className="text-white text-lg font-semibold">{fullName}</Text>
+          <View className="relative mr-3">
+            {mainPhoto ? (
+              <Image
+                source={{ uri: mainPhoto }}
+                className="w-14 h-14 rounded-full"
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="w-14 h-14 rounded-full bg-white/10 items-center justify-center">
+                <Text className="text-white/60 text-xl">👤</Text>
+              </View>
+            )}
+            {/* Active indicator */}
+            {otherUserActive && (
+              <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-black" />
+            )}
+          </View>
+          <View className="flex-1">
+            <Text className="text-white text-lg font-semibold">{fullName}</Text>
+            {otherUserActive && (
+              <Text className="text-green-500 text-xs mt-0.5">Active now</Text>
+            )}
+          </View>
         </Pressable>
       </View>
 

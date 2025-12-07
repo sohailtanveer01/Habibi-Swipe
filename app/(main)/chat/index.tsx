@@ -3,6 +3,7 @@ import { View, Text, FlatList, Pressable, Image, ActivityIndicator, RefreshContr
 import { supabase } from "../../../lib/supabase";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { isUserActive } from "../../../lib/useActiveStatus";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -33,12 +34,14 @@ export default function ChatListScreen() {
       if (error) throw error;
       
       if (data && data.matches) {
-        // Log unread counts for debugging
-        console.log("Chat list loaded with unread counts:", 
+        // Log unread counts and active status for debugging
+        console.log("Chat list loaded:", 
           data.matches.map((m: any) => ({ 
             matchId: m.id, 
             unreadCount: m.unreadCount,
-            otherUser: m.otherUser?.name || m.otherUser?.first_name 
+            otherUser: m.otherUser?.name || m.otherUser?.first_name,
+            otherUserLastActive: m.otherUser?.last_active_at,
+            isOtherUserActive: isUserActive(m.otherUser?.last_active_at),
           }))
         );
         return data.matches;
@@ -53,7 +56,7 @@ export default function ChatListScreen() {
 
   const matches = chatListData || [];
 
-  // Real-time subscription for matches and messages
+  // Real-time subscription for matches, messages, and user activity
   useEffect(() => {
     const channel = supabase
       .channel("chat-list-updates")
@@ -84,6 +87,21 @@ export default function ChatListScreen() {
           // When messages are updated (especially when marked as read), refresh the list
           // Check if read status changed from false to true
           if (payload.new.read === true && payload.old?.read === false) {
+            queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "users",
+        },
+        (payload) => {
+          // When a matched user's last_active_at is updated, refresh the chat list
+          // to update active status indicators
+          if (payload.new.last_active_at !== payload.old?.last_active_at) {
             queryClient.invalidateQueries({ queryKey: ["chat-list"] });
           }
         }
@@ -177,23 +195,42 @@ export default function ChatListScreen() {
             // Ensure unreadCount is a number
             const unreadCount = typeof item.unreadCount === 'number' ? item.unreadCount : 0;
             const hasUnread = unreadCount > 0;
+            
+            // Check if OTHER USER is active (not current user)
+            const otherUserLastActive = item.otherUser?.last_active_at;
+            const isOtherUserActive = isUserActive(otherUserLastActive);
+            
+            // Debug: Log active status for each user
+            if (__DEV__) {
+              console.log("👤 User active check:", {
+                userName: fullName,
+                lastActive: otherUserLastActive,
+                isActive: isOtherUserActive,
+              });
+            }
 
             return (
               <Pressable
                 className="bg-white/10 p-4 rounded-2xl mb-3 flex-row items-center border border-white/10"
                 onPress={() => router.push(`/(main)/chat/${item.id}`)}
               >
-                {mainPhoto ? (
-                  <Image
-                    source={{ uri: mainPhoto }}
-                    className="w-16 h-16 rounded-full mr-4 border-2 border-[#B8860B]"
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View className="w-16 h-16 rounded-full bg-white/10 mr-4 items-center justify-center border-2 border-[#B8860B]">
-                    <Text className="text-white/60 text-2xl">👤</Text>
-                  </View>
-                )}
+                <View className="relative mr-4">
+                  {mainPhoto ? (
+                    <Image
+                      source={{ uri: mainPhoto }}
+                      className="w-16 h-16 rounded-full border-2 border-[#B8860B]"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View className="w-16 h-16 rounded-full bg-white/10 items-center justify-center border-2 border-[#B8860B]">
+                      <Text className="text-white/60 text-2xl">👤</Text>
+                    </View>
+                  )}
+                  {/* Active indicator - shows if OTHER USER is active */}
+                  {isOtherUserActive && (
+                    <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-black" />
+                  )}
+                </View>
                 <View className="flex-1">
                   <View className="flex-row items-center gap-2">
                     <Text 

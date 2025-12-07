@@ -5,12 +5,16 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
 import { BlurView } from "expo-blur";
+import { useActiveStatus } from "../../lib/useActiveStatus";
 
 export default function MainLayout() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const pathname = usePathname();
   const searchParams = useGlobalSearchParams();
+  
+  // Track user's active status (updates last_active_at periodically)
+  useActiveStatus();
   
   // Check if we're on a chat detail screen or filters screen
   const isChatDetail = pathname?.includes("/chat/") && pathname !== "/chat";
