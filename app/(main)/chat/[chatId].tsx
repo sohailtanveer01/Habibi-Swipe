@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { View, TextInput, FlatList, Text, Pressable, Image, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
+import { View, TextInput, FlatList, Text, Pressable, Image, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from "react-native";
 import { supabase } from "../../../lib/supabase";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { Image as ExpoImage } from "expo-image";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -17,10 +19,63 @@ function cleanPhotoUrl(url: string | null | undefined): string | null {
   return null;
 }
 
+// Upload image to Supabase Storage
+async function uploadChatMedia(uri: string, matchId: string, userId: string): Promise<string> {
+  const ext = uri.split(".").pop() || "jpg";
+  const timestamp = Date.now();
+  const filePath = `${matchId}/${userId}/${timestamp}.${ext}`;
+
+  const response = await fetch(uri);
+  const blob = await response.arrayBuffer();
+  
+  const { error } = await supabase.storage
+    .from("chat-media")
+    .upload(filePath, blob, {
+      contentType: `image/${ext}`,
+      upsert: false,
+    });
+
+  if (error) throw error;
+
+  // Try public URL first, fallback to signed URL if needed
+  const { data: publicData } = supabase.storage
+    .from("chat-media")
+    .getPublicUrl(filePath);
+
+  // Return public URL (bucket should be public)
+  return publicData.publicUrl;
+}
+
+// Get signed URL for chat media (fallback if bucket is not public)
+async function getChatMediaUrl(mediaUrl: string): Promise<string> {
+  // If it's already a full URL, return it
+  if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+    // Extract file path from public URL
+    const urlParts = mediaUrl.split('/storage/v1/object/public/chat-media/');
+    if (urlParts.length === 2) {
+      const filePath = urlParts[1];
+      
+      // Try to get a signed URL (valid for 1 hour)
+      const { data: signedData, error } = await supabase.storage
+        .from("chat-media")
+        .createSignedUrl(filePath, 3600); // 1 hour expiry
+      
+      if (!error && signedData?.signedUrl) {
+        return signedData.signedUrl;
+      }
+    }
+  }
+  
+  // Fallback to original URL
+  return mediaUrl;
+}
+
 export default function ChatScreen() {
   const { chatId } = useLocalSearchParams();
   const router = useRouter();
   const [text, setText] = useState("");
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const queryClient = useQueryClient();
 
@@ -49,17 +104,63 @@ export default function ChatScreen() {
   const currentUser = chatData?.currentUserId ? { id: chatData.currentUserId } : null;
   const messages = chatData?.messages || [];
 
+  // Debug: Log messages to see if media_url is present
+  useEffect(() => {
+    if (messages.length > 0) {
+      const messagesWithMedia = messages.filter((msg: any) => msg.media_url);
+      if (messagesWithMedia.length > 0) {
+        console.log("📸 Messages with media:", messagesWithMedia.length);
+        console.log("📸 Sample message with media:", JSON.stringify(messagesWithMedia[0], null, 2));
+      } else {
+        console.log("⚠️ No messages with media_url found. Total messages:", messages.length);
+        if (messages.length > 0) {
+          console.log("📝 Sample message structure:", JSON.stringify(messages[0], null, 2));
+        }
+      }
+    }
+  }, [messages]);
+
   // Mutation for sending messages with optimistic updates
   const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, mediaUrl, mediaType }: { content?: string; mediaUrl?: string; mediaType?: string }) => {
+      // Build request body - only include fields that have values
+      const requestBody: any = { 
+        matchId: chatId,
+      };
+      
+      if (content && content.trim()) {
+        requestBody.content = content.trim();
+      }
+      
+      if (mediaUrl) {
+        requestBody.mediaUrl = mediaUrl;
+        requestBody.mediaType = mediaType || "image";
+      }
+      
+      console.log("📤 Request body to Edge Function:", JSON.stringify(requestBody, null, 2));
+      
       const { data, error } = await supabase.functions.invoke("send-message", {
-        body: { matchId: chatId, content },
+        body: requestBody,
       });
-      if (error) throw error;
+      
+      if (error) {
+        console.error("❌ Send message error:", error);
+        throw error;
+      }
+      
+      console.log("✅ Send message response:", JSON.stringify(data, null, 2));
+      
+      // Check if the response includes media_url
+      if (data?.message) {
+        console.log("📸 Response message media_url:", data.message.media_url);
+        console.log("📸 Response message media_type:", data.message.media_type);
+      }
+      
       return data;
     },
     onSuccess: () => {
       setText("");
+      setSelectedImage(null);
       // Invalidate and refetch chat data to get updated messages
       queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
       setTimeout(() => {
@@ -108,17 +209,25 @@ export default function ChatScreen() {
             }
           }
           
+          // Ensure media_url and media_type are included in the message
+          // The payload should already include all columns, but we'll make sure
+          const messageWithMedia = {
+            ...newMessage,
+            media_url: newMessage.media_url || null,
+            media_type: newMessage.media_type || null,
+          };
+          
           // Update React Query cache with new message
           queryClient.setQueryData(["chat", chatId], (oldData: any) => {
             if (!oldData) return oldData;
             
             // Check if message already exists
-            const exists = oldData.messages?.some((msg: any) => msg.id === newMessage.id);
+            const exists = oldData.messages?.some((msg: any) => msg.id === messageWithMedia.id);
             if (exists) return oldData;
 
             return {
               ...oldData,
-              messages: [...(oldData.messages || []), newMessage],
+              messages: [...(oldData.messages || []), messageWithMedia],
             };
           });
           
@@ -158,10 +267,90 @@ export default function ChatScreen() {
     return () => { supabase.removeChannel(channel); };
   }, [chatId, queryClient]);
 
-  const send = useCallback(() => {
-    if (!text.trim() || sendMessageMutation.isPending) return;
-    sendMessageMutation.mutate(text.trim());
-  }, [text, sendMessageMutation]);
+  const pickImage = async () => {
+    try {
+      // Check & request permission
+      const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      let hasPermission = existingStatus === 'granted';
+      
+      if (!hasPermission) {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        hasPermission = status === 'granted';
+      }
+
+      if (!hasPermission) {
+        Alert.alert(
+          "Permission needed",
+          "We need access to your gallery to send photos. Please enable photo permissions in your device settings."
+        );
+        return;
+      }
+
+      // Open gallery
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: false,
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const selectedUri = result.assets[0].uri;
+      setSelectedImage(selectedUri);
+    } catch (error: any) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
+    }
+  };
+
+  const send = useCallback(async () => {
+    // Allow sending if there's text OR an image
+    const hasText = text && text.trim().length > 0;
+    const hasImage = !!selectedImage;
+    
+    if ((!hasText && !hasImage) || sendMessageMutation.isPending || uploadingMedia) return;
+    
+    let mediaUrl: string | undefined;
+    let mediaType: string | undefined;
+
+    // If image is selected, upload it first
+    if (selectedImage) {
+      try {
+        setUploadingMedia(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          Alert.alert("Error", "Please log in to send messages.");
+          setUploadingMedia(false);
+          return;
+        }
+        
+        mediaUrl = await uploadChatMedia(selectedImage, chatId as string, user.id);
+        mediaType = "image";
+      } catch (error: any) {
+        console.error("Error uploading media:", error);
+        Alert.alert("Error", "Failed to upload image. Please try again.");
+        setUploadingMedia(false);
+        return;
+      }
+    }
+
+    // Send message with text and/or media
+    console.log("📤 Sending message:", {
+      hasText,
+      hasImage: !!mediaUrl,
+      mediaUrl,
+      mediaType,
+    });
+    
+    sendMessageMutation.mutate({
+      content: hasText ? text.trim() : undefined,
+      mediaUrl,
+      mediaType,
+    });
+    setUploadingMedia(false);
+  }, [text, selectedImage, sendMessageMutation, uploadingMedia, chatId]);
 
   const fullName = otherUser?.first_name && otherUser?.last_name
     ? `${otherUser.first_name} ${otherUser.last_name}`
@@ -339,19 +528,54 @@ export default function ChatScreen() {
               
               <View className={`max-w-[75%] ${isMe ? "items-end" : "items-start"}`}>
                 <View
-                  className={`px-4 py-2.5 rounded-2xl ${
+                  className={`rounded-2xl ${
                     isMe
                       ? "bg-[#B8860B] rounded-br-sm"
                       : "bg-white/10 rounded-bl-sm"
                   }`}
                 >
-                  <Text
-                    className={`text-base ${
-                      isMe ? "text-white" : "text-white"
-                    }`}
-                  >
-                    {item.content}
-                  </Text>
+                  {/* Show image if media_url exists */}
+                  {(item.media_url || item.mediaUrl) && (
+                    <Pressable
+                      onPress={() => {
+                        // TODO: Open full screen image viewer
+                        console.log("🖼️ Image tapped:", item.media_url || item.mediaUrl);
+                      }}
+                    >
+                      <ExpoImage
+                        source={{ uri: item.media_url || item.mediaUrl }}
+                        style={{ 
+                          width: 250, 
+                          height: 250, 
+                          borderTopLeftRadius: 16,
+                          borderTopRightRadius: 16,
+                          borderBottomLeftRadius: (item.content && item.content.trim()) ? 0 : 16,
+                          borderBottomRightRadius: (item.content && item.content.trim()) ? 0 : 16,
+                        }}
+                        contentFit="cover"
+                        transition={200}
+                        cachePolicy="memory-disk"
+                        onError={(error) => {
+                          console.error("❌ Image load error:", error);
+                          console.error("❌ Image URL:", item.media_url || item.mediaUrl);
+                        }}
+                        onLoad={() => {
+                          console.log("✅ Image loaded successfully:", item.media_url || item.mediaUrl);
+                        }}
+                      />
+                    </Pressable>
+                  )}
+                  
+                  {/* Show text content if exists */}
+                  {item.content && item.content.trim() && (
+                    <Text
+                      className={`text-base px-4 py-2.5 ${
+                        isMe ? "text-white" : "text-white"
+                      }`}
+                    >
+                      {item.content}
+                    </Text>
+                  )}
                 </View>
                 
               </View>
@@ -369,14 +593,32 @@ export default function ChatScreen() {
         }
       />
 
+      {/* Image Preview */}
+      {selectedImage && (
+        <View className="px-4 py-2 bg-black border-t border-white/10">
+          <View className="relative">
+            <ExpoImage
+              source={{ uri: selectedImage }}
+              style={{ width: 100, height: 100, borderRadius: 12 }}
+              contentFit="cover"
+            />
+            <Pressable
+              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 items-center justify-center"
+              onPress={() => setSelectedImage(null)}
+            >
+              <Ionicons name="close" size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       {/* Input */}
       <View className="bg-black px-4 py-3 flex-row items-center gap-3" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
         {/* Add/Attachment Button */}
         <Pressable 
           className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-[#B8860B]/30"
-          onPress={() => {
-            // TODO: Add attachment functionality
-          }}
+          onPress={pickImage}
+          disabled={uploadingMedia}
         >
           <Ionicons name="add" size={24} color="#B8860B" />
         </Pressable>
@@ -398,16 +640,20 @@ export default function ChatScreen() {
         {/* Send Button */}
         <Pressable 
           onPress={send} 
-          disabled={!text.trim() || sendMessageMutation.isPending}
+          disabled={((!text || !text.trim()) && !selectedImage) || sendMessageMutation.isPending || uploadingMedia}
           className={`w-10 h-10 rounded-full bg-[#B8860B] items-center justify-center ${
-            !text.trim() ? 'opacity-50' : ''
+            ((!text || !text.trim()) && !selectedImage) ? 'opacity-50' : ''
           }`}
         >
-          <Ionicons 
-            name="send" 
-            size={18} 
-            color="#FFFFFF" 
-          />
+          {uploadingMedia ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Ionicons 
+              name="send" 
+              size={18} 
+              color="#FFFFFF" 
+            />
+          )}
         </Pressable>
       </View>
     </KeyboardAvoidingView>

@@ -37,7 +37,9 @@ serve(async (req) => {
     }
 
     // Get message data from request
-    const { matchId, content } = await req.json();
+    const { matchId, content, mediaUrl, mediaType } = await req.json();
+    
+    console.log("📍 Received request:", { matchId, content, mediaUrl, mediaType });
     
     if (!matchId) {
       return new Response(
@@ -46,9 +48,10 @@ serve(async (req) => {
       );
     }
 
-    if (!content || !content.trim()) {
+    // At least one of content or mediaUrl must be provided
+    if ((!content || !content.trim()) && !mediaUrl) {
       return new Response(
-        JSON.stringify({ error: "Message content cannot be empty" }),
+        JSON.stringify({ error: "Message must have either content or media" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -79,18 +82,34 @@ serve(async (req) => {
     }
 
     // Insert the message
+    const messageData: any = {
+      match_id: matchId,
+      sender_id: user.id,
+    };
+    
+    // Add content if provided
+    if (content && content.trim()) {
+      messageData.content = content.trim();
+    }
+    
+    // Add media if provided
+    if (mediaUrl) {
+      messageData.media_url = mediaUrl;
+      messageData.media_type = mediaType || "image"; // Default to image if not specified
+      console.log("📸 Adding media to message:", { media_url: mediaUrl, media_type: messageData.media_type });
+    }
+    
+    console.log("📤 Message data to insert:", JSON.stringify(messageData, null, 2));
+    
     const { data: message, error: messageError } = await supabaseClient
       .from("messages")
-      .insert({
-        match_id: matchId,
-        sender_id: user.id,
-        content: content.trim(),
-      })
+      .insert(messageData)
       .select()
       .single();
 
     if (messageError) {
       console.error("❌ Message insert error:", messageError);
+      console.error("❌ Error details:", JSON.stringify(messageError, null, 2));
       return new Response(
         JSON.stringify({ error: messageError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -98,6 +117,7 @@ serve(async (req) => {
     }
 
     console.log("✅ Message sent successfully:", message.id);
+    console.log("✅ Message data returned:", JSON.stringify(message, null, 2));
 
     return new Response(
       JSON.stringify({
