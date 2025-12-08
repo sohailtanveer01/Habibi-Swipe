@@ -162,15 +162,15 @@ export default function ChatScreen() {
     };
   }, [otherUser?.id]);
 
-  // Debug: Log messages to see if media_url is present
+  // Debug: Log messages to see if media is present
   useEffect(() => {
     if (messages.length > 0) {
-      const messagesWithMedia = messages.filter((msg: any) => msg.media_url);
+      const messagesWithMedia = messages.filter((msg: any) => msg.image_url || msg.voice_url);
       if (messagesWithMedia.length > 0) {
         console.log("📸 Messages with media:", messagesWithMedia.length);
         console.log("📸 Sample message with media:", JSON.stringify(messagesWithMedia[0], null, 2));
       } else {
-        console.log("⚠️ No messages with media_url found. Total messages:", messages.length);
+        console.log("⚠️ No messages with media found. Total messages:", messages.length);
         if (messages.length > 0) {
           console.log("📝 Sample message structure:", JSON.stringify(messages[0], null, 2));
         }
@@ -208,9 +208,10 @@ export default function ChatScreen() {
       
       console.log("✅ Send message response:", JSON.stringify(data, null, 2));
       
-      // Check if the response includes media_url
+      // Check if the response includes media
       if (data?.message) {
-        console.log("📸 Response message media_url:", data.message.media_url);
+        console.log("📸 Response message image_url:", data.message.image_url);
+        console.log("🎤 Response message voice_url:", data.message.voice_url);
         console.log("📸 Response message media_type:", data.message.media_type);
       }
       
@@ -272,11 +273,12 @@ export default function ChatScreen() {
             }
           }
           
-          // Ensure media_url and media_type are included in the message
+          // Ensure image_url, voice_url and media_type are included in the message
           // The payload should already include all columns, but we'll make sure
           const messageWithMedia = {
             ...newMessage,
-            media_url: newMessage.media_url || null,
+            image_url: newMessage.image_url || null,
+            voice_url: newMessage.voice_url || null,
             media_type: newMessage.media_type || null,
           };
           
@@ -308,13 +310,20 @@ export default function ChatScreen() {
         { event: "UPDATE", schema: "public", table: "messages", filter: `match_id=eq.${chatId}` },
         (payload) => {
           // Update message in cache (e.g., when marked as read)
+          // Ensure image_url and voice_url are preserved
+          const updatedMessage = {
+            ...payload.new,
+            image_url: payload.new.image_url || null,
+            voice_url: payload.new.voice_url || null,
+          };
+          
           queryClient.setQueryData(["chat", chatId], (oldData: any) => {
             if (!oldData) return oldData;
             
             return {
               ...oldData,
               messages: oldData.messages?.map((msg: any) =>
-                msg.id === payload.new.id ? payload.new : msg
+                msg.id === updatedMessage.id ? updatedMessage : msg
               ) || [],
             };
           });
@@ -715,16 +724,16 @@ export default function ChatScreen() {
                       : "bg-white/10 rounded-bl-sm"
                   }`}
                 >
-                  {/* Show image if media_url exists */}
-                  {(item.media_url || item.mediaUrl) && (
+                  {/* Show image if image_url exists */}
+                  {item.image_url && (
                     <Pressable
                       onPress={() => {
                         // TODO: Open full screen image viewer
-                        console.log("🖼️ Image tapped:", item.media_url || item.mediaUrl);
+                        console.log("🖼️ Image tapped:", item.image_url);
                       }}
                     >
                       <ExpoImage
-                        source={{ uri: item.media_url || item.mediaUrl }}
+                        source={{ uri: cleanPhotoUrl(item.image_url) || item.image_url }}
                         style={{ 
                           width: 250, 
                           height: 250, 
@@ -738,13 +747,22 @@ export default function ChatScreen() {
                         cachePolicy="memory-disk"
                         onError={(error) => {
                           console.error("❌ Image load error:", error);
-                          console.error("❌ Image URL:", item.media_url || item.mediaUrl);
+                          console.error("❌ Image URL:", item.image_url);
                         }}
                         onLoad={() => {
-                          console.log("✅ Image loaded successfully:", item.media_url || item.mediaUrl);
+                          console.log("✅ Image loaded successfully:", item.image_url);
                         }}
                       />
                     </Pressable>
+                  )}
+                  
+                  {/* Show voice note if voice_url exists (for future implementation) */}
+                  {item.voice_url && (
+                    <View className="px-4 py-3">
+                      <Text className="text-white/60 text-sm">
+                        🎤 Voice note (coming soon)
+                      </Text>
+                    </View>
                   )}
                   
                   {/* Show text content if exists */}

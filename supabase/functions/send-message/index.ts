@@ -94,9 +94,22 @@ serve(async (req) => {
     
     // Add media if provided
     if (mediaUrl) {
-      messageData.media_url = mediaUrl;
-      messageData.media_type = mediaType || "image"; // Default to image if not specified
-      console.log("📸 Adding media to message:", { media_url: mediaUrl, media_type: messageData.media_type });
+      const finalMediaType = mediaType || "image"; // Default to image if not specified
+      
+      // Use image_url for images, voice_url for voice notes
+      if (finalMediaType === "image") {
+        messageData.image_url = mediaUrl;
+      } else if (finalMediaType === "audio" || finalMediaType === "voice") {
+        messageData.voice_url = mediaUrl;
+      }
+      
+      messageData.media_type = finalMediaType;
+      
+      console.log("📸 Adding media to message:", { 
+        image_url: finalMediaType === "image" ? mediaUrl : null,
+        voice_url: (finalMediaType === "audio" || finalMediaType === "voice") ? mediaUrl : null,
+        media_type: finalMediaType 
+      });
     }
     
     console.log("📤 Message data to insert:", JSON.stringify(messageData, null, 2));
