@@ -77,8 +77,13 @@ export default function ChatScreen() {
   const [text, setText] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const queryClient = useQueryClient();
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasSentTypingStartedRef = useRef<boolean>(false);
+  const typingIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const channelRef = useRef<any>(null);
 
   // Fetch chat data with React Query (cached)
   // Always refetch on mount to ensure messages are marked as read
@@ -237,7 +242,12 @@ export default function ChatScreen() {
     if (!chatId) return;
 
     const channel = supabase
-      .channel(`messages:${chatId}`)
+      .channel(`messages:${chatId}`);
+    
+    // Store channel reference for broadcasting
+    channelRef.current = channel;
+    
+    channel
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `match_id=eq.${chatId}` },
@@ -315,10 +325,117 @@ export default function ChatScreen() {
           }
         }
       )
+      .on(
+        "broadcast",
+        { event: "typing" },
+        async (payload) => {
+          // Get current user ID
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          
+          // Only show typing indicator if it's from the OTHER user (not current user)
+          if (payload.payload.userId !== user.id) {
+            if (payload.payload.type === "typing_started") {
+              setIsOtherUserTyping(true);
+              
+              // Clear any existing timeout
+              if (typingIndicatorTimeoutRef.current) {
+                clearTimeout(typingIndicatorTimeoutRef.current);
+              }
+              
+              // Auto-hide typing indicator after 3 seconds if no update
+              typingIndicatorTimeoutRef.current = setTimeout(() => {
+                setIsOtherUserTyping(false);
+              }, 3000);
+            } else if (payload.payload.type === "typing_stopped") {
+              setIsOtherUserTyping(false);
+              
+              // Clear timeout
+              if (typingIndicatorTimeoutRef.current) {
+                clearTimeout(typingIndicatorTimeoutRef.current);
+              }
+            }
+          }
+        }
+      )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { 
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+      // Clean up timeouts
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (typingIndicatorTimeoutRef.current) {
+        clearTimeout(typingIndicatorTimeoutRef.current);
+      }
+    };
   }, [chatId, queryClient]);
+
+  // Function to broadcast typing events
+  const broadcastTyping = async (type: "typing_started" | "typing_stopped") => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !chatId || !channelRef.current) return;
+
+      // Use the existing subscribed channel to send broadcast
+      await channelRef.current.send({
+        type: "broadcast",
+        event: "typing",
+        payload: {
+          userId: user.id,
+          type: type,
+        },
+      });
+    } catch (error) {
+      console.error("Error broadcasting typing event:", error);
+    }
+  };
+
+  // Handle text input changes and broadcast typing events
+  const handleTextChange = (newText: string) => {
+    setText(newText);
+    
+    // If user starts typing and we haven't sent typing_started yet
+    if (newText.length > 0 && !hasSentTypingStartedRef.current) {
+      hasSentTypingStartedRef.current = true;
+      broadcastTyping("typing_started");
+    }
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // If text is empty, send typing_stopped immediately
+    if (newText.length === 0) {
+      if (hasSentTypingStartedRef.current) {
+        hasSentTypingStartedRef.current = false;
+        broadcastTyping("typing_stopped");
+      }
+      return;
+    }
+    
+    // Set timeout to send typing_stopped after 1 second of no typing
+    typingTimeoutRef.current = setTimeout(() => {
+      if (hasSentTypingStartedRef.current) {
+        hasSentTypingStartedRef.current = false;
+        broadcastTyping("typing_stopped");
+      }
+    }, 1000); // 1 second debounce
+  };
+
+  // Clean up typing indicator when message is sent
+  useEffect(() => {
+    if (sendMessageMutation.isSuccess) {
+      // Message was sent, stop typing indicator
+      if (hasSentTypingStartedRef.current) {
+        hasSentTypingStartedRef.current = false;
+        broadcastTyping("typing_stopped");
+      }
+    }
+  }, [sendMessageMutation.isSuccess]);
 
   const pickImage = async () => {
     try {
@@ -526,7 +643,7 @@ export default function ChatScreen() {
           </View>
           <View className="flex-1">
             <Text className="text-white text-lg font-semibold">{fullName}</Text>
-            {otherUserActive && (
+            {otherUserActive && !isOtherUserTyping && (
               <Text className="text-green-500 text-xs mt-0.5">Active now</Text>
             )}
           </View>
@@ -655,6 +772,30 @@ export default function ChatScreen() {
             </View>
           </View>
         }
+        ListFooterComponent={
+          isOtherUserTyping ? (
+            <View className="mb-2 flex-row justify-start items-end">
+              <View className="mr-2 mb-1">
+                {mainPhoto ? (
+                  <Image
+                    source={{ uri: mainPhoto }}
+                    className="w-8 h-8 rounded-full"
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
+                    <Text className="text-white/60 text-xs">👤</Text>
+                  </View>
+                )}
+              </View>
+              <View className="max-w-[75%] items-start">
+                <View className="bg-white/10 rounded-2xl rounded-bl-sm px-4 py-2.5">
+                  <Text className="text-white/70 text-sm italic">typing...</Text>
+                </View>
+              </View>
+            </View>
+          ) : null
+        }
       />
 
       {/* Image Preview */}
@@ -693,7 +834,7 @@ export default function ChatScreen() {
           placeholder="Type a message..."
           placeholderTextColor="#9CA3AF"
           value={text}
-          onChangeText={setText}
+          onChangeText={handleTextChange}
           multiline
           maxLength={500}
           style={{ maxHeight: 100, fontSize: 16 }}
