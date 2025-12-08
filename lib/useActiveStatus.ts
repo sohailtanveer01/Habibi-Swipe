@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { supabase } from './supabase';
 
+// Global channel for broadcasting active status
+let globalActiveStatusChannel: any = null;
+
 /**
  * Check if a user is currently active (was active within the last 5 minutes)
  */
@@ -47,6 +50,7 @@ export function isUserActive(lastActiveAt: string | null | undefined): boolean {
 
 /**
  * Hook to periodically update the current user's last_active_at timestamp
+ * and broadcast active status via ephemeral events
  * Updates every 30 seconds when the app is in the foreground
  * Clears active status when app goes to background
  */
@@ -55,11 +59,42 @@ export function useActiveStatus() {
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(() => {
+    // Set up global channel for broadcasting active status
+    const setupChannel = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Create a global channel for active status broadcasts
+      if (!globalActiveStatusChannel) {
+        globalActiveStatusChannel = supabase.channel(`active-status:${user.id}`);
+        await globalActiveStatusChannel.subscribe();
+      }
+    };
+
+    setupChannel();
+
     const updateActiveStatus = async (isActive: boolean = true) => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        // Broadcast ephemeral active status event
+        if (globalActiveStatusChannel) {
+          try {
+            await globalActiveStatusChannel.send({
+              type: "broadcast",
+              event: "active_status",
+              payload: {
+                userId: user.id,
+                isActive: isActive,
+              },
+            });
+          } catch (broadcastError) {
+            console.error('Error broadcasting active status:', broadcastError);
+          }
+        }
+
+        // Also update database for other features (like last seen)
         if (isActive) {
           // Update to current time when active
           await supabase
@@ -123,6 +158,8 @@ export function useActiveStatus() {
         clearInterval(intervalRef.current);
       }
       subscription.remove();
+      // Note: We don't remove the global channel here as it's shared
+      // It will be cleaned up when the app closes
     };
   }, []);
 }

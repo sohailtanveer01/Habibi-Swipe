@@ -128,37 +128,37 @@ export default function ChatScreen() {
     }
   }, [otherUser?.last_active_at, otherUser?.id]);
   
-  // Real-time subscription for OTHER USER's last_active_at changes
+  // Subscribe to OTHER USER's active status broadcasts (ephemeral events)
   useEffect(() => {
     if (!otherUser?.id) return;
     
-    const channel = supabase
-      .channel(`user-active-${otherUser.id}`)
+    // Subscribe to the other user's active status channel
+    const activeStatusChannel = supabase
+      .channel(`active-status:${otherUser.id}`)
       .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "users",
-          filter: `id=eq.${otherUser.id}`,
-        },
+        "broadcast",
+        { event: "active_status" },
         (payload) => {
-          const newLastActive = payload.new.last_active_at;
-          if (newLastActive) {
-            const active = isUserActive(newLastActive);
-            setOtherUserActive(active);
-            console.log("🔄 Other user activity updated:", {
-              userId: otherUser.id,
-              lastActiveAt: newLastActive,
-              isActive: active,
+          // Only update if it's from the OTHER user
+          if (payload.payload.userId === otherUser.id) {
+            setOtherUserActive(payload.payload.isActive);
+            console.log("🔄 Active status broadcast received:", {
+              userId: payload.payload.userId,
+              isActive: payload.payload.isActive,
             });
           }
         }
       )
       .subscribe();
     
+    // Also check initial status from database as fallback
+    if (otherUser?.last_active_at) {
+      const active = isUserActive(otherUser.last_active_at);
+      setOtherUserActive(active);
+    }
+    
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(activeStatusChannel);
     };
   }, [otherUser?.id]);
 
