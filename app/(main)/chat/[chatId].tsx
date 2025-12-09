@@ -232,13 +232,22 @@ export default function ChatScreen() {
     },
   });
 
+  // Track if screen is focused using a ref to avoid stale closures
+  // Start as false - will be set to true when screen is focused
+  const isScreenFocusedRef = useRef(false);
+  
   // Mark messages as read when screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      isScreenFocusedRef.current = true;
       // Refetch chat data to trigger marking messages as read
       queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
       // Also invalidate chat list to update unread counts
       queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+      
+      return () => {
+        isScreenFocusedRef.current = false;
+      };
     }, [chatId, queryClient])
   );
 
@@ -268,6 +277,23 @@ export default function ChatScreen() {
           // 1. User opens the chat (get-chat Edge Function)
           // 2. Chat screen comes into focus (useFocusEffect)
           // This ensures read receipts are accurate - only mark as read when user actually views the chat
+          
+          // If this message is from the OTHER user (not current user) and chat screen is currently focused,
+          // mark it as read immediately since the user is actively viewing the chat
+          if (newMessage.sender_id !== user.id && !newMessage.read && isScreenFocusedRef.current) {
+            // Mark message as read immediately via Edge Function
+            // This ensures read receipts are updated in real-time for the sender
+            // Only do this if the screen is actually focused (user is viewing the chat)
+            try {
+              await supabase.functions.invoke("get-chat", {
+                body: { matchId: chatId },
+              });
+              // The UPDATE event will be triggered, which will update the cache
+            } catch (error) {
+              console.error("Error marking message as read:", error);
+              // Continue anyway - message will be marked as read on next refetch
+            }
+          }
           
           // Ensure image_url, voice_url and media_type are included in the message
           // TRUST the database values - use the actual read status from database
@@ -306,7 +332,23 @@ export default function ChatScreen() {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "messages", filter: `match_id=eq.${chatId}` },
-        (payload) => {
+        async (payload) => {
+          // Get current user ID to check if this is our message being marked as read
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          
+          const isOurMessage = payload.new.sender_id === user.id;
+          const wasMarkedAsRead = payload.new.read === true && payload.old?.read === false;
+          
+          // Log when our messages are marked as read
+          if (isOurMessage && wasMarkedAsRead) {
+            console.log("✅ Message marked as read (UPDATE):", {
+              messageId: payload.new.id,
+              read: payload.new.read,
+              read_at: payload.new.read_at,
+            });
+          }
+          
           // Update message in cache - TRUST the database values completely
           // Don't do any optimistic updates, just use what the database says
           const updatedMessage = {
@@ -315,21 +357,24 @@ export default function ChatScreen() {
             voice_url: payload.new.voice_url || null,
             // Use the exact read status from database
             read: payload.new.read || false,
+            read_at: payload.new.read_at || null,
           };
           
           queryClient.setQueryData(["chat", chatId], (oldData: any) => {
             if (!oldData) return oldData;
             
+            const updatedMessages = oldData.messages?.map((msg: any) =>
+              msg.id === updatedMessage.id ? updatedMessage : msg
+            ) || [];
+            
             return {
               ...oldData,
-              messages: oldData.messages?.map((msg: any) =>
-                msg.id === updatedMessage.id ? updatedMessage : msg
-              ) || [],
+              messages: updatedMessages,
             };
           });
           
           // Invalidate chat list when messages are marked as read
-          if (payload.new.read === true && payload.old?.read === false) {
+          if (wasMarkedAsRead) {
             queryClient.invalidateQueries({ queryKey: ["chat-list"] });
           }
         }
