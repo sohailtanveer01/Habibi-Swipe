@@ -33,24 +33,83 @@ async function uploadPhoto(uri: string, userId: string) {
   return data.publicUrl;
 }
 
-function calculateProfileCompletion(profile: any): number {
+function calculateProfileCompletion(profile: any, prompts: any[] = []): number {
   if (!profile) return 0;
   
-  let completed = 0;
-  const total = 10;
+  // Mandatory fields (excluded from calculation):
+  // - first_name, last_name (basic info)
+  // - 1 main photo (photos.length >= 1)
   
-  if (profile.first_name && profile.last_name) completed++;
-  if (profile.photos && profile.photos.length > 0) completed++;
-  if (profile.height) completed++;
-  if (profile.dob) completed++;
-  if (profile.sect) completed++;
-  if (profile.religious_practice) completed++;
-  if (profile.education) completed++;
-  if (profile.profession) completed++;
-  if (profile.ethnicity && profile.nationality) completed++;
-  if (profile.bio) completed++;
+  // Calculate completion for each optional category
   
-  return Math.round((completed / total) * 100);
+  // 1. Photos: 1 is mandatory, 5 are optional (max 6 total)
+  // Completion = (number of photos - 1) / 5 * 100
+  const photoCount = profile.photos?.length || 0;
+  const photoCompletion = photoCount >= 1 
+    ? Math.min(100, Math.round(((photoCount - 1) / 5) * 100))
+    : 0;
+  
+  // 2. Personal Info (height, dob, marital_status, has_children)
+  let personalInfoCompleted = 0;
+  const personalInfoTotal = 4;
+  if (profile.height) personalInfoCompleted++;
+  if (profile.dob) personalInfoCompleted++;
+  if (profile.marital_status) personalInfoCompleted++;
+  if (profile.has_children !== null && profile.has_children !== undefined) personalInfoCompleted++;
+  const personalInfoCompletion = Math.round((personalInfoCompleted / personalInfoTotal) * 100);
+  
+  // 3. Religious Info (sect, born_muslim, religious_practice, alcohol_habit, smoking_habit)
+  let religiousInfoCompleted = 0;
+  const religiousInfoTotal = 5;
+  if (profile.sect) religiousInfoCompleted++;
+  if (profile.born_muslim !== null && profile.born_muslim !== undefined) religiousInfoCompleted++;
+  if (profile.religious_practice) religiousInfoCompleted++;
+  if (profile.alcohol_habit) religiousInfoCompleted++;
+  if (profile.smoking_habit) religiousInfoCompleted++;
+  const religiousInfoCompletion = Math.round((religiousInfoCompleted / religiousInfoTotal) * 100);
+  
+  // 4. Professional Info (education, profession)
+  let professionalInfoCompleted = 0;
+  const professionalInfoTotal = 2;
+  if (profile.education) professionalInfoCompleted++;
+  if (profile.profession) professionalInfoCompleted++;
+  const professionalInfoCompletion = Math.round((professionalInfoCompleted / professionalInfoTotal) * 100);
+  
+  // 5. Background Info (ethnicity, nationality)
+  let backgroundInfoCompleted = 0;
+  const backgroundInfoTotal = 2;
+  if (profile.ethnicity) backgroundInfoCompleted++;
+  if (profile.nationality) backgroundInfoCompleted++;
+  const backgroundInfoCompletion = Math.round((backgroundInfoCompleted / backgroundInfoTotal) * 100);
+  
+  // 6. Bio
+  const bioCompletion = profile.bio ? 100 : 0;
+  
+  // 7. Hobbies (at least 1 hobby = 100%)
+  const hobbiesCompletion = (profile.hobbies && profile.hobbies.length > 0) ? 100 : 0;
+  
+  // 8. Prompts (count prompts with both question and answer filled)
+  // Typically users can have up to 3 prompts, so completion = (filled prompts / 3) * 100
+  const filledPrompts = prompts.filter((p: any) => p.question && p.answer).length;
+  const promptsTotal = 3; // Maximum 3 prompts
+  const promptsCompletion = Math.min(100, Math.round((filledPrompts / promptsTotal) * 100));
+  
+  // Calculate weighted average (each category contributes equally)
+  const categories = [
+    photoCompletion,
+    personalInfoCompletion,
+    religiousInfoCompletion,
+    professionalInfoCompletion,
+    backgroundInfoCompletion,
+    bioCompletion,
+    hobbiesCompletion,
+    promptsCompletion,
+  ];
+  
+  const totalCompletion = categories.reduce((sum, completion) => sum + completion, 0);
+  const averageCompletion = Math.round(totalCompletion / categories.length);
+  
+  return averageCompletion;
 }
 
 // Draggable Photo Card Component
@@ -291,6 +350,7 @@ export default function ProfileScreen() {
   const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [prompts, setPrompts] = useState<any[]>([]);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -336,6 +396,19 @@ export default function ProfileScreen() {
         .single();
 
       if (error) throw error;
+
+      // Fetch prompts from user_prompts table
+      const { data: promptsData } = await supabase
+        .from("user_prompts")
+        .select("question, answer, display_order")
+        .eq("user_id", user.id)
+        .order("display_order", { ascending: true });
+
+      if (promptsData) {
+        setPrompts(promptsData);
+      } else {
+        setPrompts([]);
+      }
 
       setProfile(data);
       
@@ -617,7 +690,7 @@ export default function ProfileScreen() {
   }
 
   const mainPhoto = photos && photos.length > 0 ? photos[0] : null;
-  const completionPercentage = calculateProfileCompletion(profile);
+  const completionPercentage = calculateProfileCompletion(profile, prompts);
   const fullName = firstName && lastName ? `${firstName} ${lastName}` : profile?.name || "Profile";
 
   return (
