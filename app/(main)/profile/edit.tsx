@@ -266,7 +266,10 @@ export default function ProfileEditScreen() {
       <View className="pt-16 px-6 pb-4 bg-black border-b border-white/10">
         <View className="flex-row items-center justify-between">
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => {
+              // Navigate back to profile page instead of using router.back()
+              router.push("/(main)/profile");
+            }}
             className="w-10 h-10 rounded-full items-center justify-center"
           >
             <Ionicons name="chevron-back" size={24} color="#fff" />
