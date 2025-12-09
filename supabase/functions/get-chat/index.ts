@@ -122,9 +122,19 @@ serve(async (req) => {
 
     // Fetch messages AFTER marking as read to ensure we get the latest read status
     // This ensures the database transaction has completed
+    // Also fetch replied-to messages for reply previews
     const { data: messages, error: messagesError } = await supabaseClient
       .from("messages")
-      .select("*")
+      .select(`
+        *,
+        reply_to:reply_to_id (
+          id,
+          sender_id,
+          content,
+          image_url,
+          voice_url
+        )
+      `)
       .eq("match_id", matchId)
       .order("created_at", { ascending: true });
 

@@ -37,9 +37,9 @@ serve(async (req) => {
     }
 
     // Get message data from request
-    const { matchId, content, mediaUrl, mediaType } = await req.json();
+    const { matchId, content, mediaUrl, mediaType, replyToId } = await req.json();
     
-    console.log("📍 Received request:", { matchId, content, mediaUrl, mediaType });
+    console.log("📍 Received request:", { matchId, content, mediaUrl, mediaType, replyToId });
     
     if (!matchId) {
       return new Response(
@@ -110,6 +110,34 @@ serve(async (req) => {
         voice_url: (finalMediaType === "audio" || finalMediaType === "voice") ? mediaUrl : null,
         media_type: finalMediaType 
       });
+    }
+    
+    // Add reply_to_id if provided
+    if (replyToId) {
+      // Verify the reply-to message exists and is in the same match
+      const { data: replyToMessage, error: replyError } = await supabaseClient
+        .from("messages")
+        .select("id, match_id")
+        .eq("id", replyToId)
+        .single();
+      
+      if (replyError || !replyToMessage) {
+        console.error("❌ Reply-to message not found:", replyError);
+        return new Response(
+          JSON.stringify({ error: "Reply-to message not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      if (replyToMessage.match_id !== matchId) {
+        return new Response(
+          JSON.stringify({ error: "Reply-to message must be in the same match" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      messageData.reply_to_id = replyToId;
+      console.log("💬 Adding reply to message:", replyToId);
     }
     
     console.log("📤 Message data to insert:", JSON.stringify(messageData, null, 2));

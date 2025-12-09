@@ -79,6 +79,7 @@ export default function ChatScreen() {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<any | null>(null); // Message being replied to
   const flatListRef = useRef<FlatList>(null);
   const queryClient = useQueryClient();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -184,7 +185,7 @@ export default function ChatScreen() {
 
   // Mutation for sending messages with optimistic updates
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ content, mediaUrl, mediaType }: { content?: string; mediaUrl?: string; mediaType?: string }) => {
+    mutationFn: async ({ content, mediaUrl, mediaType, replyToId }: { content?: string; mediaUrl?: string; mediaType?: string; replyToId?: string }) => {
       // Build request body - only include fields that have values
       const requestBody: any = { 
         matchId: chatId,
@@ -197,6 +198,10 @@ export default function ChatScreen() {
       if (mediaUrl) {
         requestBody.mediaUrl = mediaUrl;
         requestBody.mediaType = mediaType || "image";
+      }
+      
+      if (replyToId) {
+        requestBody.replyToId = replyToId;
       }
       
       console.log("📤 Request body to Edge Function:", JSON.stringify(requestBody, null, 2));
@@ -224,6 +229,7 @@ export default function ChatScreen() {
     onSuccess: () => {
       setText("");
       setSelectedImage(null);
+      setReplyingTo(null); // Clear reply after sending
       // Invalidate and refetch chat data to get updated messages
       queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
       setTimeout(() => {
@@ -568,11 +574,12 @@ export default function ChatScreen() {
       mediaType,
     });
     
-    sendMessageMutation.mutate({
-      content: hasText ? text.trim() : undefined,
-      mediaUrl,
-      mediaType,
-    });
+      sendMessageMutation.mutate({
+        content: hasText ? text.trim() : undefined,
+        mediaUrl,
+        mediaType,
+        replyToId: replyingTo?.id,
+      });
     setUploadingMedia(false);
   }, [text, selectedImage, sendMessageMutation, uploadingMedia, chatId]);
 
@@ -761,7 +768,29 @@ export default function ChatScreen() {
                 </View>
               )}
               
-              <View className={`max-w-[75%] ${isMe ? "items-end" : "items-start"}`}>
+              <Pressable
+                onLongPress={() => setReplyingTo(item)}
+                className={`max-w-[75%] ${isMe ? "items-end" : "items-start"}`}
+              >
+                {/* Show replied-to message preview */}
+                {item.reply_to && (
+                  <View className={`mb-1 px-3 py-1.5 rounded-lg border-l-2 ${
+                    isMe ? "bg-white/10 border-[#B8860B]" : "bg-white/5 border-white/30"
+                  }`}>
+                    <Text className="text-white/60 text-xs mb-0.5">
+                      {item.reply_to.sender_id === currentUser?.id ? "You" : (otherUser?.first_name || "User")}
+                    </Text>
+                    {item.reply_to.image_url ? (
+                      <Text className="text-white/50 text-xs italic">📷 Photo</Text>
+                    ) : item.reply_to.voice_url ? (
+                      <Text className="text-white/50 text-xs italic">🎤 Voice note</Text>
+                    ) : (
+                      <Text className="text-white/50 text-xs" numberOfLines={1}>
+                        {item.reply_to.content || "Message"}
+                      </Text>
+                    )}
+                  </View>
+                )}
                 <View
                   className={`rounded-2xl ${
                     isMe
@@ -772,7 +801,8 @@ export default function ChatScreen() {
                   {/* Show image if image_url exists */}
                   {item.image_url && (
                     <Pressable
-                      onPress={() => {
+                      onPress={(e) => {
+                        e.stopPropagation();
                         const imageUrl = cleanPhotoUrl(item.image_url) || item.image_url;
                         setFullScreenImage(imageUrl);
                       }}
@@ -833,8 +863,7 @@ export default function ChatScreen() {
                     />
                   </View>
                 )}
-                
-              </View>
+              </Pressable>
             </View>
           );
         }}
@@ -872,6 +901,39 @@ export default function ChatScreen() {
           ) : null
         }
       />
+
+      {/* Reply Preview */}
+      {replyingTo && (
+        <View className="px-4 py-2 bg-black border-t border-white/10">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 mr-2">
+              <View className="flex-row items-center mb-1">
+                <Ionicons name="arrow-undo" size={16} color="#B8860B" />
+                <Text className="text-[#B8860B] text-xs font-semibold ml-1">
+                  Replying to {replyingTo.sender_id === currentUser?.id ? "yourself" : (otherUser?.first_name || "User")}
+                </Text>
+              </View>
+              <View className="pl-5 border-l-2 border-[#B8860B]/50">
+                {replyingTo.image_url ? (
+                  <Text className="text-white/60 text-xs italic">📷 Photo</Text>
+                ) : replyingTo.voice_url ? (
+                  <Text className="text-white/60 text-xs italic">🎤 Voice note</Text>
+                ) : (
+                  <Text className="text-white/60 text-xs" numberOfLines={1}>
+                    {replyingTo.content || "Message"}
+                  </Text>
+                )}
+              </View>
+            </View>
+            <Pressable
+              onPress={() => setReplyingTo(null)}
+              className="w-6 h-6 rounded-full bg-white/10 items-center justify-center"
+            >
+              <Ionicons name="close" size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {/* Image Preview */}
       {selectedImage && (
