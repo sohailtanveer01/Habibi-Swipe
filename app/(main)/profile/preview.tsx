@@ -22,6 +22,9 @@ export default function ProfilePreviewScreen() {
   const { userId } = useLocalSearchParams<{ userId?: string }>();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  
+  // Determine if viewing own profile or someone else's
+  const [isViewingOwnProfile, setIsViewingOwnProfile] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -54,6 +57,9 @@ export default function ProfilePreviewScreen() {
       // If userId is provided, view that user's profile; otherwise view own profile
       const profileUserId = userId || user.id;
       const isViewingOtherProfile = userId && userId !== user.id;
+      const isOwnProfile = !userId || userId === user.id;
+      
+      setIsViewingOwnProfile(isOwnProfile);
 
       const { data, error } = await supabase
         .from("users")
@@ -211,7 +217,18 @@ export default function ProfilePreviewScreen() {
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
       {/* Back Button - Fixed at top */}
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Pressable 
+          onPress={() => {
+            // If viewing own profile, navigate back to profile page
+            // Otherwise, use router.back() to go to previous screen
+            if (isViewingOwnProfile) {
+              router.push("/(main)/profile");
+            } else {
+              router.back();
+            }
+          }} 
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
       </View>
