@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { View, TextInput, FlatList, Text, Pressable, Image, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from "react-native";
+import { View, TextInput, FlatList, Text, Pressable, Image, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal, Dimensions } from "react-native";
 import { supabase } from "../../../lib/supabase";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -78,6 +78,7 @@ export default function ChatScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+  const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const queryClient = useQueryClient();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -728,8 +729,8 @@ export default function ChatScreen() {
                   {item.image_url && (
                     <Pressable
                       onPress={() => {
-                        // TODO: Open full screen image viewer
-                        console.log("🖼️ Image tapped:", item.image_url);
+                        const imageUrl = cleanPhotoUrl(item.image_url) || item.image_url;
+                        setFullScreenImage(imageUrl);
                       }}
                     >
                       <ExpoImage
@@ -879,6 +880,43 @@ export default function ChatScreen() {
           )}
         </Pressable>
       </View>
+
+      {/* Full Screen Image Viewer */}
+      <Modal
+        visible={!!fullScreenImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setFullScreenImage(null)}
+      >
+        <View className="flex-1 bg-black">
+          {/* Close Button */}
+          <Pressable
+            onPress={() => setFullScreenImage(null)}
+            className="absolute top-12 right-4 z-10 w-10 h-10 rounded-full bg-black/50 items-center justify-center"
+          >
+            <Ionicons name="close" size={24} color="#FFFFFF" />
+          </Pressable>
+
+          {/* Image Container */}
+          <Pressable 
+            className="flex-1 items-center justify-center"
+            onPress={() => setFullScreenImage(null)}
+          >
+            {fullScreenImage && (
+              <ExpoImage
+                source={{ uri: fullScreenImage }}
+                style={{
+                  width: Dimensions.get('window').width,
+                  height: Dimensions.get('window').height,
+                }}
+                contentFit="contain"
+                transition={200}
+                cachePolicy="memory-disk"
+              />
+            )}
+          </Pressable>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
