@@ -7,6 +7,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Image as ExpoImage } from "expo-image";
 import { isUserActive } from "../../../lib/useActiveStatus";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS } from "react-native-reanimated";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -18,6 +20,190 @@ function cleanPhotoUrl(url: string | null | undefined): string | null {
   }
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   return null;
+}
+
+// Message Item Component with drag-to-reply
+function MessageItem({ 
+  item, 
+  isMe, 
+  mainPhoto, 
+  otherUser, 
+  currentUser, 
+  onReply, 
+  onImagePress 
+}: { 
+  item: any; 
+  isMe: boolean; 
+  mainPhoto: string | null; 
+  otherUser: any; 
+  currentUser: any; 
+  onReply: (message: any) => void;
+  onImagePress: (imageUrl: string) => void;
+}) {
+  // Drag gesture to reply
+  const translateX = useSharedValue(0);
+  const isDragging = useSharedValue(false);
+  
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      isDragging.value = true;
+    })
+    .onUpdate((e) => {
+      // Only allow dragging left (for right-aligned messages) or right (for left-aligned messages)
+      if (isMe) {
+        // For sent messages, drag left to reply
+        if (e.translationX < 0) {
+          translateX.value = e.translationX;
+        }
+      } else {
+        // For received messages, drag right to reply
+        if (e.translationX > 0) {
+          translateX.value = e.translationX;
+        }
+      }
+    })
+    .onEnd((e) => {
+      const threshold = 50; // Minimum drag distance to trigger reply
+      const shouldReply = isMe 
+        ? e.translationX < -threshold 
+        : e.translationX > threshold;
+      
+      if (shouldReply) {
+        runOnJS(onReply)(item);
+      }
+      
+      // Reset position
+      translateX.value = withSpring(0);
+      isDragging.value = false;
+    });
+  
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: translateX.value }],
+      opacity: isDragging.value ? 0.8 : 1,
+    };
+  });
+
+  const showProfilePic = !isMe && mainPhoto;
+
+  return (
+    <View className={`mb-2 flex-row ${isMe ? "justify-end" : "justify-start"} items-end`}>
+      {!isMe && (
+        <View className="mr-2 mb-1">
+          {showProfilePic ? (
+            <Image
+              source={{ uri: mainPhoto! }}
+              className="w-8 h-8 rounded-full"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
+              <Text className="text-white/60 text-xs">👤</Text>
+            </View>
+          )}
+        </View>
+      )}
+      
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          className={`max-w-[75%] ${isMe ? "items-end" : "items-start"}`}
+          style={animatedStyle}
+        >
+          {/* Show replied-to message preview */}
+          {item.reply_to && (
+            <View className={`mb-1 px-3 py-1.5 rounded-lg border-l-2 ${
+              isMe ? "bg-white/10 border-[#B8860B]" : "bg-white/5 border-white/30"
+            }`}>
+              <Text className="text-white/60 text-xs mb-0.5">
+                {item.reply_to.sender_id === currentUser?.id ? "You" : (otherUser?.first_name || "User")}
+              </Text>
+              {item.reply_to.image_url ? (
+                <Text className="text-white/50 text-xs italic">📷 Photo</Text>
+              ) : item.reply_to.voice_url ? (
+                <Text className="text-white/50 text-xs italic">🎤 Voice note</Text>
+              ) : (
+                <Text className="text-white/50 text-xs" numberOfLines={1}>
+                  {item.reply_to.content || "Message"}
+                </Text>
+              )}
+            </View>
+          )}
+          <View
+            className={`rounded-2xl ${
+              isMe
+                ? "bg-[#B8860B] rounded-br-sm"
+                : "bg-white/10 rounded-bl-sm"
+            }`}
+          >
+            {/* Show image if image_url exists */}
+            {item.image_url && (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  const imageUrl = cleanPhotoUrl(item.image_url) || item.image_url;
+                  onImagePress(imageUrl);
+                }}
+              >
+                <ExpoImage
+                  source={{ uri: cleanPhotoUrl(item.image_url) || item.image_url }}
+                  style={{ 
+                    width: 250, 
+                    height: 250, 
+                    borderTopLeftRadius: 16,
+                    borderTopRightRadius: 16,
+                    borderBottomLeftRadius: (item.content && item.content.trim()) ? 0 : 16,
+                    borderBottomRightRadius: (item.content && item.content.trim()) ? 0 : 16,
+                  }}
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
+                  onError={(error) => {
+                    console.error("❌ Image load error:", error);
+                    console.error("❌ Image URL:", item.image_url);
+                  }}
+                  onLoad={() => {
+                    console.log("✅ Image loaded successfully:", item.image_url);
+                  }}
+                />
+              </Pressable>
+            )}
+            
+            {/* Show voice note if voice_url exists (for future implementation) */}
+            {item.voice_url && (
+              <View className="px-4 py-3">
+                <Text className="text-white/60 text-sm">
+                  🎤 Voice note (coming soon)
+                </Text>
+              </View>
+            )}
+            
+            {/* Show text content if exists */}
+            {item.content && item.content.trim() && (
+              <Text
+                className={`text-base px-4 py-2.5 ${
+                  isMe ? "text-white" : "text-white"
+                }`}
+              >
+                {item.content}
+              </Text>
+            )}
+          </View>
+          
+          {/* Read receipt checkmarks (only for sent messages) */}
+          {isMe && (
+            <View className="flex-row items-center mt-1 mr-1">
+              <Ionicons
+                name={item.read ? "checkmark-done" : "checkmark"}
+                size={14}
+                color={item.read ? "#B8860B" : "#FFFFFF"}
+                style={{ opacity: item.read ? 1 : 0.6 }}
+              />
+            </View>
+          )}
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
 }
 
 // Upload image to Supabase Storage
@@ -748,123 +934,17 @@ export default function ChatScreen() {
           }
 
           const isMe = item.sender_id === currentUser?.id;
-          const showProfilePic = !isMe && mainPhoto;
           
           return (
-            <View className={`mb-2 flex-row ${isMe ? "justify-end" : "justify-start"} items-end`}>
-              {!isMe && (
-                <View className="mr-2 mb-1">
-                  {showProfilePic ? (
-                    <Image
-                      source={{ uri: mainPhoto! }}
-                      className="w-8 h-8 rounded-full"
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
-                      <Text className="text-white/60 text-xs">👤</Text>
-                    </View>
-                  )}
-                </View>
-              )}
-              
-              <Pressable
-                onLongPress={() => setReplyingTo(item)}
-                className={`max-w-[75%] ${isMe ? "items-end" : "items-start"}`}
-              >
-                {/* Show replied-to message preview */}
-                {item.reply_to && (
-                  <View className={`mb-1 px-3 py-1.5 rounded-lg border-l-2 ${
-                    isMe ? "bg-white/10 border-[#B8860B]" : "bg-white/5 border-white/30"
-                  }`}>
-                    <Text className="text-white/60 text-xs mb-0.5">
-                      {item.reply_to.sender_id === currentUser?.id ? "You" : (otherUser?.first_name || "User")}
-                    </Text>
-                    {item.reply_to.image_url ? (
-                      <Text className="text-white/50 text-xs italic">📷 Photo</Text>
-                    ) : item.reply_to.voice_url ? (
-                      <Text className="text-white/50 text-xs italic">🎤 Voice note</Text>
-                    ) : (
-                      <Text className="text-white/50 text-xs" numberOfLines={1}>
-                        {item.reply_to.content || "Message"}
-                      </Text>
-                    )}
-                  </View>
-                )}
-                <View
-                  className={`rounded-2xl ${
-                    isMe
-                      ? "bg-[#B8860B] rounded-br-sm"
-                      : "bg-white/10 rounded-bl-sm"
-                  }`}
-                >
-                  {/* Show image if image_url exists */}
-                  {item.image_url && (
-                    <Pressable
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        const imageUrl = cleanPhotoUrl(item.image_url) || item.image_url;
-                        setFullScreenImage(imageUrl);
-                      }}
-                    >
-                      <ExpoImage
-                        source={{ uri: cleanPhotoUrl(item.image_url) || item.image_url }}
-                        style={{ 
-                          width: 250, 
-                          height: 250, 
-                          borderTopLeftRadius: 16,
-                          borderTopRightRadius: 16,
-                          borderBottomLeftRadius: (item.content && item.content.trim()) ? 0 : 16,
-                          borderBottomRightRadius: (item.content && item.content.trim()) ? 0 : 16,
-                        }}
-                        contentFit="cover"
-                        transition={200}
-                        cachePolicy="memory-disk"
-                        onError={(error) => {
-                          console.error("❌ Image load error:", error);
-                          console.error("❌ Image URL:", item.image_url);
-                        }}
-                        onLoad={() => {
-                          console.log("✅ Image loaded successfully:", item.image_url);
-                        }}
-                      />
-                    </Pressable>
-                  )}
-                  
-                  {/* Show voice note if voice_url exists (for future implementation) */}
-                  {item.voice_url && (
-                    <View className="px-4 py-3">
-                      <Text className="text-white/60 text-sm">
-                        🎤 Voice note (coming soon)
-                      </Text>
-                    </View>
-                  )}
-                  
-                  {/* Show text content if exists */}
-                  {item.content && item.content.trim() && (
-                    <Text
-                      className={`text-base px-4 py-2.5 ${
-                        isMe ? "text-white" : "text-white"
-                      }`}
-                    >
-                      {item.content}
-                    </Text>
-                  )}
-                </View>
-                
-                {/* Read receipt checkmarks (only for sent messages) */}
-                {isMe && (
-                  <View className="flex-row items-center mt-1 mr-1">
-                    <Ionicons
-                      name={item.read ? "checkmark-done" : "checkmark"}
-                      size={14}
-                      color={item.read ? "#B8860B" : "#FFFFFF"}
-                      style={{ opacity: item.read ? 1 : 0.6 }}
-                    />
-                  </View>
-                )}
-              </Pressable>
-            </View>
+            <MessageItem
+              item={item}
+              isMe={isMe}
+              mainPhoto={mainPhoto}
+              otherUser={otherUser}
+              currentUser={currentUser}
+              onReply={setReplyingTo}
+              onImagePress={setFullScreenImage}
+            />
           );
         }}
         ListEmptyComponent={
