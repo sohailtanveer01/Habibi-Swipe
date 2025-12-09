@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, Alert, ActivityIndicator } from "react-native";
 import { supabase } from "../../../lib/supabase";
 import { useRouter } from "expo-router";
@@ -127,6 +127,7 @@ export default function ProfileEditScreen() {
   // Form state
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [gender, setGender] = useState("");
   const [height, setHeight] = useState("");
   const [maritalStatus, setMaritalStatus] = useState("");
   const [hasChildren, setHasChildren] = useState<boolean | null>(null);
@@ -145,6 +146,41 @@ export default function ProfileEditScreen() {
   const [hobbies, setHobbies] = useState<string[]>([]);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [showPromptDropdown, setShowPromptDropdown] = useState<number | null>(null);
+  
+  // Height picker state
+  const [feet, setFeet] = useState("5");
+  const [inches, setInches] = useState("10");
+  const feetScrollRef = useRef<ScrollView>(null);
+  const inchesScrollRef = useRef<ScrollView>(null);
+  
+  const FEET_OPTIONS = Array.from({ length: 4 }, (_, i) => (i + 4).toString()); // 4-7 feet
+  const INCHES_OPTIONS = Array.from({ length: 12 }, (_, i) => i.toString()); // 0-11 inches
+
+  // Scroll to current value when picker opens
+  useEffect(() => {
+    if (editingField === 'height' && feetScrollRef.current && inchesScrollRef.current) {
+      // Small delay to ensure ScrollView is rendered
+      setTimeout(() => {
+        const feetIndex = FEET_OPTIONS.indexOf(feet);
+        const inchesIndex = INCHES_OPTIONS.indexOf(inches);
+        
+        if (feetIndex >= 0) {
+          feetScrollRef.current?.scrollTo({
+            y: feetIndex * 44,
+            animated: false,
+          });
+        }
+        
+        if (inchesIndex >= 0) {
+          inchesScrollRef.current?.scrollTo({
+            y: inchesIndex * 44,
+            animated: false,
+          });
+        }
+      }, 100);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingField, feet, inches]);
 
   useEffect(() => {
     loadProfile();
@@ -178,7 +214,18 @@ export default function ProfileEditScreen() {
         setLastName(nameParts.slice(1).join(" ") || "");
       }
       
+      setGender(data.gender || "");
       setHeight(data.height || "");
+      
+      // Parse height into feet and inches
+      if (data.height) {
+        const ftMatch = data.height.match(/(\d+)'(\d+)/);
+        if (ftMatch) {
+          setFeet(ftMatch[1]);
+          setInches(ftMatch[2]);
+        }
+      }
+      
       setMaritalStatus(data.marital_status || "");
       setHasChildren(data.has_children !== undefined ? data.has_children : null);
       setDob(data.dob || "");
@@ -238,6 +285,8 @@ export default function ProfileEditScreen() {
     smokingHabit?: string;
     ethnicity?: string;
     nationality?: string;
+    maritalStatus?: string;
+    hasChildren?: boolean | null;
   }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -245,48 +294,110 @@ export default function ProfileEditScreen() {
 
       setSaving(true);
 
-      const currentSect = overrideValues?.sect !== undefined ? overrideValues.sect : sect;
-      const currentBornMuslim = overrideValues?.bornMuslim !== undefined ? overrideValues.bornMuslim : bornMuslim;
-      const currentReligiousPractice = overrideValues?.religiousPractice !== undefined ? overrideValues.religiousPractice : religiousPractice;
-      const currentAlcoholHabit = overrideValues?.alcoholHabit !== undefined ? overrideValues.alcoholHabit : alcoholHabit;
-      const currentSmokingHabit = overrideValues?.smokingHabit !== undefined ? overrideValues.smokingHabit : smokingHabit;
-      const currentEthnicity = overrideValues?.ethnicity !== undefined ? overrideValues.ethnicity : ethnicity;
-      const currentNationality = overrideValues?.nationality !== undefined ? overrideValues.nationality : nationality;
-
+      // Build update payload - ONLY include fields that are being edited
       const updatePayload: any = {
-        id: user.id,
-        name: `${firstName.trim()} ${lastName.trim()}`.trim(),
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        height: height.trim(),
-        marital_status: maritalStatus,
-        has_children: hasChildren,
-        dob,
-        sect: currentSect.trim(),
-        born_muslim: currentBornMuslim,
-        religious_practice: currentReligiousPractice,
-        alcohol_habit: currentAlcoholHabit,
-        smoking_habit: currentSmokingHabit,
-        education: education.trim(),
-        profession: profession.trim(),
-        religion: religion.trim(),
-        bio: bio.trim(),
-        ethnicity: currentEthnicity.trim(),
-        nationality: currentNationality.trim(),
-        hobbies,
         last_active_at: new Date().toISOString(),
       };
 
-      if (profile?.location && 
-          typeof profile.location === 'object' &&
-          typeof profile.location.lon === 'number' &&
-          typeof profile.location.lat === 'number' &&
-          !isNaN(profile.location.lon) &&
-          !isNaN(profile.location.lat)) {
-        updatePayload.location = `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`;
+      // Only include fields that are being edited
+      switch (editingField) {
+        case 'name':
+          updatePayload.name = `${firstName.trim()} ${lastName.trim()}`.trim();
+          updatePayload.first_name = firstName.trim();
+          updatePayload.last_name = lastName.trim();
+          break;
+        
+        case 'height':
+          // Combine feet and inches into height string format
+          updatePayload.height = `${feet}'${inches}`;
+          break;
+        
+        case 'dob':
+          updatePayload.dob = dob;
+          break;
+        
+        case 'maritalStatus':
+          updatePayload.marital_status = overrideValues?.maritalStatus !== undefined ? overrideValues.maritalStatus : maritalStatus;
+          break;
+        
+        case 'children':
+          updatePayload.has_children = overrideValues?.hasChildren !== undefined ? overrideValues.hasChildren : hasChildren;
+          break;
+        
+        case 'sect':
+          updatePayload.sect = (overrideValues?.sect !== undefined ? overrideValues.sect : sect).trim();
+          break;
+        
+        case 'bornMuslim':
+          updatePayload.born_muslim = overrideValues?.bornMuslim !== undefined ? overrideValues.bornMuslim : bornMuslim;
+          break;
+        
+        case 'religiousPractice':
+          updatePayload.religious_practice = overrideValues?.religiousPractice !== undefined ? overrideValues.religiousPractice : religiousPractice;
+          break;
+        
+        case 'alcoholHabit':
+          updatePayload.alcohol_habit = overrideValues?.alcoholHabit !== undefined ? overrideValues.alcoholHabit : alcoholHabit;
+          break;
+        
+        case 'smokingHabit':
+          updatePayload.smoking_habit = overrideValues?.smokingHabit !== undefined ? overrideValues.smokingHabit : smokingHabit;
+          break;
+        
+        case 'education':
+          updatePayload.education = education.trim();
+          break;
+        
+        case 'profession':
+          updatePayload.profession = profession.trim();
+          break;
+        
+        case 'ethnicity':
+          updatePayload.ethnicity = (overrideValues?.ethnicity !== undefined ? overrideValues.ethnicity : ethnicity).trim();
+          break;
+        
+        case 'nationality':
+          updatePayload.nationality = (overrideValues?.nationality !== undefined ? overrideValues.nationality : nationality).trim();
+          break;
+        
+        case 'hobbies':
+          updatePayload.hobbies = hobbies;
+          break;
+        
+        case 'bio':
+          updatePayload.bio = bio.trim();
+          break;
+        
+        default:
+          // If no specific field is being edited, include all fields (fallback)
+          // This handles cases where overrideValues are used for quick saves
+          updatePayload.name = `${firstName.trim()} ${lastName.trim()}`.trim();
+          updatePayload.first_name = firstName.trim();
+          updatePayload.last_name = lastName.trim();
+          updatePayload.height = height.trim();
+          updatePayload.marital_status = maritalStatus;
+          updatePayload.has_children = hasChildren;
+          updatePayload.sect = (overrideValues?.sect !== undefined ? overrideValues.sect : sect).trim();
+          updatePayload.born_muslim = overrideValues?.bornMuslim !== undefined ? overrideValues.bornMuslim : bornMuslim;
+          updatePayload.religious_practice = overrideValues?.religiousPractice !== undefined ? overrideValues.religiousPractice : religiousPractice;
+          updatePayload.alcohol_habit = overrideValues?.alcoholHabit !== undefined ? overrideValues.alcoholHabit : alcoholHabit;
+          updatePayload.smoking_habit = overrideValues?.smokingHabit !== undefined ? overrideValues.smokingHabit : smokingHabit;
+          updatePayload.education = education.trim();
+          updatePayload.profession = profession.trim();
+          updatePayload.religion = religion.trim();
+          updatePayload.bio = bio.trim();
+          updatePayload.ethnicity = (overrideValues?.ethnicity !== undefined ? overrideValues.ethnicity : ethnicity).trim();
+          updatePayload.nationality = (overrideValues?.nationality !== undefined ? overrideValues.nationality : nationality).trim();
+          updatePayload.hobbies = hobbies;
+          break;
       }
 
-      const { error } = await supabase.from("users").upsert(updatePayload);
+      // Use UPDATE instead of UPSERT - only updates the fields provided
+      // This ensures we don't accidentally set other fields to null
+      const { error } = await supabase
+        .from("users")
+        .update(updatePayload)
+        .eq("id", user.id);
 
       if (error) throw error;
 
@@ -408,32 +519,161 @@ export default function ProfileEditScreen() {
             </Pressable>
 
             {/* Height Row */}
-            <Pressable
-              onPress={() => setEditingField(editingField === 'height' ? null : 'height')}
-              className="flex-row items-center justify-between py-4 border-b border-white/10 active:bg-white/5 rounded-lg"
-            >
-              <View className="flex-row items-center flex-1">
-                <View className="w-10 h-10 rounded-full bg-[#B8860B]/20 items-center justify-center mr-3">
-                  <Text className="text-lg">📏</Text>
+            <View className="py-4 border-b border-white/10">
+              <Pressable
+                onPress={() => setEditingField(editingField === 'height' ? null : 'height')}
+                className="flex-row items-center justify-between"
+                disabled={editingField === 'height'}
+              >
+                <View className="flex-row items-center flex-1">
+                  <View className="w-10 h-10 rounded-full bg-[#B8860B]/20 items-center justify-center mr-3">
+                    <Text className="text-lg">📏</Text>
+                  </View>
+                  <Text className="text-white text-base font-medium">Height</Text>
                 </View>
-                <Text className="text-white text-base font-medium">Height</Text>
-              </View>
-              {editingField === 'height' ? (
-                <TextInput
-                  className="bg-white/10 border border-[#B8860B]/30 text-white px-4 py-2.5 rounded-xl text-right min-w-[140] focus:border-[#B8860B]"
-                  placeholder="5'10\"
-                  placeholderTextColor="#9CA3AF"
-                  value={height}
-                  onChangeText={setHeight}
-                  autoFocus
-                />
-              ) : (
-                <View className="flex-row items-center">
-                  <Text className="text-white text-base mr-2 font-medium">{height || "Not set"}</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#B8860B" />
+                {editingField !== 'height' && (
+                  <View className="flex-row items-center">
+                    <Text className="text-white text-base mr-2 font-medium">{height || "Not set"}</Text>
+                    <Ionicons name="chevron-forward" size={20} color="#B8860B" />
+                  </View>
+                )}
+              </Pressable>
+              {editingField === 'height' && (
+                <View className="mt-4">
+                  <View className="bg-white/5 rounded-2xl border border-[#B8860B]/30 p-4">
+                    <View className="flex-row justify-between items-center mb-4">
+                      <Text className="text-white text-lg font-semibold">Select Height</Text>
+                      <Pressable onPress={async () => { await handleSave(); setEditingField(null); }} disabled={saving}>
+                        {saving ? (
+                          <ActivityIndicator color="#B8860B" size="small" />
+                        ) : (
+                          <Text className="text-[#B8860B] text-lg font-semibold">Done</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                    <View className="flex-row items-center justify-center gap-2">
+                      {/* Feet Picker */}
+                      <View className="flex-1" style={{ height: 200 }}>
+                        <ScrollView
+                          ref={feetScrollRef}
+                          showsVerticalScrollIndicator={false}
+                          snapToInterval={44}
+                          decelerationRate="fast"
+                          scrollEventThrottle={16}
+                          onMomentumScrollEnd={(e) => {
+                            const offsetY = e.nativeEvent.contentOffset.y;
+                            const index = Math.round(offsetY / 44);
+                            const selectedFeet = FEET_OPTIONS[Math.max(0, Math.min(index, FEET_OPTIONS.length - 1))];
+                            setFeet(selectedFeet);
+                            setHeight(`${selectedFeet}'${inches}`);
+                          }}
+                          contentContainerStyle={{
+                            paddingVertical: 78,
+                          }}
+                          nestedScrollEnabled={true}
+                        >
+                          {FEET_OPTIONS.map((ft) => (
+                            <View
+                              key={ft}
+                              style={{
+                                height: 44,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 21,
+                                  color: '#FFFFFF',
+                                }}
+                              >
+                                {ft}
+                              </Text>
+                            </View>
+                          ))}
+                        </ScrollView>
+                        {/* Center indicator overlay */}
+                        <View
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: 0,
+                            right: 0,
+                            height: 44,
+                            borderTopWidth: 0.5,
+                            borderBottomWidth: 0.5,
+                            borderColor: 'rgba(255, 255, 255, 0.2)',
+                            marginTop: -22,
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      </View>
+                      
+                      <Text style={{ fontSize: 21, color: '#FFFFFF', marginHorizontal: 8 }}>&apos;</Text>
+                      
+                      {/* Inches Picker */}
+                      <View className="flex-1" style={{ height: 200 }}>
+                        <ScrollView
+                          ref={inchesScrollRef}
+                          showsVerticalScrollIndicator={false}
+                          snapToInterval={44}
+                          decelerationRate="fast"
+                          scrollEventThrottle={16}
+                          onMomentumScrollEnd={(e) => {
+                            const offsetY = e.nativeEvent.contentOffset.y;
+                            const index = Math.round(offsetY / 44);
+                            const selectedInches = INCHES_OPTIONS[Math.max(0, Math.min(index, INCHES_OPTIONS.length - 1))];
+                            setInches(selectedInches);
+                            setHeight(`${feet}'${selectedInches}`);
+                          }}
+                          contentContainerStyle={{
+                            paddingVertical: 78,
+                          }}
+                          nestedScrollEnabled={true}
+                        >
+                          {INCHES_OPTIONS.map((inch) => (
+                            <View
+                              key={inch}
+                              style={{
+                                height: 44,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 21,
+                                  color: '#FFFFFF',
+                                }}
+                              >
+                                {inch}
+                              </Text>
+                            </View>
+                          ))}
+                        </ScrollView>
+                        {/* Center indicator overlay */}
+                        <View
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: 0,
+                            right: 0,
+                            height: 44,
+                            borderTopWidth: 0.5,
+                            borderBottomWidth: 0.5,
+                            borderColor: 'rgba(255, 255, 255, 0.2)',
+                            marginTop: -22,
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      </View>
+                      
+                      <Text style={{ fontSize: 21, color: '#FFFFFF', marginLeft: 8 }}>&quot;</Text>
+                    </View>
+                  </View>
                 </View>
               )}
-            </Pressable>
+            </View>
 
             {/* Marital Status Row */}
             <Pressable
@@ -459,8 +699,10 @@ export default function ProfileEditScreen() {
                   {["single", "divorced", "widowed", "separated"].map((status) => (
                     <Pressable
                       key={status}
-                      onPress={() => {
+                      onPress={async () => {
                         setMaritalStatus(status);
+                        // Save with the new value directly
+                        await handleSave({ maritalStatus: status });
                         setEditingField(null);
                       }}
                       className={`px-4 py-2 rounded-full border ${
@@ -509,8 +751,10 @@ export default function ProfileEditScreen() {
                   ].map((option) => (
                     <Pressable
                       key={option.label}
-                      onPress={() => {
+                      onPress={async () => {
                         setHasChildren(option.value);
+                        // Save with the new value directly
+                        await handleSave({ hasChildren: option.value });
                         setEditingField(null);
                       }}
                       className={`flex-1 px-4 py-2.5 rounded-xl border ${
@@ -559,7 +803,7 @@ export default function ProfileEditScreen() {
             </Pressable>
 
             {/* Save button for text inputs */}
-            {(editingField === 'name' || editingField === 'height' || editingField === 'dob') && (
+            {(editingField === 'name' || editingField === 'dob') && (
               <View className="flex-row gap-3 mt-6">
                 <Pressable
                   className="flex-1 bg-white/10 px-4 py-3 rounded-xl border border-white/20 active:bg-white/15"
