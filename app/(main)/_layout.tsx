@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
 import { BlurView } from "expo-blur";
 import { useActiveStatus } from "../../lib/useActiveStatus";
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 export default function MainLayout() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
@@ -187,11 +188,8 @@ export default function MainLayout() {
             const isActive = !isViewingFromLikes && focused;
             return (
               <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
-                <Ionicons 
-                  name={isActive ? "home" : "home-outline"} 
-                  size={28} 
-                  color={isActive ? "#B8860B" : "#9CA3AF"} 
-                />
+              
+                <MaterialCommunityIcons name= "cards-outline" size={28} color={isActive ? "#B8860B" : "#9CA3AF"} />
               </View>
             );
           },
