@@ -392,42 +392,22 @@ export default function ProfileEditScreen() {
           break;
       }
 
-      // Use UPDATE instead of UPSERT - only updates the fields provided
-      // This ensures we don't accidentally set other fields to null
-      const { error } = await supabase
-        .from("users")
-        .update(updatePayload)
-        .eq("id", user.id);
-
-      if (error) throw error;
-
-      // Save prompts if editing prompts
+      // Prepare prompts data if editing prompts
+      let promptsData = null;
       if (editingField === 'prompts') {
-        // Delete existing prompts
-        await supabase
-          .from("user_prompts")
-          .delete()
-          .eq("user_id", user.id);
+        promptsData = prompts;
+      }
 
-        // Filter out empty prompts and insert new ones
-        const filledPrompts = prompts.filter((p) => p.question.trim() && p.answer.trim());
-        if (filledPrompts.length > 0) {
-          const promptsToInsert = filledPrompts.map((prompt, index) => ({
-            user_id: user.id,
-            question: prompt.question.trim(),
-            answer: prompt.answer.trim(),
-            display_order: index,
-          }));
+      // Call Edge Function to update profile
+      const { error } = await supabase.functions.invoke("edit-profile", {
+        body: {
+          updatePayload,
+          prompts: promptsData,
+        },
+      });
 
-          const { error: promptsError } = await supabase
-            .from("user_prompts")
-            .insert(promptsToInsert);
-
-          if (promptsError) {
-            console.error("Error saving prompts:", promptsError);
-            throw promptsError;
-          }
-        }
+      if (error) {
+        throw error;
       }
 
       setEditingField(null);
