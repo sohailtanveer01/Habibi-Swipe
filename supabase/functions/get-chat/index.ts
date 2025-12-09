@@ -89,7 +89,7 @@ serve(async (req) => {
       );
     }
 
-    // Count unread messages before marking as read
+    // Count unread messages BEFORE marking as read (for unreadCount return value)
     const { count: unreadCount } = await supabaseClient
       .from("messages")
       .select("*", { count: "exact", head: true })
@@ -97,22 +97,7 @@ serve(async (req) => {
       .eq("sender_id", otherUserId)
       .eq("read", false);
 
-    // Fetch messages
-    const { data: messages, error: messagesError } = await supabaseClient
-      .from("messages")
-      .select("*")
-      .eq("match_id", matchId)
-      .order("created_at", { ascending: true });
-
-    if (messagesError) {
-      console.error("❌ Messages error:", messagesError);
-      return new Response(
-        JSON.stringify({ error: messagesError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Mark all unread messages from other user as read
+    // Mark all unread messages from other user as read FIRST
     // RLS policy allows users to update read status of messages they receive
     console.log("🔄 Attempting to mark messages as read for match:", matchId, "otherUserId:", otherUserId);
     
@@ -133,20 +118,27 @@ serve(async (req) => {
       console.log("✅ Message IDs marked:", markedAsRead.map(m => m.id));
     } else {
       console.log("ℹ️ No unread messages to mark as read for match", matchId);
-      // Check if there are any messages at all
-      const { count: totalMessages } = await supabaseClient
-        .from("messages")
-        .select("*", { count: "exact", head: true })
-        .eq("match_id", matchId)
-        .eq("sender_id", otherUserId);
-      console.log("ℹ️ Total messages from other user:", totalMessages);
     }
 
-    // Update messages in response to reflect read status
-    const updatedMessages = messages?.map((msg) => ({
-      ...msg,
-      read: msg.sender_id === user.id ? msg.read : true, // Mark as read if from other user
-    })) || [];
+    // Fetch messages AFTER marking as read to ensure we get the latest read status
+    // This ensures the database transaction has completed
+    const { data: messages, error: messagesError } = await supabaseClient
+      .from("messages")
+      .select("*")
+      .eq("match_id", matchId)
+      .order("created_at", { ascending: true });
+
+    if (messagesError) {
+      console.error("❌ Messages error:", messagesError);
+      return new Response(
+        JSON.stringify({ error: messagesError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Use the actual read status from the database (don't override)
+    // The database now has the correct read status after the UPDATE
+    const updatedMessages = messages || [];
 
     console.log("✅ Loaded chat:", updatedMessages.length, "messages");
 

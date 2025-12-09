@@ -99,10 +99,13 @@ export default function ChatScreen() {
       });
 
       if (error) throw error;
+      
+      // TRUST the database values - don't do any optimistic updates
+      // The Edge Function now fetches messages AFTER marking as read
       return data;
     },
     staleTime: 0, // Always consider stale - we need to mark messages as read on every open
-    gcTime: 1000 * 60 * 30, // 30 minutes - cache persists for 30 min
+    gcTime: 1000 * 60 * 5, // 5 minutes - shorter cache time to reduce stale data
     refetchOnMount: true, // Always refetch when opening chat to mark messages as read
     refetchOnWindowFocus: false,
   });
@@ -260,27 +263,21 @@ export default function ChatScreen() {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
           
-          // If message is from the other user (not current user), mark it as read immediately
-          if (newMessage.sender_id !== user.id && !newMessage.read) {
-            // Mark message as read in database
-            const { error: updateError } = await supabase
-              .from("messages")
-              .update({ read: true })
-              .eq("id", newMessage.id);
-            
-            if (!updateError) {
-              // Update the message in cache to reflect read status
-              newMessage.read = true;
-            }
-          }
+          // DO NOT mark messages as read automatically when they arrive via real-time
+          // Messages should only be marked as read when:
+          // 1. User opens the chat (get-chat Edge Function)
+          // 2. Chat screen comes into focus (useFocusEffect)
+          // This ensures read receipts are accurate - only mark as read when user actually views the chat
           
           // Ensure image_url, voice_url and media_type are included in the message
-          // The payload should already include all columns, but we'll make sure
+          // TRUST the database values - use the actual read status from database
           const messageWithMedia = {
             ...newMessage,
             image_url: newMessage.image_url || null,
             voice_url: newMessage.voice_url || null,
             media_type: newMessage.media_type || null,
+            // Use the actual read status from database (don't override)
+            read: newMessage.read || false,
           };
           
           // Update React Query cache with new message
@@ -310,12 +307,14 @@ export default function ChatScreen() {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "messages", filter: `match_id=eq.${chatId}` },
         (payload) => {
-          // Update message in cache (e.g., when marked as read)
-          // Ensure image_url and voice_url are preserved
+          // Update message in cache - TRUST the database values completely
+          // Don't do any optimistic updates, just use what the database says
           const updatedMessage = {
             ...payload.new,
             image_url: payload.new.image_url || null,
             voice_url: payload.new.voice_url || null,
+            // Use the exact read status from database
+            read: payload.new.read || false,
           };
           
           queryClient.setQueryData(["chat", chatId], (oldData: any) => {
@@ -777,6 +776,18 @@ export default function ChatScreen() {
                     </Text>
                   )}
                 </View>
+                
+                {/* Read receipt checkmarks (only for sent messages) */}
+                {isMe && (
+                  <View className="flex-row items-center mt-1 mr-1">
+                    <Ionicons
+                      name={item.read ? "checkmark-done" : "checkmark"}
+                      size={14}
+                      color={item.read ? "#B8860B" : "#FFFFFF"}
+                      style={{ opacity: item.read ? 1 : 0.6 }}
+                    />
+                  </View>
+                )}
                 
               </View>
             </View>
