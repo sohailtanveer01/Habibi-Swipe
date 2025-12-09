@@ -40,6 +40,11 @@ function MessageItem({
   onReply: (message: any) => void;
   onImagePress: (imageUrl: string) => void;
 }) {
+  // Get screen width for drag limit
+  const screenWidth = Dimensions.get('window').width;
+  const maxDragDistance = screenWidth / 3; // 1/3 of screen width
+  const replyThreshold = screenWidth / 4; // Trigger reply at 1/4 of screen
+  
   // Drag gesture to reply
   const translateX = useSharedValue(0);
   const isDragging = useSharedValue(false);
@@ -53,20 +58,21 @@ function MessageItem({
       if (isMe) {
         // For sent messages, drag left to reply
         if (e.translationX < 0) {
-          translateX.value = e.translationX;
+          // Limit drag to maxDragDistance (1/3 of screen)
+          translateX.value = Math.max(e.translationX, -maxDragDistance);
         }
       } else {
         // For received messages, drag right to reply
         if (e.translationX > 0) {
-          translateX.value = e.translationX;
+          // Limit drag to maxDragDistance (1/3 of screen)
+          translateX.value = Math.min(e.translationX, maxDragDistance);
         }
       }
     })
     .onEnd((e) => {
-      const threshold = 50; // Minimum drag distance to trigger reply
       const shouldReply = isMe 
-        ? e.translationX < -threshold 
-        : e.translationX > threshold;
+        ? e.translationX < -replyThreshold 
+        : e.translationX > replyThreshold;
       
       if (shouldReply) {
         runOnJS(onReply)(item);
@@ -104,31 +110,29 @@ function MessageItem({
         </View>
       )}
       
-      <GestureDetector gesture={panGesture}>
-        <Animated.View
-          className={`max-w-[75%] ${isMe ? "items-end" : "items-start"}`}
-          style={animatedStyle}
-        >
-          {/* Show replied-to message preview */}
-          {item.reply_to && (
-            <View className={`mb-1 px-3 py-1.5 rounded-lg border-l-2 ${
-              isMe ? "bg-white/10 border-[#B8860B]" : "bg-white/5 border-white/30"
-            }`}>
-              <Text className="text-white/60 text-xs mb-0.5">
-                {item.reply_to.sender_id === currentUser?.id ? "You" : (otherUser?.first_name || "User")}
+      <View className={`max-w-[75%] ${isMe ? "items-end" : "items-start"}`}>
+        {/* Show replied-to message preview */}
+        {item.reply_to && (
+          <View className={`mb-1 px-3 py-1.5 rounded-lg border-l-2 ${
+            isMe ? "bg-white/10 border-[#B8860B]" : "bg-white/5 border-white/30"
+          }`}>
+            <Text className="text-white/60 text-xs mb-0.5">
+              {item.reply_to.sender_id === currentUser?.id ? "You" : (otherUser?.first_name || "User")}
+            </Text>
+            {item.reply_to.image_url ? (
+              <Text className="text-white/50 text-xs italic">📷 Photo</Text>
+            ) : item.reply_to.voice_url ? (
+              <Text className="text-white/50 text-xs italic">🎤 Voice note</Text>
+            ) : (
+              <Text className="text-white/50 text-xs" numberOfLines={1}>
+                {item.reply_to.content || "Message"}
               </Text>
-              {item.reply_to.image_url ? (
-                <Text className="text-white/50 text-xs italic">📷 Photo</Text>
-              ) : item.reply_to.voice_url ? (
-                <Text className="text-white/50 text-xs italic">🎤 Voice note</Text>
-              ) : (
-                <Text className="text-white/50 text-xs" numberOfLines={1}>
-                  {item.reply_to.content || "Message"}
-                </Text>
-              )}
-            </View>
-          )}
-          <View
+            )}
+          </View>
+        )}
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            style={animatedStyle}
             className={`rounded-2xl ${
               isMe
                 ? "bg-[#B8860B] rounded-br-sm"
@@ -187,21 +191,21 @@ function MessageItem({
                 {item.content}
               </Text>
             )}
+          </Animated.View>
+        </GestureDetector>
+        
+        {/* Read receipt checkmarks (only for sent messages) */}
+        {isMe && (
+          <View className="flex-row items-center mt-1 mr-1">
+            <Ionicons
+              name={item.read ? "checkmark-done" : "checkmark"}
+              size={14}
+              color={item.read ? "#B8860B" : "#FFFFFF"}
+              style={{ opacity: item.read ? 1 : 0.6 }}
+            />
           </View>
-          
-          {/* Read receipt checkmarks (only for sent messages) */}
-          {isMe && (
-            <View className="flex-row items-center mt-1 mr-1">
-              <Ionicons
-                name={item.read ? "checkmark-done" : "checkmark"}
-                size={14}
-                color={item.read ? "#B8860B" : "#FFFFFF"}
-                style={{ opacity: item.read ? 1 : 0.6 }}
-              />
-            </View>
-          )}
-        </Animated.View>
-      </GestureDetector>
+        )}
+      </View>
     </View>
   );
 }
