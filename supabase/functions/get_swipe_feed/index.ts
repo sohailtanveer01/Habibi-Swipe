@@ -112,6 +112,25 @@ serve(async (req) => {
     const swipedIds = swipedUsers?.map((s) => s.swiped_id) || [];
     const swipedIdsSet = new Set(swipedIds);
 
+    // Get blocked users (both ways - users I blocked and users who blocked me)
+    const { data: blocksIBlocked } = await supabaseClient
+      .from("blocks")
+      .select("blocked_id")
+      .eq("blocker_id", user.id);
+    
+    const { data: blocksIAmBlocked } = await supabaseClient
+      .from("blocks")
+      .select("blocker_id")
+      .eq("blocked_id", user.id);
+
+    const blockedUserIds = new Set<string>();
+    if (blocksIBlocked) {
+      blocksIBlocked.forEach(block => blockedUserIds.add(block.blocked_id));
+    }
+    if (blocksIAmBlocked) {
+      blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
+    }
+
     // Build query for profiles - get more to account for filtering
     // Filter by opposite gender (constant filter - users can't change gender)
     let query = supabaseClient
@@ -222,6 +241,9 @@ serve(async (req) => {
     let filteredProfiles = (allProfiles || []).filter((profile) => {
       // Exclude already swiped users
       if (swipedIdsSet.has(profile.id)) return false;
+
+      // Exclude blocked users (both ways)
+      if (blockedUserIds.has(profile.id)) return false;
 
       // Must have photos
       if (!profile.photos || profile.photos.length === 0) return false;

@@ -74,6 +74,24 @@ serve(async (req) => {
     // Determine other user ID
     const otherUserId = match.user1 === user.id ? match.user2 : match.user1;
 
+    // Check if user is blocked (either way)
+    const { data: iBlockedThem } = await supabaseClient
+      .from("blocks")
+      .select("id")
+      .eq("blocker_id", user.id)
+      .eq("blocked_id", otherUserId)
+      .single();
+    
+    const { data: theyBlockedMe } = await supabaseClient
+      .from("blocks")
+      .select("id")
+      .eq("blocker_id", otherUserId)
+      .eq("blocked_id", user.id)
+      .single();
+
+    const isBlocked = !!(iBlockedThem || theyBlockedMe);
+    const iAmBlocked = !!theyBlockedMe;
+
     // Fetch other user's profile
     const { data: otherUser, error: userProfileError } = await supabaseClient
       .from("users")
@@ -86,6 +104,25 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Other user profile not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // If blocked, return limited info (hide profile picture and messages)
+    if (isBlocked) {
+      return new Response(
+        JSON.stringify({
+          messages: [], // Hide messages
+          otherUser: {
+            ...otherUser,
+            photos: null, // Hide photos
+            main_photo: null,
+          },
+          currentUserId: user.id,
+          unreadCount: 0,
+          isBlocked: true,
+          iAmBlocked: iAmBlocked, // Let blocked user know they were blocked
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

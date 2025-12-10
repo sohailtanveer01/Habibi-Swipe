@@ -270,6 +270,7 @@ export default function ChatScreen() {
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<any | null>(null); // Message being replied to
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const queryClient = useQueryClient();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -304,6 +305,8 @@ export default function ChatScreen() {
   const otherUser = chatData?.otherUser || null;
   const currentUser = chatData?.currentUserId ? { id: chatData.currentUserId } : null;
   const messages = chatData?.messages || [];
+  const isBlocked = chatData?.isBlocked || false;
+  const iAmBlocked = chatData?.iAmBlocked || false;
   
   // Track OTHER USER's active status with real-time updates
   const [otherUserActive, setOtherUserActive] = useState<boolean>(false);
@@ -778,10 +781,12 @@ export default function ChatScreen() {
     : otherUser?.name || "Unknown";
 
   const mainPhoto = useMemo(() => {
+    // Hide photo if blocked
+    if (isBlocked) return null;
     return otherUser?.photos && otherUser.photos.length > 0
       ? cleanPhotoUrl(otherUser.photos[0])
       : null;
-  }, [otherUser?.photos]);
+  }, [otherUser?.photos, isBlocked]);
 
   // Memoize message processing (deduplication, sorting, grouping)
   const groupedMessages = useMemo(() => {
@@ -899,12 +904,34 @@ export default function ChatScreen() {
             )}
           </View>
         </Pressable>
+        
+        {/* Three dots menu */}
+        <Pressable 
+          onPress={() => setShowOptionsModal(true)}
+          className="ml-2 mt-1 p-2"
+        >
+          <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
+        </Pressable>
       </View>
 
       {/* Messages */}
-      <FlatList
-        ref={flatListRef}
-        data={groupedMessages}
+      {isBlocked ? (
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-white/60 text-center text-base mb-2">
+            {iAmBlocked 
+              ? "This user has blocked you. You cannot see their profile or messages."
+              : "You have blocked this user. Messages are hidden but preserved for safety."}
+          </Text>
+          {iAmBlocked && (
+            <Text className="text-white/40 text-center text-sm mt-2">
+              Chat history is preserved for abuse reporting purposes.
+            </Text>
+          )}
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={groupedMessages}
         keyExtractor={(item, index) => {
           if (item.type === 'timestamp') {
             return `timestamp-${item._index !== undefined ? item._index : index}`;
@@ -985,6 +1012,7 @@ export default function ChatScreen() {
           ) : null
         }
       />
+      )}
 
       {/* Reply Preview */}
       {replyingTo && (
@@ -1038,8 +1066,9 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Input */}
-      <View className="bg-black px-4 py-3 flex-row items-center gap-3" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
+      {/* Input - Hide if blocked */}
+      {!isBlocked && (
+        <View className="bg-black px-4 py-3 flex-row items-center gap-3" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
         {/* Add/Attachment Button */}
         <Pressable 
           className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-[#B8860B]/30"
@@ -1082,6 +1111,7 @@ export default function ChatScreen() {
           )}
         </Pressable>
       </View>
+      )}
 
       {/* Full Screen Image Viewer */}
       <Modal
@@ -1118,6 +1148,122 @@ export default function ChatScreen() {
             )}
           </Pressable>
         </View>
+      </Modal>
+
+      {/* Options Modal (Unmatch/Block) */}
+      <Modal
+        visible={showOptionsModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowOptionsModal(false)}
+      >
+        <Pressable 
+          className="flex-1 bg-black/50 items-center justify-center"
+          onPress={() => setShowOptionsModal(false)}
+        >
+          <Pressable 
+            className="bg-black rounded-2xl p-6 w-[85%] border border-white/10"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-white text-xl font-semibold mb-6 text-center">
+              Chat Options
+            </Text>
+            
+            {/* Unmatch Option */}
+            <Pressable
+              onPress={async () => {
+                setShowOptionsModal(false);
+                Alert.alert(
+                  "Unmatch",
+                  `Are you sure you want to unmatch with ${fullName}? This will delete your match and chat history.`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Unmatch",
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          const { error } = await supabase.functions.invoke("unmatch", {
+                            body: { matchId: chatId },
+                          });
+                          
+                          if (error) {
+                            Alert.alert("Error", "Failed to unmatch. Please try again.");
+                            return;
+                          }
+                          
+                          // Navigate back to chat list
+                          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+                          router.replace("/(main)/chat");
+                        } catch (error) {
+                          console.error("Error unmatching:", error);
+                          Alert.alert("Error", "Failed to unmatch. Please try again.");
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+              className="py-4 border-b border-white/10"
+            >
+              <Text className="text-white text-base">Unmatch</Text>
+              <Text className="text-white/60 text-sm mt-1">
+                Remove this match and chat history
+              </Text>
+            </Pressable>
+            
+            {/* Block Option */}
+            <Pressable
+              onPress={async () => {
+                setShowOptionsModal(false);
+                Alert.alert(
+                  "Block User",
+                  `Are you sure you want to block ${fullName}? You won't be able to see each other's profiles or messages.`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Block",
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          const { error } = await supabase.functions.invoke("block-user", {
+                            body: { userId: otherUser?.id, matchId: chatId },
+                          });
+                          
+                          if (error) {
+                            Alert.alert("Error", "Failed to block user. Please try again.");
+                            return;
+                          }
+                          
+                          // Navigate back to chat list
+                          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+                          router.replace("/(main)/chat");
+                        } catch (error) {
+                          console.error("Error blocking user:", error);
+                          Alert.alert("Error", "Failed to block user. Please try again.");
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+              className="py-4"
+            >
+              <Text className="text-red-500 text-base">Block</Text>
+              <Text className="text-white/60 text-sm mt-1">
+                Block this user and remove the match
+              </Text>
+            </Pressable>
+            
+            {/* Cancel Button */}
+            <Pressable
+              onPress={() => setShowOptionsModal(false)}
+              className="mt-4 pt-4 border-t border-white/10"
+            >
+              <Text className="text-white/70 text-center text-base">Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
       </Modal>
     </KeyboardAvoidingView>
   );

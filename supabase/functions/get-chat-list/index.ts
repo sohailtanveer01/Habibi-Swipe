@@ -38,6 +38,25 @@ serve(async (req) => {
 
     console.log("📍 Loading chat list for user:", user.id);
 
+    // Get list of blocked users (both ways - users I blocked and users who blocked me)
+    const { data: blocksIBlocked } = await supabaseClient
+      .from("blocks")
+      .select("blocked_id")
+      .eq("blocker_id", user.id);
+    
+    const { data: blocksIAmBlocked } = await supabaseClient
+      .from("blocks")
+      .select("blocker_id")
+      .eq("blocked_id", user.id);
+
+    const blockedUserIds = new Set<string>();
+    if (blocksIBlocked) {
+      blocksIBlocked.forEach(block => blockedUserIds.add(block.blocked_id));
+    }
+    if (blocksIAmBlocked) {
+      blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
+    }
+
     // Fetch all matches for the user
     const { data: matches, error: matchesError } = await supabaseClient
       .from("matches")
@@ -64,6 +83,11 @@ serve(async (req) => {
     const matchesWithData = await Promise.all(
       matches.map(async (match) => {
         const otherUserId = match.user1 === user.id ? match.user2 : match.user1;
+
+        // Skip if user is blocked (either way)
+        if (blockedUserIds.has(otherUserId)) {
+          return null;
+        }
 
         // Get other user's profile
         const { data: otherUser, error: userError } = await supabaseClient
