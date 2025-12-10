@@ -48,31 +48,66 @@ serve(async (req) => {
 
     console.log("📍 Loading chat for match:", matchId, "user:", user.id);
 
-    // Fetch match and verify user is part of it
-    const { data: match, error: matchError } = await supabaseClient
-      .from("matches")
+    // Check if this match is unmatched
+    const { data: unmatchRecord, error: unmatchError } = await supabaseClient
+      .from("unmatches")
       .select("*")
-      .eq("id", matchId)
+      .eq("match_id", matchId)
       .single();
 
-    if (matchError || !match) {
-      console.error("❌ Match error:", matchError);
+    let otherUserId: string | null = null;
+    let isUnmatched = false;
+    let match: any = null;
+
+    if (!unmatchError && unmatchRecord) {
+      // Match is unmatched - verify user is part of it
+      if (unmatchRecord.user1_id !== user.id && unmatchRecord.user2_id !== user.id) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized access to this chat" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Determine other user ID
+      otherUserId = unmatchRecord.user1_id === user.id 
+        ? unmatchRecord.user2_id 
+        : unmatchRecord.user1_id;
+      isUnmatched = true;
+    } else {
+      // Match exists - fetch and verify
+      const { data: matchData, error: matchError } = await supabaseClient
+        .from("matches")
+        .select("*")
+        .eq("id", matchId)
+        .single();
+
+      if (matchError || !matchData) {
+        return new Response(
+          JSON.stringify({ error: "Match not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      match = matchData;
+
+      // Verify user is part of the match
+      if (match.user1 !== user.id && match.user2 !== user.id) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized access to this chat" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Determine other user ID
+      otherUserId = match.user1 === user.id ? match.user2 : match.user1;
+    }
+
+    if (!otherUserId) {
       return new Response(
-        JSON.stringify({ error: "Match not found" }),
+        JSON.stringify({ error: "Other user not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Verify user is part of this match
-    if (match.user1 !== user.id && match.user2 !== user.id) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized access to this chat" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Determine other user ID
-    const otherUserId = match.user1 === user.id ? match.user2 : match.user1;
 
     // Check if user is blocked (either way)
     const { data: iBlockedThem } = await supabaseClient
@@ -121,6 +156,7 @@ serve(async (req) => {
           unreadCount: 0,
           isBlocked: true,
           iAmBlocked: iAmBlocked, // Let blocked user know they were blocked
+          isUnmatched: false,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -134,27 +170,31 @@ serve(async (req) => {
       .eq("sender_id", otherUserId)
       .eq("read", false);
 
-    // Mark all unread messages from other user as read FIRST
+    // Mark all unread messages from other user as read FIRST (only if match exists)
     // RLS policy allows users to update read status of messages they receive
-    console.log("🔄 Attempting to mark messages as read for match:", matchId, "otherUserId:", otherUserId);
-    
-    const { data: markedAsRead, error: readError } = await supabaseClient
-      .from("messages")
-      .update({ read: true })
-      .eq("match_id", matchId)
-      .eq("sender_id", otherUserId)
-      .eq("read", false)
-      .select();
+    if (!isUnmatched) {
+      console.log("🔄 Attempting to mark messages as read for match:", matchId, "otherUserId:", otherUserId);
+      
+      const { data: markedAsRead, error: readError } = await supabaseClient
+        .from("messages")
+        .update({ read: true })
+        .eq("match_id", matchId)
+        .eq("sender_id", otherUserId)
+        .eq("read", false)
+        .select();
 
-    if (readError) {
-      console.error("⚠️ Error marking messages as read:", JSON.stringify(readError, null, 2));
-      console.error("⚠️ Error details:", readError.message, readError.details, readError.hint);
-      // Don't fail the request if marking as read fails, just log it
-    } else if (markedAsRead && markedAsRead.length > 0) {
-      console.log("✅ Successfully marked", markedAsRead.length, "messages as read for match", matchId);
-      console.log("✅ Message IDs marked:", markedAsRead.map(m => m.id));
+      if (readError) {
+        console.error("⚠️ Error marking messages as read:", JSON.stringify(readError, null, 2));
+        console.error("⚠️ Error details:", readError.message, readError.details, readError.hint);
+        // Don't fail the request if marking as read fails, just log it
+      } else if (markedAsRead && markedAsRead.length > 0) {
+        console.log("✅ Successfully marked", markedAsRead.length, "messages as read for match", matchId);
+        console.log("✅ Message IDs marked:", markedAsRead.map(m => m.id));
+      } else {
+        console.log("ℹ️ No unread messages to mark as read for match", matchId);
+      }
     } else {
-      console.log("ℹ️ No unread messages to mark as read for match", matchId);
+      console.log("ℹ️ Match is unmatched, skipping read status update");
     }
 
     // Fetch messages AFTER marking as read to ensure we get the latest read status
@@ -187,18 +227,37 @@ serve(async (req) => {
     // The database now has the correct read status after the UPDATE
     const updatedMessages = messages || [];
 
+    // Get rematch request info if unmatched
+    let rematchRequestInfo = null;
+    if (isUnmatched && unmatchRecord) {
+      const hasPendingRequest = unmatchRecord.rematch_status === 'pending';
+      const isRequestRecipient = hasPendingRequest && unmatchRecord.rematch_requested_by !== user.id;
+      const isRequestRequester = hasPendingRequest && unmatchRecord.rematch_requested_by === user.id;
+
+      rematchRequestInfo = {
+        status: unmatchRecord.rematch_status,
+        requestedBy: unmatchRecord.rematch_requested_by,
+        requestedAt: unmatchRecord.rematch_requested_at,
+        hasPendingRequest,
+        isRequestRecipient, // Current user can accept/reject
+        isRequestRequester, // Current user sent the request (waiting for response)
+      };
+    }
+
     console.log("✅ Loaded chat:", updatedMessages.length, "messages");
 
     return new Response(
       JSON.stringify({
-        match: {
+        match: match ? {
           id: match.id,
           created_at: match.created_at,
-        },
+        } : null,
         otherUser,
         messages: updatedMessages,
         currentUserId: user.id,
         unreadCount: unreadCount || 0, // Return count before marking as read
+        isUnmatched: isUnmatched,
+        rematchRequest: rematchRequestInfo,
       }),
       {
         status: 200,

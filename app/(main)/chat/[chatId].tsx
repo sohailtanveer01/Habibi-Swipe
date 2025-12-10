@@ -307,6 +307,8 @@ export default function ChatScreen() {
   const messages = chatData?.messages || [];
   const isBlocked = chatData?.isBlocked || false;
   const iAmBlocked = chatData?.iAmBlocked || false;
+  const isUnmatched = chatData?.isUnmatched || false;
+  const rematchRequest = chatData?.rematchRequest || null;
   
   // Track OTHER USER's active status with real-time updates
   const [otherUserActive, setOtherUserActive] = useState<boolean>(false);
@@ -781,8 +783,9 @@ export default function ChatScreen() {
     : otherUser?.name || "Unknown";
 
   const mainPhoto = useMemo(() => {
-    // Hide photo if blocked
+    // Hide photo if blocked (scenario 3 & 4)
     if (isBlocked) return null;
+    // Show photo for unmatched (scenario 1 & 2)
     return otherUser?.photos && otherUser.photos.length > 0
       ? cleanPhotoUrl(otherUser.photos[0])
       : null;
@@ -875,13 +878,22 @@ export default function ChatScreen() {
         <Pressable 
           className="flex-1 flex-row items-center"
           onPress={() => {
+            // Scenario 3 & 4: Show alert when name is tapped if blocked
+            if (isBlocked) {
+              Alert.alert(
+                "User Information",
+                `This user (${fullName}) may have blocked you or deleted their account.`
+              );
+              return;
+            }
+            // Normal behavior: navigate to profile
             if (otherUser?.id) {
               router.push(`/(main)/swipe?userId=${otherUser.id}&source=chat`);
             }
           }}
         >
           <View className="relative mr-3">
-            {mainPhoto ? (
+            {mainPhoto && !isBlocked ? (
               <Image
                 source={{ uri: mainPhoto }}
                 className="w-14 h-14 rounded-full"
@@ -892,15 +904,18 @@ export default function ChatScreen() {
                 <Text className="text-white/60 text-xl">👤</Text>
               </View>
             )}
-            {/* Active indicator */}
-            {otherUserActive && (
+            {/* Active indicator - only show if not blocked */}
+            {otherUserActive && !isBlocked && (
               <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-black" />
             )}
           </View>
           <View className="flex-1">
             <Text className="text-white text-lg font-semibold">{fullName}</Text>
-            {otherUserActive && !isOtherUserTyping && (
+            {otherUserActive && !isOtherUserTyping && !isBlocked && (
               <Text className="text-green-500 text-xs mt-0.5">Active now</Text>
+            )}
+            {isBlocked && (
+              <Text className="text-white/60 text-xs mt-0.5">Tap name for info</Text>
             )}
           </View>
         </Pressable>
@@ -1014,6 +1029,124 @@ export default function ChatScreen() {
       />
       )}
 
+      {/* Rematch Request UI - Show for unmatched scenarios (1 & 2) */}
+      {isUnmatched && !isBlocked && (
+        <View className="px-4 py-4 bg-black border-t border-white/10">
+          {rematchRequest?.isRequestRecipient ? (
+            // User is recipient - show accept/reject buttons
+            <View>
+              <Text className="text-white text-center text-base mb-4">
+                {fullName} has requested to rematch
+              </Text>
+              <View className="flex-row gap-3">
+                <Pressable
+                  onPress={async () => {
+                    try {
+                      const { error } = await supabase.functions.invoke("reject-rematch", {
+                        body: { matchId: chatId },
+                      });
+                      
+                      if (error) {
+                        Alert.alert("Error", "Failed to reject rematch. Please try again.");
+                        return;
+                      }
+                      
+                      // Navigate back to chat list (chat will be removed from list)
+                      queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+                      queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+                      router.back();
+                    } catch (error) {
+                      console.error("Error rejecting rematch:", error);
+                      Alert.alert("Error", "Failed to reject rematch. Please try again.");
+                    }
+                  }}
+                  className="flex-1 bg-white/10 px-6 py-4 rounded-2xl items-center border border-white/20"
+                >
+                  <Text className="text-white text-base font-semibold">Reject</Text>
+                </Pressable>
+                <Pressable
+                  onPress={async () => {
+                    try {
+                      const { error, data } = await supabase.functions.invoke("accept-rematch", {
+                        body: { matchId: chatId },
+                      });
+                      
+                      if (error) {
+                        Alert.alert("Error", "Failed to accept rematch. Please try again.");
+                        return;
+                      }
+                      
+                      // Refresh chat data and navigate to new match
+                      queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+                      if (data?.matchId) {
+                        router.replace(`/(main)/chat/${data.matchId}`);
+                      } else {
+                        queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+                      }
+                    } catch (error) {
+                      console.error("Error accepting rematch:", error);
+                      Alert.alert("Error", "Failed to accept rematch. Please try again.");
+                    }
+                  }}
+                  className="flex-1 bg-[#B8860B] px-6 py-4 rounded-2xl items-center"
+                >
+                  <Text className="text-white text-base font-semibold">Accept Rematch</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : rematchRequest?.isRequestRequester ? (
+            // User is requester - show waiting message
+            <View className="items-center">
+              <Text className="text-white/70 text-center text-base mb-2">
+                Rematch request sent
+              </Text>
+              <Text className="text-white/50 text-center text-sm">
+                Waiting for {fullName} to respond...
+              </Text>
+            </View>
+          ) : (
+            // No request - show request button
+            <Pressable
+              onPress={async () => {
+                Alert.alert(
+                  "Request Rematch",
+                  `Would you like to request a rematch with ${fullName}?`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Request Rematch",
+                      onPress: async () => {
+                        try {
+                          const { error } = await supabase.functions.invoke("request-rematch", {
+                            body: { matchId: chatId, otherUserId: otherUser?.id },
+                          });
+                          
+                          if (error) {
+                            Alert.alert("Error", "Failed to request rematch. Please try again.");
+                            return;
+                          }
+                          
+                          Alert.alert("Success", "Rematch request sent!");
+                          // Refresh chat data
+                          queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+                          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+                        } catch (error) {
+                          console.error("Error requesting rematch:", error);
+                          Alert.alert("Error", "Failed to request rematch. Please try again.");
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+              className="bg-[#B8860B] px-6 py-4 rounded-2xl items-center"
+            >
+              <Text className="text-white text-base font-semibold">Request Rematch?</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
       {/* Reply Preview */}
       {replyingTo && (
         <View className="px-4 py-2 bg-black border-t border-white/10">
@@ -1066,8 +1199,8 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Input - Hide if blocked */}
-      {!isBlocked && (
+      {/* Input - Hide if blocked or unmatched */}
+      {!isBlocked && !isUnmatched && (
         <View className="bg-black px-4 py-3 flex-row items-center gap-3" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
         {/* Add/Attachment Button */}
         <Pressable 

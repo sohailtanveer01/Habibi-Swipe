@@ -147,8 +147,14 @@ export default function ChatListScreen() {
 
   return (
     <View className="flex-1 bg-black pt-12">
-      <View className="px-4 mb-4">
+      <View className="px-4 mb-4 flex-row items-center justify-between">
         <Text className="text-white text-2xl font-bold">Chats</Text>
+        <Pressable
+          onPress={() => router.push("/(main)/chat/unmatches")}
+          className="px-4 py-2 bg-white/10 rounded-full border border-[#B8860B]/30"
+        >
+          <Text className="text-[#B8860B] text-sm font-semibold">Unmatches</Text>
+        </Pressable>
       </View>
 
       {/* Notification Banner */}

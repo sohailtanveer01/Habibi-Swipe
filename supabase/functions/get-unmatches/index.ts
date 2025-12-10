@@ -1,0 +1,191 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: { headers: { Authorization: authHeader } },
+      }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("📍 Loading unmatches for user:", user.id);
+
+    // Get all unmatched users from unmatches table
+    // We'll filter out pending rematch requests in code (they appear in chat list)
+    const { data: allUnmatches, error: unmatchesError } = await supabaseClient
+      .from("unmatches")
+      .select("*")
+      .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+      .order("created_at", { ascending: false });
+
+    if (unmatchesError) {
+      console.error("❌ Error fetching unmatches:", unmatchesError);
+    }
+
+    // Filter out pending rematch requests (they appear in chat list instead)
+    const unmatches = allUnmatches?.filter(
+      (unmatch) => unmatch.rematch_status !== 'pending'
+    ) || [];
+
+    const unmatchedUsersData: any[] = [];
+
+    if (unmatches) {
+      for (const unmatch of unmatches) {
+        // Determine the other user ID
+        const otherUserId = unmatch.user1_id === user.id 
+          ? unmatch.user2_id 
+          : unmatch.user1_id;
+
+        // Get user profile
+        const { data: otherUser } = await supabaseClient
+          .from("users")
+          .select("*")
+          .eq("id", otherUserId)
+          .single();
+
+        if (otherUser) {
+          // Determine who unmatched whom
+          const unmatchedBy = unmatch.unmatched_by === user.id ? "me" : "them";
+
+          unmatchedUsersData.push({
+            userId: otherUserId,
+            matchId: unmatch.match_id,
+            user: otherUser,
+            unmatchedAt: unmatch.created_at,
+            unmatchedBy: unmatchedBy,
+            type: "unmatched",
+          });
+        }
+      }
+    }
+
+    // Get blocked users (users I blocked)
+    const { data: blocksIBlocked, error: blocksError1 } = await supabaseClient
+      .from("blocks")
+      .select("blocked_id, created_at")
+      .eq("blocker_id", user.id);
+
+    if (blocksError1) {
+      console.error("❌ Error fetching blocks I made:", blocksError1);
+    }
+
+    // Get users who blocked me
+    const { data: blocksIAmBlocked, error: blocksError2 } = await supabaseClient
+      .from("blocks")
+      .select("blocker_id, created_at")
+      .eq("blocked_id", user.id);
+
+    if (blocksError2) {
+      console.error("❌ Error fetching blocks against me:", blocksError2);
+    }
+
+    // Fetch user profiles for blocked users
+    const blockedUsersData: any[] = [];
+
+    // Users I blocked
+    if (blocksIBlocked) {
+      for (const block of blocksIBlocked) {
+        const { data: blockedUser } = await supabaseClient
+          .from("users")
+          .select("*")
+          .eq("id", block.blocked_id)
+          .single();
+
+        if (blockedUser) {
+          blockedUsersData.push({
+            userId: block.blocked_id,
+            user: blockedUser,
+            blockedAt: block.created_at,
+            blockedBy: "me",
+            type: "blocked",
+          });
+        }
+      }
+    }
+
+    // Users who blocked me
+    if (blocksIAmBlocked) {
+      for (const block of blocksIAmBlocked) {
+        const { data: blockerUser } = await supabaseClient
+          .from("users")
+          .select("*")
+          .eq("id", block.blocker_id)
+          .single();
+
+        if (blockerUser) {
+          blockedUsersData.push({
+            userId: block.blocker_id,
+            user: blockerUser,
+            blockedAt: block.created_at,
+            blockedBy: "them",
+            type: "blocked",
+          });
+        }
+      }
+    }
+
+    // Combine and deduplicate (if a user is both unmatched and blocked, prioritize blocked)
+    const allUsers = new Map<string, any>();
+    
+    // Add unmatched users
+    unmatchedUsersData.forEach(item => {
+      if (!allUsers.has(item.userId)) {
+        allUsers.set(item.userId, item);
+      }
+    });
+
+    // Add blocked users (will overwrite if user was also unmatched)
+    blockedUsersData.forEach(item => {
+      allUsers.set(item.userId, item);
+    });
+
+    const result = Array.from(allUsers.values());
+
+    console.log("✅ Loaded unmatches:", result.length, "users");
+
+    return new Response(
+      JSON.stringify({
+        users: result,
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  } catch (error) {
+    console.error("❌ Error in get-unmatches:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
+

@@ -136,7 +136,71 @@ serve(async (req) => {
     // Filter out any null results (failed user profile fetches)
     const validMatches = matchesWithData.filter((match) => match !== null);
 
-    console.log("✅ Loaded chat list:", validMatches.length, "matches");
+    // Get unmatched users with pending rematch requests where current user is the recipient
+    const { data: pendingRematchRequests, error: rematchError } = await supabaseClient
+      .from("unmatches")
+      .select("*")
+      .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+      .eq("rematch_status", "pending")
+      .neq("rematch_requested_by", user.id); // User is NOT the requester (they are the recipient)
+
+    if (rematchError) {
+      console.error("❌ Error fetching rematch requests:", rematchError);
+    }
+
+    // Add pending rematch requests to chat list
+    if (pendingRematchRequests && pendingRematchRequests.length > 0) {
+      const rematchMatches = await Promise.all(
+        pendingRematchRequests.map(async (unmatch) => {
+          const otherUserId = unmatch.user1_id === user.id 
+            ? unmatch.user2_id 
+            : unmatch.user1_id;
+
+          // Skip if user is blocked
+          if (blockedUserIds.has(otherUserId)) {
+            return null;
+          }
+
+          // Get other user's profile
+          const { data: otherUser, error: userError } = await supabaseClient
+            .from("users")
+            .select("*")
+            .eq("id", otherUserId)
+            .single();
+
+          if (userError || !otherUser) {
+            console.error("❌ Error fetching user profile for rematch:", userError);
+            return null;
+          }
+
+          // Get last message from the original match
+          const { data: lastMessage } = await supabaseClient
+            .from("messages")
+            .select("*")
+            .eq("match_id", unmatch.match_id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
+          return {
+            id: unmatch.match_id, // Use original match_id for navigation
+            created_at: unmatch.created_at,
+            otherUser,
+            lastMessage: lastMessage || null,
+            unreadCount: 0, // No unread for unmatched chats
+            lastMessageTime: lastMessage?.created_at || unmatch.created_at,
+            isUnmatched: true,
+            hasPendingRematchRequest: true,
+            rematchRequestedBy: unmatch.rematch_requested_by,
+          };
+        })
+      );
+
+      const validRematchMatches = rematchMatches.filter((match) => match !== null);
+      validMatches.push(...validRematchMatches);
+    }
+
+    console.log("✅ Loaded chat list:", validMatches.length, "matches (including rematch requests)");
 
     return new Response(
       JSON.stringify({

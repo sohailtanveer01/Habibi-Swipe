@@ -85,6 +85,39 @@ serve(async (req) => {
       );
     }
 
+    // Check if already unmatched
+    const { data: existingUnmatch } = await supabaseClient
+      .from("unmatches")
+      .select("id")
+      .eq("match_id", matchId)
+      .single();
+
+    if (!existingUnmatch) {
+      // Insert into unmatches table before deleting match
+      // Ensure consistent ordering: user1_id < user2_id
+      const user1Id = match.user1 < match.user2 ? match.user1 : match.user2;
+      const user2Id = match.user1 < match.user2 ? match.user2 : match.user1;
+
+      const { error: unmatchInsertError } = await supabaseClient
+        .from("unmatches")
+        .insert({
+          match_id: matchId,
+          user1_id: user1Id,
+          user2_id: user2Id,
+          unmatched_by: user.id, // Who initiated the unmatch
+        });
+
+      if (unmatchInsertError) {
+        console.error("❌ Error inserting unmatch record:", unmatchInsertError);
+        return new Response(
+          JSON.stringify({ error: "Error recording unmatch" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log("✅ Unmatch record created");
+    }
+
     // Delete the match (preserve messages for future rematch feature)
     const { error: deleteError } = await supabaseClient
       .from("matches")

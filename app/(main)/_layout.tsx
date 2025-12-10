@@ -289,6 +289,7 @@ export default function MainLayout() {
       <Tabs.Screen name="swipe/filters/age" options={{ href: null }} />
       <Tabs.Screen name="swipe/filters/height" options={{ href: null }} />
       <Tabs.Screen name="swipe/filters/ethnicity" options={{ href: null }} />
+      <Tabs.Screen name="chat/unmatches" options={{ href: null }} />
     </Tabs>
   );
 }
