@@ -146,9 +146,11 @@ serve(async (req) => {
     }
 
     // Map profiles with their like timestamp (most recent like)
-    // Also filter out any blocked users as a safety check
+    // Also filter out any blocked users and matched users as a safety check
     const myLikesWithTimestamp = (likedProfiles || [])
-      .filter((profile) => !blockedUserIds.has(profile.id))
+      .filter((profile) => 
+        !blockedUserIds.has(profile.id) && !matchedUserIds.has(profile.id)
+      )
       .map((profile) => {
         const mostRecentSwipe = swipes.find((swipe) => swipe.swiped_id === profile.id);
         return {
@@ -162,6 +164,13 @@ serve(async (req) => {
         const dateB = b.likedAt ? new Date(b.likedAt).getTime() : 0;
         return dateB - dateA;
       });
+    
+    console.log("✅ Matched users filter:", {
+      totalLikedIds: likedUserIds.length,
+      matchedUserIds: Array.from(matchedUserIds),
+      unmatchedLikedIds: unmatchedLikedIds.length,
+      finalProfilesCount: myLikesWithTimestamp.length,
+    });
 
     console.log("✅ Fetched my likes:", myLikesWithTimestamp.length);
 
