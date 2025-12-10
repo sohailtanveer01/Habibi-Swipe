@@ -84,11 +84,49 @@ serve(async (req) => {
     // Get unique viewer IDs
     const viewerIds = Array.from(viewerStats.keys());
 
-    // Fetch full user profiles for all viewers
+    // Get blocked users (both ways - users I blocked and users who blocked me)
+    const { data: blocksIBlocked } = await supabaseClient
+      .from("blocks")
+      .select("blocked_id")
+      .eq("blocker_id", user.id);
+    
+    const { data: blocksIAmBlocked } = await supabaseClient
+      .from("blocks")
+      .select("blocker_id")
+      .eq("blocked_id", user.id);
+
+    const blockedUserIds = new Set<string>();
+    if (blocksIBlocked) {
+      blocksIBlocked.forEach(block => blockedUserIds.add(block.blocked_id));
+    }
+    if (blocksIAmBlocked) {
+      blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
+    }
+    
+    console.log("🔒 Blocking check:", {
+      userId: user.id,
+      blocksIBlocked: blocksIBlocked?.length || 0,
+      blocksIAmBlocked: blocksIAmBlocked?.length || 0,
+      totalBlockedUserIds: blockedUserIds.size,
+      blockedUserIds: Array.from(blockedUserIds),
+      viewerIdsBeforeFilter: viewerIds.length,
+    });
+
+    // Filter out blocked users from viewer IDs
+    const unblockedViewerIds = viewerIds.filter(id => !blockedUserIds.has(id));
+
+    if (unblockedViewerIds.length === 0) {
+      return new Response(
+        JSON.stringify({ viewers: [] }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fetch full user profiles for all viewers (excluding blocked users)
     const { data: viewers, error: viewersError } = await supabaseClient
       .from("users")
       .select("*")
-      .in("id", viewerIds);
+      .in("id", unblockedViewerIds);
 
     if (viewersError) {
       console.error("❌ Error fetching viewer profiles:", viewersError);
@@ -99,7 +137,9 @@ serve(async (req) => {
     }
 
     // Combine viewer profiles with view stats, sorted by most recent view
+    // Also filter out any blocked users as a safety check
     const viewersWithStats = viewers
+      .filter((viewer) => !blockedUserIds.has(viewer.id))
       .map((viewer) => {
         const stats = viewerStats.get(viewer.id);
         return {

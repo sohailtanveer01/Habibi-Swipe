@@ -38,6 +38,21 @@ serve(async (req) => {
 
     console.log("📍 Loading unmatches for user:", user.id);
 
+    // Get list of users I blocked (user 1 shouldn't see user 2)
+    const { data: blocksIBlocked, error: blocksError1 } = await supabaseClient
+      .from("blocks")
+      .select("blocked_id, created_at")
+      .eq("blocker_id", user.id);
+
+    if (blocksError1) {
+      console.error("❌ Error fetching blocks I made:", blocksError1);
+    }
+
+    const blockedUserIds = new Set<string>();
+    if (blocksIBlocked) {
+      blocksIBlocked.forEach(block => blockedUserIds.add(block.blocked_id));
+    }
+
     // Get all unmatched users from unmatches table
     // We'll filter out pending rematch requests in code (they appear in chat list)
     const { data: allUnmatches, error: unmatchesError } = await supabaseClient
@@ -51,8 +66,14 @@ serve(async (req) => {
     }
 
     // Filter out pending rematch requests (they appear in chat list instead)
+    // AND filter out users I blocked (user 1 shouldn't see user 2)
     const unmatches = allUnmatches?.filter(
-      (unmatch) => unmatch.rematch_status !== 'pending'
+      (unmatch) => {
+        const otherUserId = unmatch.user1_id === user.id 
+          ? unmatch.user2_id 
+          : unmatch.user1_id;
+        return unmatch.rematch_status !== 'pending' && !blockedUserIds.has(otherUserId);
+      }
     ) || [];
 
     const unmatchedUsersData: any[] = [];
@@ -63,6 +84,11 @@ serve(async (req) => {
         const otherUserId = unmatch.user1_id === user.id 
           ? unmatch.user2_id 
           : unmatch.user1_id;
+
+        // Skip if I blocked this user
+        if (blockedUserIds.has(otherUserId)) {
+          continue;
+        }
 
         // Get user profile
         const { data: otherUser } = await supabaseClient
@@ -87,16 +113,6 @@ serve(async (req) => {
       }
     }
 
-    // Get blocked users (users I blocked)
-    const { data: blocksIBlocked, error: blocksError1 } = await supabaseClient
-      .from("blocks")
-      .select("blocked_id, created_at")
-      .eq("blocker_id", user.id);
-
-    if (blocksError1) {
-      console.error("❌ Error fetching blocks I made:", blocksError1);
-    }
-
     // Get users who blocked me
     const { data: blocksIAmBlocked, error: blocksError2 } = await supabaseClient
       .from("blocks")
@@ -110,26 +126,8 @@ serve(async (req) => {
     // Fetch user profiles for blocked users
     const blockedUsersData: any[] = [];
 
-    // Users I blocked
-    if (blocksIBlocked) {
-      for (const block of blocksIBlocked) {
-        const { data: blockedUser } = await supabaseClient
-          .from("users")
-          .select("*")
-          .eq("id", block.blocked_id)
-          .single();
-
-        if (blockedUser) {
-          blockedUsersData.push({
-            userId: block.blocked_id,
-            user: blockedUser,
-            blockedAt: block.created_at,
-            blockedBy: "me",
-            type: "blocked",
-          });
-        }
-      }
-    }
+    // Note: We don't show users I blocked (user 1 shouldn't see user 2)
+    // Only show users who blocked me (user 2 should see that user 1 blocked them)
 
     // Users who blocked me
     if (blocksIAmBlocked) {

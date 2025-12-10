@@ -124,6 +124,33 @@ serve(async (req) => {
       console.error("❌ Error fetching matches:", matchesError);
     }
 
+    // Get blocked users (both ways - users I blocked and users who blocked me)
+    const { data: blocksIBlocked } = await supabaseClient
+      .from("blocks")
+      .select("blocked_id")
+      .eq("blocker_id", user.id);
+    
+    const { data: blocksIAmBlocked } = await supabaseClient
+      .from("blocks")
+      .select("blocker_id")
+      .eq("blocked_id", user.id);
+
+    const blockedUserIds = new Set<string>();
+    if (blocksIBlocked) {
+      blocksIBlocked.forEach(block => blockedUserIds.add(block.blocked_id));
+    }
+    if (blocksIAmBlocked) {
+      blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
+    }
+    
+    console.log("🔒 Blocking check:", {
+      userId: user.id,
+      blocksIBlocked: blocksIBlocked?.length || 0,
+      blocksIAmBlocked: blocksIAmBlocked?.length || 0,
+      totalBlockedUserIds: blockedUserIds.size,
+      blockedUserIds: Array.from(blockedUserIds),
+    });
+
     // Extract matched user IDs
     const matchedUserIds = new Set<string>();
     if (matches) {
@@ -136,8 +163,10 @@ serve(async (req) => {
       });
     }
 
-    // Filter out matched users from likerUserIds
-    const unmatchedLikerIds = likerUserIds.filter((id) => !matchedUserIds.has(id));
+    // Filter out matched users and blocked users (both ways) from likerUserIds
+    const unmatchedLikerIds = likerUserIds.filter(
+      (id) => !matchedUserIds.has(id) && !blockedUserIds.has(id)
+    );
 
     if (unmatchedLikerIds.length === 0) {
       return new Response(
@@ -164,18 +193,22 @@ serve(async (req) => {
     }
 
     // Map profiles with their like timestamp (most recent like)
-    const likedMeWithTimestamp = (likerProfiles || []).map((profile) => {
-      const mostRecentSwipe = swipes.find((swipe) => swipe.swiper_id === profile.id);
-      return {
-        ...profile,
-        likedAt: mostRecentSwipe?.created_at,
-      };
-    }).sort((a, b) => {
-      // Sort by most recently liked first
-      const dateA = a.likedAt ? new Date(a.likedAt).getTime() : 0;
-      const dateB = b.likedAt ? new Date(b.likedAt).getTime() : 0;
-      return dateB - dateA;
-    });
+    // Also filter out any blocked users as a safety check
+    const likedMeWithTimestamp = (likerProfiles || [])
+      .filter((profile) => !blockedUserIds.has(profile.id))
+      .map((profile) => {
+        const mostRecentSwipe = swipes.find((swipe) => swipe.swiper_id === profile.id);
+        return {
+          ...profile,
+          likedAt: mostRecentSwipe?.created_at,
+        };
+      })
+      .sort((a, b) => {
+        // Sort by most recently liked first
+        const dateA = a.likedAt ? new Date(a.likedAt).getTime() : 0;
+        const dateB = b.likedAt ? new Date(b.likedAt).getTime() : 0;
+        return dateB - dateA;
+      });
 
     console.log("✅ Fetched liked me:", likedMeWithTimestamp.length);
 

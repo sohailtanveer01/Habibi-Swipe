@@ -67,7 +67,37 @@ serve(async (req) => {
     // Get unique user IDs that were passed on
     const passedOnUserIds = [...new Set(swipes.map((swipe) => swipe.swiped_id))];
 
-    if (passedOnUserIds.length === 0) {
+    // Get blocked users (both ways - users I blocked and users who blocked me)
+    const { data: blocksIBlocked } = await supabaseClient
+      .from("blocks")
+      .select("blocked_id")
+      .eq("blocker_id", user.id);
+    
+    const { data: blocksIAmBlocked } = await supabaseClient
+      .from("blocks")
+      .select("blocker_id")
+      .eq("blocked_id", user.id);
+
+    const blockedUserIds = new Set<string>();
+    if (blocksIBlocked) {
+      blocksIBlocked.forEach(block => blockedUserIds.add(block.blocked_id));
+    }
+    if (blocksIAmBlocked) {
+      blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
+    }
+    
+    console.log("🔒 Blocking check:", {
+      userId: user.id,
+      blocksIBlocked: blocksIBlocked?.length || 0,
+      blocksIAmBlocked: blocksIAmBlocked?.length || 0,
+      totalBlockedUserIds: blockedUserIds.size,
+      blockedUserIds: Array.from(blockedUserIds),
+    });
+
+    // Filter out blocked users from passed on user IDs
+    const unblockedPassedOnIds = passedOnUserIds.filter(id => !blockedUserIds.has(id));
+
+    if (unblockedPassedOnIds.length === 0) {
       return new Response(
         JSON.stringify({ passedOn: [] }),
         {
@@ -77,11 +107,11 @@ serve(async (req) => {
       );
     }
 
-    // Fetch full user profiles for the passed on users
+    // Fetch full user profiles for the passed on users (excluding blocked users)
     const { data: passedOnProfiles, error: profilesError } = await supabaseClient
       .from("users")
       .select("id, first_name, last_name, name, photos")
-      .in("id", passedOnUserIds);
+      .in("id", unblockedPassedOnIds);
 
     if (profilesError) {
       console.error("❌ Error fetching passed on user profiles:", profilesError);
@@ -92,18 +122,22 @@ serve(async (req) => {
     }
 
     // Map profiles with their pass timestamp (most recent pass)
-    const passedOnWithTimestamp = (passedOnProfiles || []).map((profile) => {
-      const mostRecentSwipe = swipes.find((swipe) => swipe.swiped_id === profile.id);
-      return {
-        ...profile,
-        passedAt: mostRecentSwipe?.created_at,
-      };
-    }).sort((a, b) => {
-      // Sort by most recently passed first
-      const dateA = a.passedAt ? new Date(a.passedAt).getTime() : 0;
-      const dateB = b.passedAt ? new Date(b.passedAt).getTime() : 0;
-      return dateB - dateA;
-    });
+    // Also filter out any blocked users as a safety check
+    const passedOnWithTimestamp = (passedOnProfiles || [])
+      .filter((profile) => !blockedUserIds.has(profile.id))
+      .map((profile) => {
+        const mostRecentSwipe = swipes.find((swipe) => swipe.swiped_id === profile.id);
+        return {
+          ...profile,
+          passedAt: mostRecentSwipe?.created_at,
+        };
+      })
+      .sort((a, b) => {
+        // Sort by most recently passed first
+        const dateA = a.passedAt ? new Date(a.passedAt).getTime() : 0;
+        const dateB = b.passedAt ? new Date(b.passedAt).getTime() : 0;
+        return dateB - dateA;
+      });
 
     console.log("✅ Fetched passed on:", passedOnWithTimestamp.length);
 
