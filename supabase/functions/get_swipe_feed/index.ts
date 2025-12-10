@@ -131,6 +131,39 @@ serve(async (req) => {
       blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
     }
 
+    // Get all unmatched users (both ways - users I unmatched and users who unmatched me)
+    // Exclude all unmatched users regardless of rematch status
+    const { data: unmatches } = await supabaseClient
+      .from("unmatches")
+      .select("user1_id, user2_id")
+      .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+
+    const unmatchedUserIds = new Set<string>();
+    if (unmatches) {
+      unmatches.forEach((unmatch) => {
+        // Exclude all unmatched users (both ways - if user1 unmatched user2, both are excluded from each other's feed)
+        const otherUserId = unmatch.user1_id === user.id ? unmatch.user2_id : unmatch.user1_id;
+        unmatchedUserIds.add(otherUserId);
+      });
+    }
+
+    // Get matched users to exclude from swipe feed
+    const { data: matches } = await supabaseClient
+      .from("matches")
+      .select("user1, user2")
+      .or(`user1.eq.${user.id},user2.eq.${user.id}`);
+
+    const matchedUserIds = new Set<string>();
+    if (matches) {
+      matches.forEach((match) => {
+        if (match.user1 === user.id) {
+          matchedUserIds.add(match.user2);
+        } else {
+          matchedUserIds.add(match.user1);
+        }
+      });
+    }
+
     // Build query for profiles - get more to account for filtering
     // Filter by opposite gender (constant filter - users can't change gender)
     let query = supabaseClient
@@ -244,6 +277,12 @@ serve(async (req) => {
 
       // Exclude blocked users (both ways)
       if (blockedUserIds.has(profile.id)) return false;
+
+      // Exclude unmatched users (both ways - regardless of rematch status)
+      if (unmatchedUserIds.has(profile.id)) return false;
+
+      // Exclude matched users (they should only appear in chat)
+      if (matchedUserIds.has(profile.id)) return false;
 
       // Must have photos
       if (!profile.photos || profile.photos.length === 0) return false;
