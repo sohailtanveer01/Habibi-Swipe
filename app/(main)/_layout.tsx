@@ -74,11 +74,13 @@ export default function MainLayout() {
     };
   }, []);
 
-  // Check for unread messages
+  // Check for unread messages and pending compliments
   useEffect(() => {
     const checkUnreadMessages = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      let totalUnread = 0;
 
       // Get all matches for the user
       const { data: matches } = await supabase
@@ -95,15 +97,24 @@ export default function MainLayout() {
           .neq("sender_id", user.id)
           .eq("read", false);
 
-        setUnreadCount(count || 0);
-      } else {
-        setUnreadCount(0);
+        totalUnread += count || 0;
       }
+
+      // Count pending compliments where current user is the recipient
+      const { count: complimentCount } = await supabase
+        .from("compliments")
+        .select("*", { count: "exact", head: true })
+        .eq("recipient_id", user.id)
+        .eq("status", "pending");
+
+      totalUnread += complimentCount || 0;
+
+      setUnreadCount(totalUnread);
     };
 
     checkUnreadMessages();
 
-    // Subscribe to new messages and message updates (when marked as read)
+    // Subscribe to new messages, message updates, and compliments
     const channel = supabase
       .channel("unread-messages")
       .on(
@@ -116,6 +127,20 @@ export default function MainLayout() {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "messages" },
+        () => {
+          checkUnreadMessages();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "compliments" },
+        () => {
+          checkUnreadMessages();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "compliments" },
         () => {
           checkUnreadMessages();
         }
