@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text, Dimensions, Pressable, Modal } from "react-native";
+import { View, Text, Dimensions, Pressable, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { Image } from "expo-image";
 import Animated, {
   useSharedValue,
@@ -30,6 +30,10 @@ export default function SwipeScreen() {
   const [loadingSpecificProfile, setLoadingSpecificProfile] = useState(false);
   const [existingSwipe, setExistingSwipe] = useState<{ action: "like" | "pass" | "superlike" } | null>(null);
   const [availableActions, setAvailableActions] = useState<{ showLike: boolean; showPass: boolean }>({ showLike: true, showPass: true });
+  const [complimentModalVisible, setComplimentModalVisible] = useState(false);
+  const [complimentMessage, setComplimentMessage] = useState("");
+  const [sendingCompliment, setSendingCompliment] = useState(false);
+  const [hasCompliment, setHasCompliment] = useState(false);
 
   const x = useSharedValue(0);
   const y = useSharedValue(0);
@@ -72,6 +76,16 @@ export default function SwipeScreen() {
           .maybeSingle();
         
         setExistingSwipe(existingSwipeData);
+
+        // Check if user has already sent a compliment to this profile
+        const { data: existingCompliment } = await supabase
+          .from("compliments")
+          .select("id")
+          .eq("sender_id", user.id)
+          .eq("recipient_id", targetUserId)
+          .maybeSingle();
+        
+        setHasCompliment(!!existingCompliment);
 
         // Add prompts to profile object (SwipeCard expects it this way)
         const profileWithPrompts = {
@@ -237,7 +251,79 @@ export default function SwipeScreen() {
     if (profiles.length > 0 && index < profiles.length) {
       trackProfileView();
     }
+
+    // Check if user has already sent a compliment to current profile
+    const checkCompliment = async () => {
+      if (profiles.length > 0 && index < profiles.length) {
+        const currentProfile = profiles[index];
+        if (currentProfile) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: existingCompliment } = await supabase
+              .from("compliments")
+              .select("id")
+              .eq("sender_id", user.id)
+              .eq("recipient_id", currentProfile.id)
+              .maybeSingle();
+            
+            setHasCompliment(!!existingCompliment);
+          }
+        }
+      }
+    };
+
+    checkCompliment();
   }, [index, profiles]);
+
+  // Reset compliment state when index changes
+  useEffect(() => {
+    setComplimentMessage("");
+    setHasCompliment(false);
+  }, [index]);
+
+  // Send compliment
+  const sendCompliment = async () => {
+    const currentProfile = profiles[index];
+    if (!currentProfile || !complimentMessage.trim()) return;
+
+    setSendingCompliment(true);
+    try {
+      const { error, data } = await supabase.functions.invoke("send-compliment", {
+        body: {
+          recipientId: currentProfile.id,
+          message: complimentMessage.trim(),
+        },
+      });
+
+      if (error) {
+        Alert.alert("Error", error.message || "Failed to send compliment. Please try again.");
+        setSendingCompliment(false);
+        return;
+      }
+
+      Alert.alert("Success", "Compliment sent! They'll see it in their chat list.", [
+        {
+          text: "OK",
+          onPress: () => {
+            setComplimentModalVisible(false);
+            setComplimentMessage("");
+            setHasCompliment(true);
+            setSendingCompliment(false);
+            // Move to next card
+            if (index < profiles.length - 1) {
+              setIndex(index + 1);
+            } else {
+              fetchFeed();
+            }
+          },
+        },
+      ]);
+    } catch (error: any) {
+      console.error("Error sending compliment:", error);
+      Alert.alert("Error", error.message || "Failed to send compliment. Please try again.");
+      setSendingCompliment(false);
+    }
+  };
 
   // Send swipe to server
   const sendSwipe = async (action: "like" | "pass" | "superlike") => {
@@ -490,7 +576,7 @@ export default function SwipeScreen() {
           </GestureDetector>
           
           {/* Action buttons for normal swipe feed */}
-          <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center ${availableActions.showLike && availableActions.showPass ? 'gap-24' : ''}`}>
+          <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-6`}>
             {/* Pass - only show if available */}
             {availableActions.showPass && (
               <Pressable
@@ -499,6 +585,17 @@ export default function SwipeScreen() {
                 disabled={isSwiping}
               >
                 <Text className="text-black text-2xl">✕</Text>
+              </Pressable>
+            )}
+
+            {/* Send Compliment - show if not already sent and viewing normal feed */}
+            {!hasCompliment && (!source || source === "likedMe") && (
+              <Pressable
+                className="bg-purple-500 w-16 h-16 rounded-full items-center justify-center"
+                onPress={() => setComplimentModalVisible(true)}
+                disabled={isSwiping}
+              >
+                <Text className="text-white text-xl">💬</Text>
               </Pressable>
             )}
 
@@ -522,7 +619,7 @@ export default function SwipeScreen() {
           
           {/* Action buttons - only show when viewing from likes section (not from chat) */}
           {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn") && (
-            <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center ${availableActions.showLike && availableActions.showPass ? 'gap-24' : ''}`}>
+            <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-6`}>
               {/* Pass - only show if available */}
               {availableActions.showPass && (
                 <Pressable
@@ -549,32 +646,80 @@ export default function SwipeScreen() {
         </>
       )}
 
-      {/* Legacy buttons container removed since buttons are now overlaid */}
-      {/* <View className="flex-row justify-around mt-6">
-        <Pressable
-          className="bg-white/10 w-16 h-16 rounded-full items-center justify-center"
-          onPress={() => sendSwipe("pass")}
-          disabled={isSwiping}
+      {/* Compliment Modal */}
+      <Modal
+        visible={complimentModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          setComplimentModalVisible(false);
+          setComplimentMessage("");
+        }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1"
         >
-          <Text className="text-white text-xl">✕</Text>
-        </Pressable>
-
-        <Pressable
-          className="bg-[#B8860B] w-20 h-20 rounded-full items-center justify-center"
-          onPress={() => sendSwipe("like")}
-          disabled={isSwiping}
-        >
-          <Text className="text-white text-2xl">♥</Text>
-        </Pressable>
-
-        <Pressable
-          className="bg-blue-500 w-16 h-16 rounded-full items-center justify-center"
-          onPress={() => sendSwipe("superlike")}
-          disabled={isSwiping}
-        >
-          <Text className="text-white text-xl">★</Text>
-        </Pressable>
-      </View> */}
+          <View className="flex-1 bg-black/80 justify-end">
+            <Pressable
+              className="flex-1"
+              onPress={() => {
+                setComplimentModalVisible(false);
+                setComplimentMessage("");
+              }}
+            />
+            <View className="bg-black border-t border-white/20 rounded-t-3xl p-6">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-white text-xl font-bold">
+                  Send Compliment 💬
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    setComplimentModalVisible(false);
+                    setComplimentMessage("");
+                  }}
+                >
+                  <Text className="text-white/70 text-lg">✕</Text>
+                </Pressable>
+              </View>
+              
+              {profiles[index] && (
+                <>
+                  <Text className="text-white/80 text-sm mb-4">
+                    Send a message to {profiles[index].first_name || profiles[index].name || "this user"} before matching
+                  </Text>
+                  
+                  <TextInput
+                    className="bg-white/10 text-white rounded-2xl p-4 mb-4 min-h-[120px] text-base"
+                    placeholder="Write your compliment (max 200 characters)..."
+                    placeholderTextColor="#FFFFFF60"
+                    multiline
+                    numberOfLines={5}
+                    maxLength={200}
+                    value={complimentMessage}
+                    onChangeText={setComplimentMessage}
+                    style={{ textAlignVertical: "top" }}
+                  />
+                  
+                  <Text className="text-white/50 text-xs mb-4 text-right">
+                    {complimentMessage.length}/200
+                  </Text>
+                  
+                  <Pressable
+                    className={`bg-[#B8860B] rounded-2xl py-4 items-center ${sendingCompliment || !complimentMessage.trim() ? "opacity-50" : ""}`}
+                    disabled={sendingCompliment || !complimentMessage.trim()}
+                    onPress={sendCompliment}
+                  >
+                    <Text className="text-white text-base font-bold">
+                      {sendingCompliment ? "Sending..." : "Send Compliment"}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }

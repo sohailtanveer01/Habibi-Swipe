@@ -164,6 +164,27 @@ serve(async (req) => {
       });
     }
 
+    // Get users who have sent a compliment to the current user
+    // These users should NOT appear in swipe feed - they should only appear in chat list as pending compliments
+    const { data: receivedCompliments } = await supabaseClient
+      .from("compliments")
+      .select("sender_id")
+      .eq("recipient_id", user.id)
+      .eq("status", "pending"); // Only exclude if compliment is still pending
+
+    const complimentSenderIds = new Set<string>();
+    if (receivedCompliments) {
+      receivedCompliments.forEach((compliment) => {
+        complimentSenderIds.add(compliment.sender_id);
+      });
+    }
+
+    console.log("🔒 Compliment filter:", {
+      userId: user.id,
+      receivedComplimentsCount: receivedCompliments?.length || 0,
+      complimentSenderIds: Array.from(complimentSenderIds),
+    });
+
     // Build query for profiles - get more to account for filtering
     // Filter by opposite gender (constant filter - users can't change gender)
     let query = supabaseClient
@@ -283,6 +304,10 @@ serve(async (req) => {
 
       // Exclude matched users (they should only appear in chat)
       if (matchedUserIds.has(profile.id)) return false;
+
+      // Exclude users who have sent a compliment to the current user
+      // These users should only appear in chat list as pending compliments, not in swipe feed
+      if (complimentSenderIds.has(profile.id)) return false;
 
       // Must have photos
       if (!profile.photos || profile.photos.length === 0) return false;

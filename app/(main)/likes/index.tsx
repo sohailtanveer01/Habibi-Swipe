@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Pressable, ActivityIndicator, Dimensions, RefreshControl } from "react-native";
+import { View, Text, FlatList, Pressable, ActivityIndicator, Dimensions, RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { supabase } from "../../../lib/supabase";
@@ -37,6 +37,10 @@ export default function LikesScreen() {
   const [passedOn, setPassedOn] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"myLikes" | "likedMe" | "viewers" | "passedOn">("likedMe");
+  const [complimentModalVisible, setComplimentModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [complimentMessage, setComplimentMessage] = useState("");
+  const [sendingCompliment, setSendingCompliment] = useState(false);
 
   const loadLikes = async () => {
     setLoading(true);
@@ -794,6 +798,120 @@ export default function LikesScreen() {
           }}
         />
       ))}
+
+      {/* Compliment Modal */}
+      <Modal
+        visible={complimentModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          setComplimentModalVisible(false);
+          setComplimentMessage("");
+          setSelectedUser(null);
+        }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1"
+        >
+          <View className="flex-1 bg-black/80 justify-end">
+            <Pressable
+              className="flex-1"
+              onPress={() => {
+                setComplimentModalVisible(false);
+                setComplimentMessage("");
+                setSelectedUser(null);
+              }}
+            />
+            <View className="bg-black border-t border-white/20 rounded-t-3xl p-6">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-white text-xl font-bold">
+                  Send Compliment 💬
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    setComplimentModalVisible(false);
+                    setComplimentMessage("");
+                    setSelectedUser(null);
+                  }}
+                >
+                  <Text className="text-white/70 text-lg">✕</Text>
+                </Pressable>
+              </View>
+              
+              {selectedUser && (
+                <>
+                  <Text className="text-white/80 text-sm mb-4">
+                    Send a message to {selectedUser.first_name || selectedUser.name || "this user"} before matching
+                  </Text>
+                  
+                  <TextInput
+                    className="bg-white/10 text-white rounded-2xl p-4 mb-4 min-h-[120px] text-base"
+                    placeholder="Write your compliment (max 200 characters)..."
+                    placeholderTextColor="#FFFFFF60"
+                    multiline
+                    numberOfLines={5}
+                    maxLength={200}
+                    value={complimentMessage}
+                    onChangeText={setComplimentMessage}
+                    style={{ textAlignVertical: "top" }}
+                  />
+                  
+                  <Text className="text-white/50 text-xs mb-4 text-right">
+                    {complimentMessage.length}/200
+                  </Text>
+                  
+                  <Pressable
+                    className={`bg-[#B8860B] rounded-2xl py-4 items-center ${sendingCompliment || !complimentMessage.trim() ? "opacity-50" : ""}`}
+                    disabled={sendingCompliment || !complimentMessage.trim()}
+                    onPress={async () => {
+                      if (!complimentMessage.trim() || !selectedUser) return;
+                      
+                      setSendingCompliment(true);
+                      try {
+                        const { error, data } = await supabase.functions.invoke("send-compliment", {
+                          body: {
+                            recipientId: selectedUser.id,
+                            message: complimentMessage.trim(),
+                          },
+                        });
+                        
+                        if (error) {
+                          Alert.alert("Error", error.message || "Failed to send compliment. Please try again.");
+                          setSendingCompliment(false);
+                          return;
+                        }
+                        
+                        Alert.alert("Success", "Compliment sent! They'll see it in their chat list.", [
+                          {
+                            text: "OK",
+                            onPress: () => {
+                              setComplimentModalVisible(false);
+                              setComplimentMessage("");
+                              setSelectedUser(null);
+                              setSendingCompliment(false);
+                              // Refresh the likes list
+                              loadMyLikes();
+                            },
+                          },
+                        ]);
+                      } catch (error: any) {
+                        console.error("Error sending compliment:", error);
+                        Alert.alert("Error", error.message || "Failed to send compliment. Please try again.");
+                        setSendingCompliment(false);
+                      }
+                    }}
+                  >
+                    <Text className="text-white text-base font-bold">
+                      {sendingCompliment ? "Sending..." : "Send Compliment"}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }

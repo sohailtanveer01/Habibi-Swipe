@@ -48,6 +48,75 @@ serve(async (req) => {
 
     console.log("📍 Loading chat for match:", matchId, "user:", user.id);
 
+    // Check if this is a compliment conversation (matchId starts with "compliment-")
+    if (matchId.startsWith("compliment-")) {
+      const complimentId = matchId.replace("compliment-", "");
+      
+      // Get the compliment
+      const { data: compliment, error: complimentError } = await supabaseClient
+        .from("compliments")
+        .select("*")
+        .eq("id", complimentId)
+        .single();
+
+      if (complimentError || !compliment) {
+        return new Response(
+          JSON.stringify({ error: "Compliment not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Determine other user ID
+      const otherUserId = user.id === compliment.sender_id 
+        ? compliment.recipient_id 
+        : compliment.sender_id;
+      const isComplimentSender = user.id === compliment.sender_id;
+
+      // Fetch other user's profile
+      const { data: otherUser, error: userProfileError } = await supabaseClient
+        .from("users")
+        .select("*")
+        .eq("id", otherUserId)
+        .single();
+
+      if (userProfileError || !otherUser) {
+        return new Response(
+          JSON.stringify({ error: "Other user profile not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Create a fake message from the compliment
+      const complimentMessage = {
+        id: `compliment-msg-${compliment.id}`,
+        match_id: null,
+        sender_id: compliment.sender_id,
+        message: compliment.message,
+        message_type: "text",
+        created_at: compliment.created_at,
+        read: isComplimentSender || compliment.status !== "pending",
+      };
+
+      return new Response(
+        JSON.stringify({
+          match: null,
+          otherUser,
+          messages: [complimentMessage],
+          currentUserId: user.id,
+          unreadCount: isComplimentSender ? 0 : (compliment.status === "pending" ? 1 : 0),
+          isCompliment: true,
+          complimentId: compliment.id,
+          complimentStatus: compliment.status,
+          isComplimentSender: isComplimentSender,
+          isComplimentRecipient: !isComplimentSender,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Check if this match is unmatched
     const { data: unmatchRecord, error: unmatchError } = await supabaseClient
       .from("unmatches")

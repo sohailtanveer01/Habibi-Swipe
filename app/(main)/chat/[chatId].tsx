@@ -309,6 +309,11 @@ export default function ChatScreen() {
   const iAmBlocked = chatData?.iAmBlocked || false;
   const isUnmatched = chatData?.isUnmatched || false;
   const rematchRequest = chatData?.rematchRequest || null;
+  const isCompliment = chatData?.isCompliment || false;
+  const complimentId = chatData?.complimentId || null;
+  const complimentStatus = chatData?.complimentStatus || null;
+  const isComplimentSender = chatData?.isComplimentSender || false;
+  const isComplimentRecipient = chatData?.isComplimentRecipient || false;
   
   // Track OTHER USER's active status with real-time updates
   const [otherUserActive, setOtherUserActive] = useState<boolean>(false);
@@ -1147,6 +1152,124 @@ export default function ChatScreen() {
         </View>
       )}
 
+      {/* Compliment Accept/Decline Section */}
+      {isCompliment && isComplimentRecipient && complimentStatus === "pending" && (
+        <View className="px-4 py-4 bg-purple-500/20 border-t border-purple-500/30">
+          <View className="items-center mb-4">
+            <Text className="text-white text-lg font-bold mb-1">
+              {fullName} sent you a compliment! 💬
+            </Text>
+            <Text className="text-white/80 text-sm text-center">
+              View their profile and decide if you&apos;d like to match
+            </Text>
+          </View>
+          <View className="flex-row gap-3">
+            <Pressable
+              onPress={async () => {
+                Alert.alert(
+                  "Decline Compliment",
+                  `Are you sure you want to decline ${fullName}'s compliment?`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Decline",
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          const { error } = await supabase.functions.invoke("decline-compliment", {
+                            body: { complimentId },
+                          });
+                          
+                          if (error) {
+                            Alert.alert("Error", "Failed to decline compliment. Please try again.");
+                            return;
+                          }
+                          
+                          // Navigate back to chat list (compliment will be removed)
+                          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+                          router.back();
+                        } catch (error) {
+                          console.error("Error declining compliment:", error);
+                          Alert.alert("Error", "Failed to decline compliment. Please try again.");
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+              className="flex-1 bg-white/10 px-6 py-4 rounded-2xl items-center border border-white/20"
+            >
+              <Text className="text-white text-base font-semibold">Decline</Text>
+            </Pressable>
+            <Pressable
+              onPress={async () => {
+                Alert.alert(
+                  "Accept Compliment",
+                  `Accept ${fullName}'s compliment and start chatting?`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Accept & Match",
+                      onPress: async () => {
+                        try {
+                          const { error, data } = await supabase.functions.invoke("accept-compliment", {
+                            body: { complimentId },
+                          });
+                          
+                          if (error) {
+                            Alert.alert("Error", "Failed to accept compliment. Please try again.");
+                            return;
+                          }
+                          
+                          // Navigate to the new match chat
+                          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+                          if (data?.matchId) {
+                            router.replace(`/(main)/chat/${data.matchId}`);
+                          } else {
+                            queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+                          }
+                        } catch (error) {
+                          console.error("Error accepting compliment:", error);
+                          Alert.alert("Error", "Failed to accept compliment. Please try again.");
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+              className="flex-1 bg-[#B8860B] px-6 py-4 rounded-2xl items-center"
+            >
+              <Text className="text-white text-base font-semibold">Accept & Match</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
+      {/* Compliment Sender Status */}
+      {isCompliment && isComplimentSender && (
+        <View className="px-4 py-4 bg-purple-500/20 border-t border-purple-500/30">
+          {complimentStatus === "pending" ? (
+            <View className="items-center">
+              <Text className="text-white/70 text-center text-base mb-2">
+                Compliment sent! 💬
+              </Text>
+              <Text className="text-white/50 text-center text-sm">
+                Waiting for {fullName} to respond...
+              </Text>
+            </View>
+          ) : complimentStatus === "declined" ? (
+            <View className="items-center">
+              <Text className="text-white/70 text-center text-base mb-2">
+                Compliment declined
+              </Text>
+              <Text className="text-white/50 text-center text-sm">
+                {fullName} declined your compliment
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      )}
+
       {/* Reply Preview */}
       {replyingTo && (
         <View className="px-4 py-2 bg-black border-t border-white/10">
@@ -1199,8 +1322,8 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Input - Hide if blocked or unmatched */}
-      {!isBlocked && !isUnmatched && (
+      {/* Input - Hide if blocked, unmatched, or compliment (until accepted) */}
+      {!isBlocked && !isUnmatched && !isCompliment && (
         <View className="bg-black px-4 py-3 flex-row items-center gap-3" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
         {/* Add/Attachment Button */}
         <Pressable 

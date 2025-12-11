@@ -42,8 +42,19 @@ export default function ChatListScreen() {
             otherUser: m.otherUser?.name || m.otherUser?.first_name,
             otherUserLastActive: m.otherUser?.last_active_at,
             isOtherUserActive: isUserActive(m.otherUser?.last_active_at),
+            isCompliment: m.isCompliment,
+            complimentId: m.complimentId,
           }))
         );
+        
+        // Log compliments specifically
+        const compliments = data.matches.filter((m: any) => m.isCompliment);
+        if (compliments.length > 0) {
+          console.log("💬 Compliments in chat list:", compliments.length, compliments);
+        } else {
+          console.log("ℹ️ No compliments found in chat list response");
+        }
+        
         return data.matches;
       }
       return [];
@@ -58,6 +69,13 @@ export default function ChatListScreen() {
 
   // Real-time subscription for matches, messages, and user activity
   useEffect(() => {
+    let userId: string | null = null;
+    
+    // Get user ID first
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      userId = user?.id || null;
+    });
+
     const channel = supabase
       .channel("chat-list-updates")
       .on(
@@ -106,7 +124,38 @@ export default function ChatListScreen() {
           }
         }
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        { 
+          event: "INSERT", 
+          schema: "public", 
+          table: "compliments"
+        },
+        (payload) => {
+          console.log("🔔 Real-time: New compliment inserted:", payload);
+          console.log("🔔 Compliment recipient_id:", payload.new?.recipient_id);
+          // Invalidate cache when a new compliment is inserted
+          // RLS will ensure only relevant compliments are shown
+          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { 
+          event: "UPDATE", 
+          schema: "public", 
+          table: "compliments"
+        },
+        (payload) => {
+          console.log("🔔 Real-time: Compliment updated:", payload);
+          // Invalidate cache when compliment status changes (accepted/declined)
+          // This will refresh the list to remove accepted compliments and show match instead
+          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+        }
+      )
+      .subscribe((status) => {
+        console.log("📡 Real-time subscription status:", status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -245,6 +294,11 @@ export default function ChatListScreen() {
                     >
                       {fullName}
                     </Text>
+                    {item.isCompliment && (
+                      <View className="bg-purple-500 rounded-full px-2 py-0.5">
+                        <Text className="text-white text-xs font-bold">💬</Text>
+                      </View>
+                    )}
                     {hasUnread && (
                       <View className="bg-[#B8860B] rounded-full px-2 py-0.5 min-w-[20px] items-center justify-center">
                         <Text className="text-white text-xs font-bold">
@@ -253,12 +307,23 @@ export default function ChatListScreen() {
                       </View>
                     )}
                   </View>
-                  {item.lastMessage ? (
+                  {item.isCompliment ? (
                     <Text 
                       className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
                       numberOfLines={1}
                     >
-                      {item.lastMessage.content}
+                      {item.isComplimentSender 
+                        ? (item.complimentStatus === 'declined' 
+                            ? 'Compliment declined' 
+                            : 'You sent a compliment')
+                        : `${fullName} sent you a compliment`}
+                    </Text>
+                  ) : item.lastMessage ? (
+                    <Text 
+                      className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
+                      numberOfLines={1}
+                    >
+                      {item.lastMessage.content || item.lastMessage.message}
                     </Text>
                   ) : (
                     <Text className="text-[#B8860B] text-sm mt-1 italic">
