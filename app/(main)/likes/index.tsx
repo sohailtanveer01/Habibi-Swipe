@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Pressable, ActivityIndicator, Dimensions, RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, FlatList, Pressable, Dimensions, RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { supabase } from "../../../lib/supabase";
@@ -309,9 +309,8 @@ export default function LikesScreen() {
 
   return (
     <View className="flex-1 bg-black pt-12 px-4">
-      {/* Header */}
-      <View className="flex-row items-center justify-between mb-4">
-        <Text className="text-white text-2xl font-bold">Likes</Text>
+      {/* Refresh Button */}
+      <View className="flex-row justify-end mb-4">
         <Pressable
           onPress={
             activeTab === "myLikes" 
@@ -398,7 +397,12 @@ export default function LikesScreen() {
               return (
                 <Pressable
                   className="bg-white/10 rounded-2xl overflow-hidden"
-                  style={{ width: CARD_WIDTH, height: CARD_WIDTH * 1.4 }}
+                  style={{ 
+                    width: CARD_WIDTH, 
+                    height: CARD_WIDTH * 1.4,
+                    borderWidth: 2,
+                    borderColor: "#B8860B"
+                  }}
                   onPress={async () => {
                     // Track profile view when tapping from my likes tab
                     try {
@@ -506,7 +510,12 @@ export default function LikesScreen() {
               return (
                 <Pressable
                   className="bg-white/10 rounded-2xl overflow-hidden"
-                  style={{ width: CARD_WIDTH, height: CARD_WIDTH * 1.4 }}
+                  style={{ 
+                    width: CARD_WIDTH, 
+                    height: CARD_WIDTH * 1.4,
+                    borderWidth: 2,
+                    borderColor: "#B8860B"
+                  }}
                   onPress={async () => {
                     // Track profile view when tapping from viewers tab
                     try {
@@ -622,7 +631,12 @@ export default function LikesScreen() {
               return (
                 <Pressable
                   className="bg-white/10 rounded-2xl overflow-hidden"
-                  style={{ width: CARD_WIDTH, height: CARD_WIDTH * 1.4 }}
+                  style={{ 
+                    width: CARD_WIDTH, 
+                    height: CARD_WIDTH * 1.4,
+                    borderWidth: 2,
+                    borderColor: "#B8860B"
+                  }}
                   onPress={async () => {
                     // Navigate to swipe screen with this user's profile
                     // From passed on, user can change their mind and like them
@@ -728,7 +742,12 @@ export default function LikesScreen() {
             return (
               <Pressable
                 className="bg-white/10 rounded-2xl overflow-hidden"
-                style={{ width: CARD_WIDTH, height: CARD_WIDTH * 1.4 }}
+                style={{ 
+                  width: CARD_WIDTH, 
+                  height: CARD_WIDTH * 1.4,
+                  borderWidth: 2,
+                  borderColor: "#B8860B"
+                }}
                   onPress={async () => {
                     // Track profile view when tapping from likes tab
                     try {
