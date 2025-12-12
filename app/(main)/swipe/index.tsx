@@ -13,6 +13,7 @@ import SwipeCard from "../../../components/SwipeCard";
 import LikesProfileView from "../../../components/LikesProfileView";
 import { supabase } from "../../../lib/supabase";
 import Logo from "../../../components/Logo";
+import DiamondIcon from "../../../components/DiamondIcon";
 
 const { width } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
@@ -580,37 +581,37 @@ export default function SwipeScreen() {
           </GestureDetector>
           
           {/* Action buttons for normal swipe feed */}
-          <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-6`}>
+          <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10`}>
             {/* Pass - only show if available */}
             {availableActions.showPass && (
               <Pressable
-                className="bg-white w-16 h-16 rounded-full items-center justify-center"
+                className="bg-white w-20 h-20 rounded-full items-center justify-center"
                 onPress={() => sendSwipe("pass")}
                 disabled={isSwiping}
               >
-                <Text className="text-black text-2xl">✕</Text>
+                <Text className="text-black text-3xl">✕</Text>
               </Pressable>
             )}
 
             {/* Send Compliment - show if not already sent and viewing normal feed */}
             {!hasCompliment && (!source || source === "likedMe") && (
               <Pressable
-                className="bg-purple-500 w-16 h-16 rounded-full items-center justify-center"
+                className="bg-red-500 w-20 h-20 rounded-full items-center justify-center"
                 onPress={() => setComplimentModalVisible(true)}
                 disabled={isSwiping}
               >
-                <Text className="text-white text-xl">💬</Text>
+                <DiamondIcon size={28} color="#FFFFFF" />
               </Pressable>
             )}
 
             {/* Like - only show if available */}
             {availableActions.showLike && (
               <Pressable
-                className="bg-[#B8860B] w-16 h-16 rounded-full items-center justify-center"
+                className="bg-[#B8860B] w-20 h-20 rounded-full items-center justify-center"
                 onPress={() => sendSwipe("like")}
                 disabled={isSwiping}
               >
-                <Text className="text-white text-2xl">♥</Text>
+                <Text className="text-white text-3xl">♥</Text>
               </Pressable>
             )}
           </View>
@@ -623,26 +624,26 @@ export default function SwipeScreen() {
           
           {/* Action buttons - only show when viewing from likes section (not from chat) */}
           {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn") && (
-            <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-6`}>
+            <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10`}>
               {/* Pass - only show if available */}
               {availableActions.showPass && (
                 <Pressable
-                  className="bg-white w-16 h-16 rounded-full items-center justify-center"
+                  className="bg-white w-20 h-20 rounded-full items-center justify-center"
                   onPress={() => sendSwipe("pass")}
                   disabled={isSwiping}
                 >
-                  <Text className="text-black text-2xl">✕</Text>
+                  <Text className="text-black text-3xl">✕</Text>
                 </Pressable>
               )}
 
               {/* Like - only show if available */}
               {availableActions.showLike && (
                 <Pressable
-                  className="bg-[#B8860B] w-16 h-16 rounded-full items-center justify-center"
+                  className="bg-[#B8860B] w-20 h-20 rounded-full items-center justify-center"
                   onPress={() => sendSwipe("like")}
                   disabled={isSwiping}
                 >
-                  <Text className="text-white text-2xl">♥</Text>
+                  <Text className="text-white text-3xl">♥</Text>
                 </Pressable>
               )}
             </View>
