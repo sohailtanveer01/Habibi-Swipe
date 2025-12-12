@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { View, Text, FlatList, Pressable, Dimensions, RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { supabase } from "../../../lib/supabase";
+import { useLikesNotification } from "../../../lib/likesNotificationContext";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding
@@ -31,6 +32,7 @@ function cleanPhotoUrl(url: string | null | undefined): string | null {
 
 export default function LikesScreen() {
   const router = useRouter();
+  const { clearNewLikes } = useLikesNotification();
   const [likes, setLikes] = useState<any[]>([]);
   const [myLikes, setMyLikes] = useState<any[]>([]);
   const [viewers, setViewers] = useState<any[]>([]);
@@ -262,12 +264,23 @@ export default function LikesScreen() {
       loadMyLikes();
     } else if (activeTab === "likedMe") {
       loadLikes();
+      // Clear the notification when user views "liked me" tab
+      clearNewLikes();
     } else if (activeTab === "viewers") {
       loadViewers();
     } else if (activeTab === "passedOn") {
       loadPassedOn();
     }
-  }, [activeTab]);
+  }, [activeTab, clearNewLikes]);
+
+  // Clear notification when screen is focused and "likedMe" tab is active
+  useFocusEffect(
+    useCallback(() => {
+      if (activeTab === "likedMe") {
+        clearNewLikes();
+      }
+    }, [activeTab, clearNewLikes])
+  );
 
   // Real-time subscription for profile views
   useEffect(() => {

@@ -3,6 +3,7 @@ import "react-native-gesture-handler";
 import { Stack } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { LikesNotificationProvider } from "../lib/likesNotificationContext";
 
 // Configure QueryClient with optimized cache settings
 const qc = new QueryClient({
@@ -20,28 +21,30 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={qc}>
-        <Stack 
-          screenOptions={{ 
-            headerShown: false,
-            // Keep gestures enabled but prevent back navigation to auth
-          }}
-        >
-          <Stack.Screen 
-            name="(auth)" 
-            options={{
-              // Allow gestures on auth screen
-              gestureEnabled: true,
+        <LikesNotificationProvider>
+          <Stack 
+            screenOptions={{ 
+              headerShown: false,
+              // Keep gestures enabled but prevent back navigation to auth
             }}
-          />
-          <Stack.Screen 
-            name="(main)" 
-            options={{
-              // Disable swipe back gesture on main tabs to prevent going back to auth
-              gestureEnabled: false,
-              // Prevent going back to auth when authenticated
-            }}
-          />
-        </Stack>
+          >
+            <Stack.Screen 
+              name="(auth)" 
+              options={{
+                // Allow gestures on auth screen
+                gestureEnabled: true,
+              }}
+            />
+            <Stack.Screen 
+              name="(main)" 
+              options={{
+                // Disable swipe back gesture on main tabs to prevent going back to auth
+                gestureEnabled: false,
+                // Prevent going back to auth when authenticated
+              }}
+            />
+          </Stack>
+        </LikesNotificationProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

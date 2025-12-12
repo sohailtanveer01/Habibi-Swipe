@@ -7,10 +7,12 @@ import { supabase } from "../../lib/supabase";
 import { BlurView } from "expo-blur";
 import { useActiveStatus } from "../../lib/useActiveStatus";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useLikesNotification } from "../../lib/likesNotificationContext";
 
 export default function MainLayout() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { newLikesCount, setNewLikesCount } = useLikesNotification();
   const pathname = usePathname();
   const searchParams = useGlobalSearchParams();
   
@@ -152,6 +154,120 @@ export default function MainLayout() {
     };
   }, []);
 
+  // Check for new likes (people who liked the current user)
+  useEffect(() => {
+    const checkNewLikes = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get all swipes where someone liked the current user
+      const { data: swipes } = await supabase
+        .from("swipes")
+        .select("swiper_id, action")
+        .eq("swiped_id", user.id)
+        .eq("action", "like");
+
+      if (!swipes || swipes.length === 0) {
+        setNewLikesCount(0);
+        return;
+      }
+
+      // Get all matches to exclude matched users
+      const { data: matches } = await supabase
+        .from("matches")
+        .select("user1, user2")
+        .or(`user1.eq.${user.id},user2.eq.${user.id}`);
+
+      // Get blocked users (both ways)
+      const { data: blocksIBlocked } = await supabase
+        .from("blocks")
+        .select("blocked_id")
+        .eq("blocker_id", user.id);
+      
+      const { data: blocksIAmBlocked } = await supabase
+        .from("blocks")
+        .select("blocker_id")
+        .eq("blocked_id", user.id);
+
+      // Create sets for filtering
+      const matchedUserIds = new Set<string>();
+      if (matches) {
+        matches.forEach((match) => {
+          if (match.user1 === user.id) {
+            matchedUserIds.add(match.user2);
+          } else {
+            matchedUserIds.add(match.user1);
+          }
+        });
+      }
+
+      const blockedUserIds = new Set<string>();
+      if (blocksIBlocked) {
+        blocksIBlocked.forEach(block => blockedUserIds.add(block.blocked_id));
+      }
+      if (blocksIAmBlocked) {
+        blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
+      }
+
+      // Filter out matched and blocked users
+      const uniqueLikerIds = new Set(swipes.map(s => s.swiper_id));
+      const newLikes = Array.from(uniqueLikerIds).filter(
+        (id) => !matchedUserIds.has(id) && !blockedUserIds.has(id)
+      );
+
+      setNewLikesCount(newLikes.length);
+    };
+
+    checkNewLikes();
+
+    // Subscribe to swipes table changes
+    let channel: any = null;
+    
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const newChannel = supabase
+        .channel("new-likes")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "swipes",
+            filter: `swiped_id=eq.${user.id}`,
+          },
+          () => {
+            checkNewLikes();
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "matches",
+          },
+          () => {
+            checkNewLikes();
+          }
+        )
+        .subscribe();
+
+      return newChannel;
+    };
+
+    setupSubscription().then((ch) => {
+      if (ch) channel = ch;
+    });
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [setNewLikesCount]);
+
   return (
     <Tabs
       screenOptions={{
@@ -229,12 +345,17 @@ export default function MainLayout() {
             // If viewing from likes, make likes tab active
             const isActive = isViewingFromLikes || focused;
             return (
-              <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
+              <View style={[styles.iconContainer, isActive && styles.activeIconContainer, { position: "relative" }]}>
                 <Ionicons 
                   name={isActive ? "heart" : "heart-outline"} 
                   size={28} 
                   color={isActive ? "#B8860B" : "#9CA3AF"} 
                 />
+                {newLikesCount > 0 && (
+                  <View style={styles.notificationBadge}>
+                    <View style={styles.notificationDot} />
+                  </View>
+                )}
               </View>
             );
           },
