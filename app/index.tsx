@@ -1,4 +1,4 @@
-import { ImageBackground, View, Text, Pressable } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -32,43 +32,31 @@ export default function Home() {
   }
 
   return (
-    <ImageBackground
-    //   source={{ uri: "https://i.imgur.com/mtbl1qF.jpeg" }} // replace with your own bg image
-      style={{ flex: 1 }}
-      resizeMode="cover"
-    >
-      <View className="flex-1 bg-black/50 justify-end px-6 pb-20">
-        {/* Logo at top center */}
-        <View className="absolute top-20 left-0 right-0 items-center">
-          <Logo variant="transparent" width={180} />
-        </View>
-
-        {/* Title */}
-        <Text className="text-4xl font-bold text-white mb-10">
-          Habibi Swipe
-        </Text>
-
-        {/* Create Account Button */}
-        <Pressable
-          className="bg-[#B8860B] p-4 rounded-2xl mb-4 items-center"
-          onPress={() => router.push("/(auth)/signup")}
-        >
-          <Text className="text-white text-lg font-semibold">
-            Create Account
-          </Text>
-        </Pressable>
-
-        {/* Login Button */}
-        <Pressable
-          className="bg-white/20 p-4 rounded-2xl items-center border border-white/30"
-          onPress={() => router.push("/login")}
-        >
-          <Text className="text-white text-lg font-semibold">
-            Log In
-          </Text>
-        </Pressable>
-
+    <View className="flex-1 bg-black justify-end px-6 pb-20">
+      {/* Logo at top center */}
+      <View className="absolute top-20 left-0 right-0 items-center">
+        <Logo variant="colored" width={180} />
       </View>
-    </ImageBackground>
+
+      {/* Create Account Button */}
+      <Pressable
+        className="bg-[#B8860B] p-4 rounded-2xl mb-4 items-center"
+        onPress={() => router.push("/(auth)/signup")}
+      >
+        <Text className="text-white text-lg font-semibold">
+          Create Account
+        </Text>
+      </Pressable>
+
+      {/* Login Button */}
+      <Pressable
+        className="bg-white/20 p-4 rounded-2xl items-center border border-white/30"
+        onPress={() => router.push("/login")}
+      >
+        <Text className="text-white text-lg font-semibold">
+          Log In
+        </Text>
+      </Pressable>
+    </View>
   );
 }
