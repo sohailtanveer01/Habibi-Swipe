@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, Alert, Keyboard, StyleSheet } from "r
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "../../lib/supabase";
+import Logo from "../../components/Logo";
 
 export default function EmailOTP() {
   const { email } = useLocalSearchParams();
@@ -10,7 +11,6 @@ export default function EmailOTP() {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
-  const [countdown, setCountdown] = useState(60);
   const emailAddress = (email as string) || "";
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
@@ -22,21 +22,6 @@ export default function EmailOTP() {
     }
   }, [emailAddress, router]);
 
-  // Countdown timer
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
-
-  // Auto-focus first input on mount
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      inputRefs.current[0]?.focus();
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
 
   const handleCodeChange = (text: string, index: number) => {
     // Only allow numbers
@@ -130,8 +115,6 @@ export default function EmailOTP() {
   };
 
   const resend = async () => {
-    if (countdown > 0) return;
-
     setResending(true);
     // Resend OTP - allow user creation in case it's a signup flow
     const { error } = await supabase.auth.signInWithOtp({
@@ -144,14 +127,7 @@ export default function EmailOTP() {
       Alert.alert("Error", error.message);
     } else {
       Alert.alert("Sent", "We sent you another code.");
-      setCountdown(60); // Reset countdown
     }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -172,33 +148,30 @@ export default function EmailOTP() {
         pointerEvents="none"
       />
 
+      {/* Logo at top */}
+      <View style={styles.logoContainer}>
+        <Logo variant="transparent" width={150} />
+      </View>
+
       {/* Content */}
       <View style={styles.content}>
-        {/* Logo/Brand */}
-        <View className="flex-row items-center justify-center gap-2 mb-12">
-          <Text className="text-[#eebd2b] text-4xl">💛</Text>
-          <Text className="text-white text-3xl font-bold tracking-tight">
-            Habibi Swipe
-          </Text>
-        </View>
-
         {/* Heading */}
-        <Text className="text-white text-3xl font-bold text-center mb-3 tracking-tight">
-          Enter Verification Code
-        </Text>
+        <Text style={styles.title}>Enter Verification Code</Text>
+
+        {/* Email Display */}
+        <Text style={styles.emailText}>{emailAddress}</Text>
 
         {/* Instructional Text */}
-        <Text className="text-white/70 text-base text-center mb-8 px-4">
+        <Text style={styles.instructionText}>
           We sent a 6-digit code to your email. Please enter it below to continue.
         </Text>
 
         {/* 6 Input Fields with Glassmorphism */}
-        <View className="flex-row justify-center gap-3 mb-6 px-4">
+        <View style={styles.inputContainer}>
           {code.map((digit, index) => (
             <TextInput
               key={index}
               ref={(ref) => (inputRefs.current[index] = ref)}
-              className="text-white text-2xl font-bold text-center"
               style={[styles.input, digit ? styles.inputFilled : null]}
               value={digit}
               onChangeText={(text) => handleCodeChange(text, index)}
@@ -212,39 +185,28 @@ export default function EmailOTP() {
         </View>
 
         {/* Resend Section */}
-        <View className="flex-row items-center justify-center mb-6 px-4">
-          <Text className="text-white/50 text-sm">Didn&apos;t receive the code? </Text>
-          <Pressable onPress={resend} disabled={countdown > 0 || resending}>
-            <Text 
-              className="text-[#eebd2b] text-sm font-bold underline"
-              style={{ opacity: countdown > 0 ? 0.5 : 1 }}
-            >
+        <View style={styles.resendContainer}>
+          <Text style={styles.resendText}>Didn&apos;t receive the code? </Text>
+          <Pressable onPress={resend} disabled={resending}>
+            <Text style={[styles.resendLink, resending && styles.resendLinkDisabled]}>
               Resend OTP
             </Text>
           </Pressable>
-          {countdown > 0 && (
-            <Text className="text-white/50 text-sm">
-              {" "}({formatTime(countdown)})
-            </Text>
-          )}
         </View>
 
         {/* Verify Button */}
-        <View className="px-4">
-          <Pressable
-            className="bg-[#eebd2b] rounded-full items-center justify-center"
-            style={[
-              styles.button,
-              { opacity: code.join("").length !== 6 ? 0.5 : 1 }
-            ]}
-            onPress={verify}
-            disabled={verifying || code.join("").length !== 6}
-          >
-            <Text className="text-[#0A0A0A] font-bold text-base tracking-wide">
-              {verifying ? "Verifying..." : "Verify"}
-            </Text>
-          </Pressable>
-        </View>
+        <Pressable
+          style={[
+            styles.button,
+            { opacity: code.join("").length !== 6 ? 0.5 : 1 }
+          ]}
+          onPress={verify}
+          disabled={verifying || code.join("").length !== 6}
+        >
+          <Text style={styles.buttonText}>
+            {verifying ? "Verifying..." : "Verify"}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -258,8 +220,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     position: "relative",
   },
+  logoContainer: {
+    position: "absolute",
+    top: 60,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 10,
+  },
   content: {
     zIndex: 1,
+    alignItems: "center",
   },
   gradientBase: {
     position: "absolute",
@@ -277,6 +248,35 @@ const styles = StyleSheet.create({
     bottom: -260,
     right: -220,
   },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "center",
+    marginBottom: 12,
+    marginTop: 120,
+  },
+  emailText: {
+    fontSize: 16,
+    color: "#B8860B",
+    textAlign: "center",
+    marginBottom: 24,
+    fontWeight: "600",
+  },
+  instructionText: {
+    fontSize: 15,
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
+    marginBottom: 32,
+    paddingHorizontal: 16,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 12,
+    marginBottom: 24,
+    paddingHorizontal: 16,
+  },
   input: {
     width: 48,
     height: 64,
@@ -284,12 +284,47 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(238, 189, 43, 0.3)",
     borderRadius: 8,
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
   },
   inputFilled: {
     borderColor: "rgba(238, 189, 43, 0.6)",
   },
+  resendContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+    paddingHorizontal: 16,
+  },
+  resendText: {
+    color: "rgba(255, 255, 255, 0.5)",
+    fontSize: 14,
+  },
+  resendLink: {
+    color: "#B8860B",
+    fontSize: 14,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
+  resendLinkDisabled: {
+    opacity: 0.5,
+  },
   button: {
+    backgroundColor: "#B8860B",
+    borderRadius: 16,
     height: 56,
-    paddingHorizontal: 20,
+    paddingHorizontal: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    maxWidth: 400,
+  },
+  buttonText: {
+    color: "#0A0A0A",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
