@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TextInput, Pressable, Alert, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "expo-router";
@@ -35,79 +35,71 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      <View style={styles.container}>
-        {/* Gradient Backgrounds - matching onboarding */}
-        <LinearGradient
-          colors={["rgba(238,189,43,0.65)", "rgba(10,10,10,0)"]}
-          style={[styles.gradientBase, styles.gradientTopLeft]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          pointerEvents="none"
-        />
-        <LinearGradient
-          colors={["rgba(10,10,10,0)", "rgba(238,189,43,0.55)"]}
-          style={[styles.gradientBase, styles.gradientBottomRight]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          pointerEvents="none"
-        />
+    <View style={styles.container}>
+      {/* Gradient Backgrounds - matching onboarding */}
+      <LinearGradient
+        colors={["rgba(238,189,43,0.65)", "rgba(10,10,10,0)"]}
+        style={[styles.gradientBase, styles.gradientTopLeft]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={["rgba(10,10,10,0)", "rgba(238,189,43,0.55)"]}
+        style={[styles.gradientBase, styles.gradientBottomRight]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        pointerEvents="none"
+      />
 
-        {/* Logo at top */}
-        <View style={styles.logoContainer}>
-          <Logo variant="transparent" width={150} />
-        </View>
+      {/* Logo at top */}
+      <View style={styles.logoContainer}>
+        <Logo variant="transparent" width={150} />
+      </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Log in to continue your journey</Text>
-
-          <View style={styles.formContainer}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput
-                placeholder="Enter your email"
-                placeholderTextColor="#666"
-                style={styles.input}
-                onChangeText={setEmail}
-                value={email}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                autoCorrect={false}
-              />
-            </View>
-
-            <Pressable
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={loginWithEmail}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>
-                {loading ? "Sending code..." : "Continue"}
-              </Text>
-            </Pressable>
-
-            <Text style={styles.helperText}>
-              We&apos;ll send a 6-digit code to verify your email.
-            </Text>
+      {/* Content */}
+      <View style={styles.content}>
+        <View style={styles.formContainer}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Email</Text>
+            <TextInput
+              placeholder="Enter your email"
+              placeholderTextColor="#666"
+              style={styles.input}
+              onChangeText={setEmail}
+              value={email}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              autoCorrect={false}
+            />
           </View>
 
-          <Pressable 
-            style={styles.linkContainer}
-            onPress={() => router.push("/(auth)/signup")}
+          <Pressable
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={loginWithEmail}
+            disabled={loading}
           >
-            <Text style={styles.linkText}>
-              Don&apos;t have an account? <Text style={styles.linkHighlight}>Sign Up</Text>
+            <Text style={styles.buttonText}>
+              {loading ? "Sending code..." : "Continue"}
             </Text>
           </Pressable>
+
+          <Text style={styles.helperText}>
+            We&apos;ll send a 6-digit code to verify your email.
+          </Text>
         </View>
+
+        <Pressable 
+          style={styles.linkContainer}
+          onPress={() => router.push("/(auth)/signup")}
+        >
+          <Text style={styles.linkText}>
+            Don&apos;t have an account? <Text style={styles.linkHighlight}>Sign Up</Text>
+          </Text>
+        </Pressable>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -145,8 +137,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 24,
-    paddingTop: 120,
-    paddingBottom: 40,
   },
   title: {
     fontSize: 36,
