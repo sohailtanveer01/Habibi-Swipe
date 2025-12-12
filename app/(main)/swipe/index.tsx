@@ -12,6 +12,7 @@ import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import SwipeCard from "../../../components/SwipeCard";
 import LikesProfileView from "../../../components/LikesProfileView";
 import { supabase } from "../../../lib/supabase";
+import Logo from "../../../components/Logo";
 
 const { width } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
@@ -446,6 +447,9 @@ export default function SwipeScreen() {
   if (!current) {
     return (
       <View className="flex-1 bg-black items-center justify-center px-6">
+        <View className="mb-8">
+          <Logo variant="colored" width={120} />
+        </View>
         <Text className="text-white/70 text-center mb-4">
           {userId ? "Profile not found" : "No profiles found matching your filters."}
         </Text>
@@ -749,6 +753,10 @@ function MatchCelebrationModal({
   return (
     <View style={matchModalStyles.container}>
       <View style={matchModalStyles.content}>
+        {/* Logo */}
+        <View style={matchModalStyles.logoContainer}>
+          <Logo variant="transparent" width={100} />
+        </View>
         <Text style={matchModalStyles.title}>🎉</Text>
         <Text style={matchModalStyles.congratsText}>It&apos;s a Match!</Text>
         <Text style={matchModalStyles.subtitle}>
@@ -806,6 +814,9 @@ const matchModalStyles = {
   content: {
     alignItems: "center",
     width: "100%",
+  },
+  logoContainer: {
+    marginBottom: 20,
   },
   title: {
     fontSize: 80,

@@ -2,6 +2,7 @@ import { ImageBackground, View, Text, Pressable } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import Logo from "../components/Logo";
 
 export default function Home() {
   const [checkingSession, setCheckingSession] = useState(true);
@@ -37,6 +38,10 @@ export default function Home() {
       resizeMode="cover"
     >
       <View className="flex-1 bg-black/50 justify-end px-6 pb-20">
+        {/* Logo at top center */}
+        <View className="absolute top-20 left-0 right-0 items-center">
+          <Logo variant="transparent" width={180} />
+        </View>
 
         {/* Title */}
         <Text className="text-4xl font-bold text-white mb-10">

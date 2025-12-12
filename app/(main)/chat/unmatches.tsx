@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabase";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import Logo from "../../../components/Logo";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -79,6 +80,9 @@ export default function UnmatchesScreen() {
       <View className="flex-1 px-4">
         {unmatches.length === 0 ? (
           <View className="flex-1 items-center justify-center">
+            <View className="mb-6">
+              <Logo variant="colored" width={120} />
+            </View>
             <Text className="text-white/60 text-base">No unmatches yet</Text>
             <Text className="text-white/50 text-sm mt-2">All your connections are active</Text>
           </View>

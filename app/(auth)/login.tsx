@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, TextInput, Pressable, Alert } from "react-native";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "expo-router";
+import Logo from "../../components/Logo";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -54,6 +55,11 @@ export default function Login() {
 
   return (
     <View className="flex-1 bg-black px-6 justify-center">
+      {/* Logo at top */}
+      <View className="absolute top-16 left-0 right-0 items-center">
+        <Logo variant="colored" width={150} />
+      </View>
+
       <Text className="text-[#B8860B] text-3xl font-bold mb-6">Log In</Text>
 
       {/* Login Method Toggle */}

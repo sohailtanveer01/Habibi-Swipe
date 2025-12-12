@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, TextInput, Pressable } from "react-native";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "expo-router";
+import Logo from "../../components/Logo";
 
 export default function Onboarding() {
   const [name, setName] = useState("");
@@ -27,6 +28,11 @@ export default function Onboarding() {
 
   return (
     <View className="flex-1 bg-black px-6 pt-20">
+      {/* Logo at top */}
+      <View className="items-center mb-6">
+        <Logo variant="colored" width={120} />
+      </View>
+
       <Text className="text-white text-2xl font-bold mb-6">Create Profile</Text>
 
       <TextInput

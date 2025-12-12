@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabase";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isUserActive } from "../../../lib/useActiveStatus";
+import Logo from "../../../components/Logo";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -225,6 +226,9 @@ export default function ChatListScreen() {
 
       {matches.length === 0 ? (
         <View className="flex-1 items-center justify-center">
+          <View className="mb-6">
+            <Logo variant="colored" width={120} />
+          </View>
           <Text className="text-white/60 text-base">No matches yet</Text>
           <Text className="text-white/50 text-sm mt-2">Start swiping to find your Habibi! 💕</Text>
         </View>
