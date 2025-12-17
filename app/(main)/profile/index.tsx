@@ -152,13 +152,13 @@ function DraggablePhotoCard({
   const opacity = useSharedValue(1);
   const shiftX = useSharedValue(0);
   const shiftY = useSharedValue(0);
+  const isPressed = useSharedValue(false);
 
-  const findTargetIndex = (x: number, y: number, maxPhotos: number): number | null => {
+  const findTargetIndex = (x: number, y: number): number | null => {
     "worklet";
     let closestIndex: number | null = null;
     let minDistance = Infinity;
     
-    // Check only actual photo positions (0 to maxPhotos - 1)
     for (let i = 0; i < maxPhotos; i++) {
       const pos = layoutPositions[i];
       if (pos) {
@@ -176,21 +176,9 @@ function DraggablePhotoCard({
     return closestIndex;
   };
 
-  useEffect(() => {
-    if (isDragging) {
-      scale.value = withSpring(1.1);
-      opacity.value = withSpring(0.8);
-    } else {
-      scale.value = withSpring(1);
-      opacity.value = withSpring(1);
-    }
-  }, [isDragging]);
-
-  // Calculate shift for non-dragging items - use effect to update when hover target changes
-  // Access layoutPositions prop (which is a snapshot of layoutPositions.current)
+  // Calculate shift for non-dragging items when hoverTargetIndex changes
   useEffect(() => {
     if (draggingIndex !== null && draggingIndex !== index && hoverTargetIndex !== null && hoverTargetIndex !== draggingIndex) {
-      // Access layoutPositions from the prop (snapshot)
       const currentPos = layoutPositions[index];
       if (!currentPos) {
         shiftX.value = withSpring(0);
@@ -198,11 +186,8 @@ function DraggablePhotoCard({
         return;
       }
 
-      // Determine which direction to shift based on array indices
       if (draggingIndex < hoverTargetIndex) {
-        // Dragging forward: items between draggingIndex and hoverTargetIndex shift backward
         if (index > draggingIndex && index <= hoverTargetIndex) {
-          // Shift to previous position in array
           const prevIndex = index - 1;
           const prevPos = layoutPositions[prevIndex];
           if (prevPos) {
@@ -217,9 +202,7 @@ function DraggablePhotoCard({
           shiftY.value = withSpring(0);
         }
       } else if (draggingIndex > hoverTargetIndex) {
-        // Dragging backward: items between hoverTargetIndex and draggingIndex shift forward
         if (index >= hoverTargetIndex && index < draggingIndex) {
-          // Shift to next position in array
           const nextIndex = index + 1;
           const nextPos = layoutPositions[nextIndex];
           if (nextPos) {
@@ -241,46 +224,79 @@ function DraggablePhotoCard({
       shiftX.value = withSpring(0);
       shiftY.value = withSpring(0);
     }
-    // layoutPositions prop updates when layoutVersion changes (via useMemo in parent)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hoverTargetIndex, draggingIndex, index, layoutVersion, layoutPositions]);
 
+  // Long press gesture to activate dragging
+  const longPressGesture = Gesture.LongPress()
+    .minDuration(250)
+    .onStart(() => {
+      "worklet";
+      isPressed.value = true;
+      scale.value = withSpring(1.08);
+      opacity.value = withSpring(0.85);
+      runOnJS(onLongPress)();
+    })
+    .onEnd(() => {
+      "worklet";
+      // Don't reset here - let pan gesture handle the end
+    });
+
+  // Pan gesture for dragging
   const panGesture = Gesture.Pan()
-    .enabled(isDragging)
+    .activateAfterLongPress(250)
+    .onStart(() => {
+      "worklet";
+      // Visual feedback already applied by long press
+    })
     .onUpdate((e) => {
+      "worklet";
       translateX.value = e.translationX;
       translateY.value = e.translationY;
       
-      // Find current hover target and notify parent
       const currentPos = layoutPositions[index];
-      if (currentPos) {
+      if (currentPos && onDragUpdate) {
         const targetX = currentPos.x + currentPos.width / 2 + e.translationX;
         const targetY = currentPos.y + currentPos.height / 2 + e.translationY;
-        const targetIndex = findTargetIndex(targetX, targetY, maxPhotos);
-        if (onDragUpdate) {
-          runOnJS(onDragUpdate)(targetIndex);
-        }
+        const targetIndex = findTargetIndex(targetX, targetY);
+        runOnJS(onDragUpdate)(targetIndex);
       }
     })
     .onEnd((e) => {
+      "worklet";
       const currentPos = layoutPositions[index];
       let targetIndex: number | null = null;
       
       if (currentPos) {
         const targetX = currentPos.x + currentPos.width / 2 + e.translationX;
         const targetY = currentPos.y + currentPos.height / 2 + e.translationY;
-        targetIndex = findTargetIndex(targetX, targetY, maxPhotos);
+        targetIndex = findTargetIndex(targetX, targetY);
       }
       
       runOnJS(onDragEnd)(targetIndex);
       
+      // Reset animations
+      isPressed.value = false;
       translateX.value = withSpring(0);
       translateY.value = withSpring(0);
       scale.value = withSpring(1);
       opacity.value = withSpring(1);
-      shiftX.value = withSpring(0);
-      shiftY.value = withSpring(0);
+    })
+    .onFinalize(() => {
+      "worklet";
+      // Reset if gesture was cancelled
+      if (isPressed.value) {
+        isPressed.value = false;
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        scale.value = withSpring(1);
+        opacity.value = withSpring(1);
+        runOnJS(onDragEnd)(null);
+      }
     });
+
+  // Compose gestures - long press activates, pan follows
+  const composedGesture = Gesture.Simultaneous(longPressGesture, panGesture);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -290,11 +306,10 @@ function DraggablePhotoCard({
         { scale: scale.value },
       ],
       opacity: opacity.value,
-      zIndex: isDragging ? 1000 : 1,
+      zIndex: isPressed.value ? 1000 : 1,
     };
   });
 
-  // Check if this is the hover target
   const isHoverTarget = hoverTargetIndex === index && draggingIndex !== null && draggingIndex !== index;
 
   return (
@@ -303,40 +318,32 @@ function DraggablePhotoCard({
       style={{ aspectRatio: 0.8 }}
       onLayout={onLayout}
     >
-      <GestureDetector gesture={panGesture}>
-        <Animated.View style={animatedStyle}>
+      <GestureDetector gesture={composedGesture}>
+        <Animated.View style={animatedStyle} className="w-full h-full relative">
+          <Image
+            source={{ uri: photo }}
+            style={{ width: '100%', height: '100%', borderRadius: 24 }}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+            priority={isMainPhoto ? "high" : "normal"}
+          />
+          {isMainPhoto && (
+            <View className="absolute top-3 left-3 bg-[#B8860B] px-2 py-1 rounded-full">
+              <Text className="text-white text-xs font-bold">Main</Text>
+            </View>
+          )}
+          {isDragging && (
+            <View className="absolute inset-0 bg-[#B8860B]/20 border-2 border-[#B8860B] rounded-3xl" />
+          )}
+          {isHoverTarget && (
+            <View className="absolute inset-0 bg-[#B8860B]/10 border-2 border-dashed border-[#B8860B] rounded-3xl" />
+          )}
           <Pressable
-            onLongPress={onLongPress}
-            className="w-full h-full relative"
+            onPress={onRemove}
+            className="absolute top-3 right-3 bg-red-500 w-7 h-7 rounded-full items-center justify-center"
           >
-            <Image
-              source={{ uri: photo }}
-              style={{ width: '100%', height: '100%', borderRadius: 24 }}
-              contentFit="cover"
-              transition={200}
-              cachePolicy="memory-disk"
-              priority={isMainPhoto ? "high" : "normal"}
-            />
-            {isMainPhoto && (
-              <View className="absolute top-3 left-3 bg-[#B8860B] px-2 py-1 rounded-full">
-                <Text className="text-white text-xs font-bold">Main</Text>
-              </View>
-            )}
-            {isDragging && (
-              <View className="absolute inset-0 bg-[#B8860B]/20 border-2 border-[#B8860B] rounded-3xl" />
-            )}
-            {isHoverTarget && (
-              <View className="absolute inset-0 bg-[#B8860B]/10 border-2 border-dashed border-[#B8860B] rounded-3xl" />
-            )}
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
-              className="absolute top-3 right-3 bg-red-500 w-7 h-7 rounded-full items-center justify-center"
-            >
-              <Ionicons name="close" size={16} color="#fff" />
-            </Pressable>
+            <Ionicons name="close" size={16} color="#fff" />
           </Pressable>
         </Animated.View>
       </GestureDetector>
@@ -357,26 +364,24 @@ export default function ProfileScreen() {
   const [hoverTargetIndex, setHoverTargetIndex] = useState<number | null>(null);
   const layoutPositions = useRef<{ [key: number]: { x: number; y: number; width: number; height: number } }>({});
   const [layoutVersion, setLayoutVersion] = useState(0); // Track layout changes to trigger re-renders
+  const [reorderCount, setReorderCount] = useState(0); // Track reorders to force component remount
   const previousPhotosRef = useRef<string>(""); // Track previous photos array to detect reorders
 
   useEffect(() => {
     loadProfile();
   }, []);
 
-  // Clear layout positions when photos array order changes (after reorder)
-  // This ensures positions are recalculated with the new order
-  // Only clear if the order actually changed, not just on every render
+  // Reset state when photos change (after reorder)
   useEffect(() => {
     const photosString = JSON.stringify(photos);
     if (previousPhotosRef.current && previousPhotosRef.current !== photosString) {
-      // Photos order changed - clear positions but give components time to re-render first
-      // Use requestAnimationFrame to ensure it happens after the render cycle
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          layoutPositions.current = {};
-          setLayoutVersion(prev => prev + 1);
-        });
-      });
+      // Reset dragging state after reorder
+      setDraggingIndex(null);
+      setHoverTargetIndex(null);
+      // Clear layout positions so they get recalculated
+      layoutPositions.current = {};
+      // Increment reorder count to force component remount with fresh gesture state
+      setReorderCount(prev => prev + 1);
     }
     previousPhotosRef.current = photosString;
   }, [photos]);
@@ -822,7 +827,7 @@ export default function ProfileScreen() {
             {/* Existing Photo Cards */}
             {photos.map((photo, index) => (
               <DraggablePhotoCard
-                key={`photo-${index}`}
+                key={`${index}-${reorderCount}`}
                 photo={photo}
                 index={index}
                 isMainPhoto={index === 0}
