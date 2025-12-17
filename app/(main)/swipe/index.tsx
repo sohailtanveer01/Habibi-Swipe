@@ -18,6 +18,19 @@ import DiamondIcon from "../../../components/DiamondIcon";
 const { width } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
 
+// Spring config for soft, premium feel
+const SPRING_CONFIG = {
+  damping: 20,
+  stiffness: 90,
+  mass: 1,
+};
+
+const TRANSITION_SPRING = {
+  damping: 25,
+  stiffness: 120,
+  mass: 0.8,
+};
+
 export default function SwipeScreen() {
   const router = useRouter();
   const { userId, source } = useLocalSearchParams<{ userId?: string; source?: string }>();
@@ -39,6 +52,11 @@ export default function SwipeScreen() {
 
   const x = useSharedValue(0);
   const y = useSharedValue(0);
+  
+  // Entry animation for new card
+  const cardScale = useSharedValue(1);
+  const cardOpacity = useSharedValue(1);
+  const cardTranslateY = useSharedValue(0);
 
   // Fetch a specific user's profile
   const fetchSpecificProfile = async (targetUserId: string) => {
@@ -283,6 +301,30 @@ export default function SwipeScreen() {
     setHasCompliment(false);
   }, [index]);
 
+  // Move to next card (simple index increment, animation handled by useEffect)
+  const moveToNextCard = useCallback(() => {
+    setIndex((i) => i + 1);
+  }, []);
+
+  // Animate card entry when index changes
+  useEffect(() => {
+    // Reset swipe position immediately
+    x.value = 0;
+    y.value = 0;
+    
+    // Start card slightly scaled down and offset, then animate to final position
+    // Use direct assignment for initial state, then spring animation
+    cardScale.value = 0.95;
+    cardOpacity.value = 0.7;
+    cardTranslateY.value = 20;
+    
+    // Animate to full visibility with spring
+    cardScale.value = withSpring(1, TRANSITION_SPRING);
+    cardOpacity.value = withSpring(1, TRANSITION_SPRING);
+    cardTranslateY.value = withSpring(0, TRANSITION_SPRING);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
+
   // Send compliment
   const sendCompliment = async () => {
     const currentProfile = profiles[index];
@@ -290,7 +332,7 @@ export default function SwipeScreen() {
 
     setSendingCompliment(true);
     try {
-      const { error, data } = await supabase.functions.invoke("send-compliment", {
+      const { error } = await supabase.functions.invoke("send-compliment", {
         body: {
           recipientId: currentProfile.id,
           message: complimentMessage.trim(),
@@ -313,7 +355,7 @@ export default function SwipeScreen() {
             setSendingCompliment(false);
             // Move to next card
             if (index < profiles.length - 1) {
-              setIndex(index + 1);
+              moveToNextCard();
             } else {
               fetchFeed();
             }
@@ -386,7 +428,8 @@ export default function SwipeScreen() {
             }
           }, 300); // Small delay to show the swipe animation
         } else {
-          setIndex((i) => i + 1);
+          // Move to next card with animation
+          moveToNextCard();
         }
       }
     } catch (err) {
@@ -416,24 +459,30 @@ export default function SwipeScreen() {
       const shouldPass = x.value < -SWIPE_THRESHOLD && availableActions.showPass;
 
       if (shouldLike) {
-        x.value = withSpring(width * 1.5);
+        x.value = withSpring(width * 1.5, SPRING_CONFIG);
         runOnJS(sendSwipe)("like");
       } else if (shouldPass) {
-        x.value = withSpring(-width * 1.5);
+        x.value = withSpring(-width * 1.5, SPRING_CONFIG);
         runOnJS(sendSwipe)("pass");
       } else {
-        x.value = withSpring(0);
-        y.value = withSpring(0);
+        x.value = withSpring(0, SPRING_CONFIG);
+        y.value = withSpring(0, SPRING_CONFIG);
       }
     });
 
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: x.value },
-      { translateY: y.value },
-      { rotateZ: `${x.value / 20}deg` },
-    ],
-  }));
+  // Card animation style (handles both swipe and entry animation)
+  const cardAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: x.value },
+        { translateY: y.value + cardTranslateY.value },
+        { rotateZ: `${x.value / 20}deg` },
+        { scale: cardScale.value },
+      ],
+      opacity: cardOpacity.value,
+    };
+  });
+
 
   const current = profiles[index];
 
@@ -496,11 +545,11 @@ export default function SwipeScreen() {
         }, 100);
       } else {
         // Move to next card
-        setIndex((i) => i + 1);
+        moveToNextCard();
         // Navigate to chat
         setTimeout(() => {
           router.push(`/(main)/chat/${matchIdToNavigate}`);
-        }, 100);
+        }, 400);
       }
     } else {
       // Keep swiping
@@ -516,7 +565,8 @@ export default function SwipeScreen() {
           }
         }, 100);
       } else {
-        setIndex((i) => i + 1);
+        // Move to next card
+        moveToNextCard();
       }
     }
   };
@@ -572,16 +622,23 @@ export default function SwipeScreen() {
       {/* Conditionally wrap with gesture detector only for normal swipe feed */}
       {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) ? (
         <>
+          {/* Current card with swipe gesture and entry animation */}
           <GestureDetector gesture={pan}>
             <Animated.View
-              style={[{ width: "100%", height: "100%" }, cardStyle]}
+              style={[
+                { 
+                  width: "100%", 
+                  height: "100%",
+                },
+                cardAnimatedStyle
+              ]}
             >
               <SwipeCard profile={current} />
             </Animated.View>
           </GestureDetector>
           
           {/* Action buttons for normal swipe feed */}
-          <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10`}>
+          <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10 z-50`}>
             {/* Pass - only show if available */}
             {availableActions.showPass && (
               <Pressable
@@ -624,7 +681,7 @@ export default function SwipeScreen() {
           
           {/* Action buttons - only show when viewing from likes section (not from chat) */}
           {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn") && (
-            <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10`}>
+            <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10 z-50`}>
               {/* Pass - only show if available */}
               {availableActions.showPass && (
                 <Pressable
