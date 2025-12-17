@@ -6,6 +6,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   runOnJS,
+  cancelAnimation,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -57,6 +58,10 @@ export default function SwipeScreen() {
   const cardScale = useSharedValue(1);
   const cardOpacity = useSharedValue(1);
   const cardTranslateY = useSharedValue(0);
+  
+  // Track if we're in the middle of a fly-off animation
+  // When true, the current card should be hidden to prevent flash-back
+  const isExiting = useSharedValue(false);
 
   // Fetch a specific user's profile
   const fetchSpecificProfile = async (targetUserId: string) => {
@@ -301,27 +306,76 @@ export default function SwipeScreen() {
     setHasCompliment(false);
   }, [index]);
 
-  // Move to next card (simple index increment, animation handled by useEffect)
+  // Track if this is a swipe transition (card was already visible) vs initial load
+  const isSwipeTransition = useRef(false);
+  // Track if the current action is from a gesture swipe vs button press
+  const isGestureSwipe = useRef(false);
+
+  // Move to next card - called from button press
   const moveToNextCard = useCallback(() => {
+    isSwipeTransition.current = true;
+    
+    // Set values to final state - no animation needed
+    // The next card was already visible behind, just make it current
+    x.value = 0;
+    y.value = 0;
+    cardScale.value = 1;
+    cardOpacity.value = 1;
+    cardTranslateY.value = 0;
+    
     setIndex((i) => i + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Move to next card - called from swipe gesture
+  const moveToNextCardFromSwipe = useCallback(() => {
+    isSwipeTransition.current = true;
+    
+    // Mark that we're exiting - this hides the current card
+    // so when we reset x, the jump isn't visible
+    isExiting.value = true;
+    
+    // IMPORTANT: Cancel any running animations on x and y
+    cancelAnimation(x);
+    cancelAnimation(y);
+    
+    // Reset position values
+    x.value = 0;
+    y.value = 0;
+    
+    // Set animation values to final state
+    cardScale.value = 1;
+    cardOpacity.value = 1;
+    cardTranslateY.value = 0;
+    
+    // Change index - this swaps which profile is "current"
+    setIndex((i) => i + 1);
+    
+    // Clear exit flag after React has rendered
+    // Use 16ms (one frame) to ensure the new current card is ready
+    setTimeout(() => {
+      isExiting.value = false;
+    }, 16);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Animate card entry when index changes
   useEffect(() => {
-    // Reset swipe position immediately
-    x.value = 0;
-    y.value = 0;
-    
-    // Start card slightly scaled down and offset, then animate to final position
-    // Use direct assignment for initial state, then spring animation
-    cardScale.value = 0.95;
-    cardOpacity.value = 0.7;
-    cardTranslateY.value = 20;
-    
-    // Animate to full visibility with spring
-    cardScale.value = withSpring(1, TRANSITION_SPRING);
-    cardOpacity.value = withSpring(1, TRANSITION_SPRING);
-    cardTranslateY.value = withSpring(0, TRANSITION_SPRING);
+    if (isSwipeTransition.current) {
+      // Coming from a swipe/button - values already set to final state, no animation needed
+      isSwipeTransition.current = false;
+    } else {
+      // Initial load or refresh - do the full entry animation
+      x.value = 0;
+      y.value = 0;
+      cardScale.value = 0.95;
+      cardOpacity.value = 0.7;
+      cardTranslateY.value = 20;
+      
+      cardScale.value = withSpring(1, TRANSITION_SPRING);
+      cardOpacity.value = withSpring(1, TRANSITION_SPRING);
+      cardTranslateY.value = withSpring(0, TRANSITION_SPRING);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
@@ -428,8 +482,13 @@ export default function SwipeScreen() {
             }
           }, 300); // Small delay to show the swipe animation
         } else {
-          // Move to next card with animation
-          moveToNextCard();
+          // Move to next card - use appropriate transition based on how action was triggered
+          if (isGestureSwipe.current) {
+            moveToNextCardFromSwipe();
+            isGestureSwipe.current = false;
+          } else {
+            moveToNextCard();
+          }
         }
       }
     } catch (err) {
@@ -440,6 +499,12 @@ export default function SwipeScreen() {
     } finally {
       setIsSwiping(false);
     }
+  };
+
+  // Helper to mark gesture swipe before calling sendSwipe
+  const handleGestureSwipe = (action: "like" | "pass") => {
+    isGestureSwipe.current = true;
+    sendSwipe(action);
   };
 
   // Gesture handler
@@ -460,18 +525,32 @@ export default function SwipeScreen() {
 
       if (shouldLike) {
         x.value = withSpring(width * 1.5, SPRING_CONFIG);
-        runOnJS(sendSwipe)("like");
+        runOnJS(handleGestureSwipe)("like");
       } else if (shouldPass) {
         x.value = withSpring(-width * 1.5, SPRING_CONFIG);
-        runOnJS(sendSwipe)("pass");
+        runOnJS(handleGestureSwipe)("pass");
       } else {
         x.value = withSpring(0, SPRING_CONFIG);
         y.value = withSpring(0, SPRING_CONFIG);
       }
     });
 
-  // Card animation style (handles both swipe and entry animation)
+  // Current card animation style (handles swipe gesture and entry animation)
   const cardAnimatedStyle = useAnimatedStyle(() => {
+    // If we're in the exit phase (between fly-off and index change),
+    // hide the card completely to prevent the "flash back to center" effect
+    if (isExiting.value) {
+      return {
+        transform: [
+          { translateX: 0 },
+          { translateY: 0 },
+          { rotateZ: '0deg' },
+          { scale: 1 },
+        ],
+        opacity: 0, // Hidden during transition
+      };
+    }
+    
     return {
       transform: [
         { translateX: x.value },
@@ -480,6 +559,35 @@ export default function SwipeScreen() {
         { scale: cardScale.value },
       ],
       opacity: cardOpacity.value,
+    };
+  });
+
+  // Next card style (sits behind current card, scales up as current card is swiped away)
+  const nextCardAnimatedStyle = useAnimatedStyle(() => {
+    // During exit transition, show next card at full scale/opacity
+    // This ensures seamless handoff when the index changes
+    if (isExiting.value) {
+      return {
+        transform: [{ scale: 1 }],
+        opacity: 1,
+      };
+    }
+    
+    // Calculate how far the current card has been dragged (normalized 0 to 1)
+    const absX = Math.abs(x.value);
+    const dragProgress = Math.min(absX / (width * 0.4), 1);
+    
+    // Next card starts at 0.95 scale and grows to 1 as current card is dragged
+    const scale = 0.95 + (dragProgress * 0.05);
+    
+    // Next card starts slightly faded and becomes more visible
+    const opacity = 0.8 + (dragProgress * 0.2);
+    
+    return {
+      transform: [
+        { scale },
+      ],
+      opacity,
     };
   });
 
@@ -622,19 +730,79 @@ export default function SwipeScreen() {
       {/* Conditionally wrap with gesture detector only for normal swipe feed */}
       {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) ? (
         <>
-          {/* Current card with swipe gesture and entry animation */}
-          <GestureDetector gesture={pan}>
+          {/* Stack-based card rendering - render cards by profile ID to prevent remounts */}
+          {/* Third card (preloaded, hidden) */}
+          {profiles[index + 2] && (
+            <View
+              key={profiles[index + 2].id}
+              style={{ 
+                width: "100%", 
+                height: "100%",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                zIndex: 0,
+                opacity: 0,
+              }}
+              pointerEvents="none"
+            >
+              <SwipeCard profile={profiles[index + 2]} />
+            </View>
+          )}
+          
+          {/* Next card */}
+          {profiles[index + 1] && (
             <Animated.View
+              key={profiles[index + 1].id}
               style={[
                 { 
                   width: "100%", 
                   height: "100%",
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  zIndex: 1,
+                },
+                nextCardAnimatedStyle
+              ]}
+              pointerEvents="none"
+            >
+              <SwipeCard profile={profiles[index + 1]} />
+            </Animated.View>
+          )}
+          
+          {/* Current card */}
+          {current && (
+            <Animated.View
+              key={current.id}
+              style={[
+                { 
+                  width: "100%", 
+                  height: "100%",
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  zIndex: 2,
                 },
                 cardAnimatedStyle
               ]}
             >
               <SwipeCard profile={current} />
             </Animated.View>
+          )}
+          
+          {/* Gesture detector overlay for current card only */}
+          <GestureDetector gesture={pan}>
+            <View 
+              style={{ 
+                width: "100%", 
+                height: "100%", 
+                position: "absolute",
+                top: 0,
+                left: 0,
+                zIndex: 10,
+              }} 
+            />
           </GestureDetector>
           
           {/* Action buttons for normal swipe feed */}
