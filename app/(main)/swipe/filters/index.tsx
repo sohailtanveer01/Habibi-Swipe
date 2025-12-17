@@ -81,6 +81,30 @@ export default function FiltersListScreen() {
     return `${count} selected`;
   };
 
+  const getMaritalStatusFilterValue = () => {
+    if (!preferences?.marital_status_preferences || preferences.marital_status_preferences.length === 0) {
+      return "Not set";
+    }
+    const count = preferences.marital_status_preferences.length;
+    return `${count} selected`;
+  };
+
+  const getChildrenFilterValue = () => {
+    if (!preferences?.children_preferences || preferences.children_preferences.length === 0) {
+      return "Not set";
+    }
+    const options: Record<string, string> = { no: "No children", yes: "Has children" };
+    return preferences.children_preferences.map((c: string) => options[c] || c).join(", ");
+  };
+
+  const getReligiosityFilterValue = () => {
+    if (!preferences?.religiosity_preferences || preferences.religiosity_preferences.length === 0) {
+      return "Not set";
+    }
+    const count = preferences.religiosity_preferences.length;
+    return `${count} selected`;
+  };
+
   const FilterItem = ({ 
     icon, 
     iconColor, 
@@ -183,6 +207,39 @@ export default function FiltersListScreen() {
             title="Ethnicity"
             value={getEthnicityFilterValue()}
             onPress={() => router.push("/(main)/swipe/filters/ethnicity")}
+          />
+        </View>
+
+        {/* Marital Status Filter */}
+        <View style={styles.section}>
+          <FilterItem
+            icon="heart"
+            iconColor="#B8860B"
+            title="Marital Status"
+            value={getMaritalStatusFilterValue()}
+            onPress={() => router.push("/(main)/swipe/filters/marital-status")}
+          />
+        </View>
+
+        {/* Children Filter */}
+        <View style={styles.section}>
+          <FilterItem
+            icon="people-circle"
+            iconColor="#B8860B"
+            title="Children"
+            value={getChildrenFilterValue()}
+            onPress={() => router.push("/(main)/swipe/filters/children")}
+          />
+        </View>
+
+        {/* Religiosity Filter */}
+        <View style={styles.section}>
+          <FilterItem
+            icon="moon"
+            iconColor="#B8860B"
+            title="Religiosity"
+            value={getReligiosityFilterValue()}
+            onPress={() => router.push("/(main)/swipe/filters/religiosity")}
           />
         </View>
       </ScrollView>

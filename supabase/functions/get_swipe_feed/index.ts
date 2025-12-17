@@ -94,7 +94,7 @@ serve(async (req) => {
     // Get user's preferences
     const { data: preferences, error: prefsError } = await supabaseClient
       .from("user_preferences")
-      .select("location_enabled, location_filter_type, search_radius_miles, search_location, search_country, age_min, age_max, height_min_cm, ethnicity_preferences")
+      .select("location_enabled, location_filter_type, search_radius_miles, search_location, search_country, age_min, age_max, height_min_cm, ethnicity_preferences, marital_status_preferences, children_preferences, religiosity_preferences")
       .eq("user_id", user.id)
       .single();
 
@@ -375,6 +375,35 @@ serve(async (req) => {
           Array.isArray(preferences.ethnicity_preferences) && 
           preferences.ethnicity_preferences.length > 0) {
         if (!profile.ethnicity || !preferences.ethnicity_preferences.includes(profile.ethnicity)) {
+          return false;
+        }
+      }
+
+      // Marital status filter
+      if (preferences && preferences.marital_status_preferences && 
+          Array.isArray(preferences.marital_status_preferences) && 
+          preferences.marital_status_preferences.length > 0) {
+        if (!profile.marital_status || !preferences.marital_status_preferences.includes(profile.marital_status)) {
+          return false;
+        }
+      }
+
+      // Children filter
+      if (preferences && preferences.children_preferences && 
+          Array.isArray(preferences.children_preferences) && 
+          preferences.children_preferences.length > 0) {
+        // profile.has_children is a boolean, children_preferences contains 'yes' or 'no'
+        const profileHasChildren = profile.has_children === true ? "yes" : profile.has_children === false ? "no" : null;
+        if (profileHasChildren === null || !preferences.children_preferences.includes(profileHasChildren)) {
+          return false;
+        }
+      }
+
+      // Religiosity filter
+      if (preferences && preferences.religiosity_preferences && 
+          Array.isArray(preferences.religiosity_preferences) && 
+          preferences.religiosity_preferences.length > 0) {
+        if (!profile.religious_practice || !preferences.religiosity_preferences.includes(profile.religious_practice)) {
           return false;
         }
       }

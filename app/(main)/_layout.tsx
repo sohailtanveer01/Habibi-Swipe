@@ -502,6 +502,10 @@ export default function MainLayout() {
       <Tabs.Screen name="swipe/filters/age" options={{ href: null }} />
       <Tabs.Screen name="swipe/filters/height" options={{ href: null }} />
       <Tabs.Screen name="swipe/filters/ethnicity" options={{ href: null }} />
+      <Tabs.Screen name="swipe/filters/marital-status" options={{ href: null }} />
+      <Tabs.Screen name="swipe/filters/children" options={{ href: null }} />
+      <Tabs.Screen name="swipe/filters/religiosity" options={{ href: null }} />
+
       <Tabs.Screen name="chat/unmatches" options={{ href: null }} />
       <Tabs.Screen name="profile/settings" options={{ href: null }} />
     </Tabs>
