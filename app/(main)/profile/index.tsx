@@ -696,9 +696,20 @@ export default function ProfileScreen() {
   return (
     <ScrollView className="flex-1 bg-black" showsVerticalScrollIndicator={false}>
       <View className="px-6 pt-16 pb-8">
-        {/* Header with Profile Picture */}
+        {/* Header with Profile Picture and Settings */}
         <View className="items-center mb-8">
-          {/* Profile Picture with Gold Circle and Completion Percentage */}
+          {/* Settings Icon - Positioned to the left */}
+          <View className="w-full flex-row justify-start mb-4">
+            <Pressable
+              onPress={() => router.push("/(main)/profile/settings")}
+              className="w-14 h-14 rounded-full border-2 border-[#B8860B] items-center justify-center"
+              style={{ backgroundColor: 'rgba(184, 134, 11, 0.1)' }}
+            >
+              <Ionicons name="settings-outline" size={24} color="#B8860B" />
+            </Pressable>
+          </View>
+
+          {/* Profile Picture with Gold Circle and Completion Percentage - Centered */}
           <View className="relative mb-4">
             {/* Gold Circle Border */}
             <View className="w-40 h-40 rounded-full border-4 border-[#B8860B] items-center justify-center overflow-hidden">

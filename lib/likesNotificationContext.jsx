@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useMemo } from "react";
 
 const LikesNotificationContext = createContext({
   newLikesCount: 0,
@@ -13,10 +13,14 @@ export function LikesNotificationProvider({ children }) {
     setNewLikesCount(0);
   };
 
+  // Memoize the context value to ensure stable reference
+  const value = useMemo(
+    () => ({ newLikesCount, setNewLikesCount, clearNewLikes }),
+    [newLikesCount]
+  );
+
   return (
-    <LikesNotificationContext.Provider
-      value={{ newLikesCount, setNewLikesCount, clearNewLikes }}
-    >
+    <LikesNotificationContext.Provider value={value}>
       {children}
     </LikesNotificationContext.Provider>
   );

@@ -23,27 +23,27 @@ export default function RootLayout() {
       <QueryClientProvider client={qc}>
         <LikesNotificationProvider>
           <Stack 
-            screenOptions={{ 
-              headerShown: false,
-              // Keep gestures enabled but prevent back navigation to auth
+          screenOptions={{ 
+            headerShown: false,
+            // Keep gestures enabled but prevent back navigation to auth
+          }}
+        >
+          <Stack.Screen 
+            name="(auth)" 
+            options={{
+              // Allow gestures on auth screen
+              gestureEnabled: true,
             }}
-          >
-            <Stack.Screen 
-              name="(auth)" 
-              options={{
-                // Allow gestures on auth screen
-                gestureEnabled: true,
-              }}
-            />
-            <Stack.Screen 
-              name="(main)" 
-              options={{
-                // Disable swipe back gesture on main tabs to prevent going back to auth
-                gestureEnabled: false,
-                // Prevent going back to auth when authenticated
-              }}
-            />
-          </Stack>
+          />
+          <Stack.Screen 
+            name="(main)" 
+            options={{
+              // Disable swipe back gesture on main tabs to prevent going back to auth
+              gestureEnabled: false,
+              // Prevent going back to auth when authenticated
+            }}
+          />
+        </Stack>
         </LikesNotificationProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

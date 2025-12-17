@@ -1,5 +1,5 @@
 import { Tabs, usePathname, useGlobalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { View, Text, Platform, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,12 +7,12 @@ import { supabase } from "../../lib/supabase";
 import { BlurView } from "expo-blur";
 import { useActiveStatus } from "../../lib/useActiveStatus";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { useLikesNotification } from "../../lib/likesNotificationContext";
+
 
 export default function MainLayout() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  const { newLikesCount, setNewLikesCount } = useLikesNotification();
+  const [newLikesCount, setNewLikesCount] = useState(0); // Use local state like unreadCount
   const pathname = usePathname();
   const searchParams = useGlobalSearchParams();
   
@@ -155,19 +155,35 @@ export default function MainLayout() {
   }, []);
 
   // Check for new likes (people who liked the current user)
+  const checkNewLikesRef = useRef<(() => Promise<void>) | null>(null);
+  
   useEffect(() => {
     const checkNewLikes = async () => {
+      console.log("🔍 checkNewLikes() called");
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log("⚠️ No user found");
+        return;
+      }
+
+      console.log("👤 Checking likes for user:", user.id);
 
       // Get all swipes where someone liked the current user
-      const { data: swipes } = await supabase
+      const { data: swipes, error: swipesError } = await supabase
         .from("swipes")
         .select("swiper_id, action")
         .eq("swiped_id", user.id)
         .eq("action", "like");
 
+      if (swipesError) {
+        console.error("❌ Error fetching swipes:", swipesError);
+        return;
+      }
+
+      console.log("📊 Found swipes:", swipes?.length || 0, swipes);
+
       if (!swipes || swipes.length === 0) {
+        console.log("💔 No swipes found, setting count to 0");
         setNewLikesCount(0);
         return;
       }
@@ -177,6 +193,8 @@ export default function MainLayout() {
         .from("matches")
         .select("user1, user2")
         .or(`user1.eq.${user.id},user2.eq.${user.id}`);
+
+      console.log("💑 Found matches:", matches?.length || 0);
 
       // Get blocked users (both ways)
       const { data: blocksIBlocked } = await supabase
@@ -209,14 +227,21 @@ export default function MainLayout() {
         blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
       }
 
+      console.log("🚫 Matched user IDs:", Array.from(matchedUserIds));
+      console.log("🚫 Blocked user IDs:", Array.from(blockedUserIds));
+
       // Filter out matched and blocked users
       const uniqueLikerIds = new Set(swipes.map(s => s.swiper_id));
       const newLikes = Array.from(uniqueLikerIds).filter(
         (id) => !matchedUserIds.has(id) && !blockedUserIds.has(id)
       );
 
+      console.log("💖 New likes count:", newLikes.length, "from likers:", newLikes);
       setNewLikesCount(newLikes.length);
     };
+
+    // Store the function in a ref so subscription callbacks can access the latest version
+    checkNewLikesRef.current = checkNewLikes;
 
     checkNewLikes();
 
@@ -225,7 +250,12 @@ export default function MainLayout() {
     
     const setupSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      if (!user) {
+        console.log("⚠️ No user found for subscription");
+        return null;
+      }
+
+      console.log("📡 Setting up real-time subscription for user:", user.id);
 
       const newChannel = supabase
         .channel("new-likes")
@@ -237,8 +267,13 @@ export default function MainLayout() {
             table: "swipes",
             filter: `swiped_id=eq.${user.id}`,
           },
-          () => {
-            checkNewLikes();
+          (payload) => {
+            console.log("📨 Swipe INSERT event received:", payload.new);
+            console.log("📨 Action:", payload.new.action);
+            // Use the ref to get the latest function
+            if (checkNewLikesRef.current) {
+              checkNewLikesRef.current();
+            }
           }
         )
         .on(
@@ -248,11 +283,45 @@ export default function MainLayout() {
             schema: "public",
             table: "matches",
           },
-          () => {
-            checkNewLikes();
+          (payload) => {
+            console.log("💑 Match INSERT event received:", payload.new);
+            // Use the ref to get the latest function
+            if (checkNewLikesRef.current) {
+              checkNewLikesRef.current();
+            }
           }
         )
-        .subscribe();
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "swipes",
+            filter: `swiped_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log("📨 Swipe UPDATE event received:", payload.new);
+            console.log("📨 Action:", payload.new.action);
+            // Use the ref to get the latest function
+            if (checkNewLikesRef.current) {
+              checkNewLikesRef.current();
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log("📡 Likes subscription status:", status);
+          if (status === "SUBSCRIBED") {
+            console.log("✅ Successfully subscribed to likes real-time");
+            console.log("⚠️ IMPORTANT: If you don't see events, verify real-time is enabled:");
+            console.log("⚠️ Run: ALTER PUBLICATION supabase_realtime ADD TABLE public.swipes;");
+          } else if (status === "CHANNEL_ERROR") {
+            console.error("❌ Error subscribing to likes real-time");
+          } else if (status === "TIMED_OUT") {
+            console.error("⏱️ Likes subscription timed out");
+          } else if (status === "CLOSED") {
+            console.log("🔒 Subscription closed");
+          }
+        });
 
       return newChannel;
     };
@@ -436,6 +505,7 @@ export default function MainLayout() {
       <Tabs.Screen name="swipe/filters/height" options={{ href: null }} />
       <Tabs.Screen name="swipe/filters/ethnicity" options={{ href: null }} />
       <Tabs.Screen name="chat/unmatches" options={{ href: null }} />
+      <Tabs.Screen name="profile/settings" options={{ href: null }} />
     </Tabs>
   );
 }
