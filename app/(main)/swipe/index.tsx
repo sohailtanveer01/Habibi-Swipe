@@ -507,8 +507,10 @@ export default function SwipeScreen() {
     sendSwipe(action);
   };
 
-  // Gesture handler
+  // Gesture handler - only activate for horizontal swipes, allow vertical scroll
   const pan = Gesture.Pan()
+    .activeOffsetX([-15, 15]) // Activate when horizontal movement > 15px
+    .failOffsetY([-10, 10])   // Fail (allow scroll) when vertical movement > 10px first
     .onBegin(() => {
       if (isSwiping) return;
     })
@@ -771,39 +773,27 @@ export default function SwipeScreen() {
             </Animated.View>
           )}
           
-          {/* Current card */}
+          {/* Current card with gesture handler */}
           {current && (
-            <Animated.View
-              key={current.id}
-              style={[
-                { 
-                  width: "100%", 
-                  height: "100%",
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  zIndex: 2,
-                },
-                cardAnimatedStyle
-              ]}
-            >
-              <SwipeCard profile={current} />
-            </Animated.View>
+            <GestureDetector gesture={pan}>
+              <Animated.View
+                key={current.id}
+                style={[
+                  { 
+                    width: "100%", 
+                    height: "100%",
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    zIndex: 2,
+                  },
+                  cardAnimatedStyle
+                ]}
+              >
+                <SwipeCard profile={current} />
+              </Animated.View>
+            </GestureDetector>
           )}
-          
-          {/* Gesture detector overlay for current card only */}
-          <GestureDetector gesture={pan}>
-            <View 
-              style={{ 
-                width: "100%", 
-                height: "100%", 
-                position: "absolute",
-                top: 0,
-                left: 0,
-                zIndex: 10,
-              }} 
-            />
-          </GestureDetector>
           
           {/* Action buttons for normal swipe feed */}
           <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10 z-50`}>
