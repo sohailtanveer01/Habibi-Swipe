@@ -660,6 +660,13 @@ export default function ProfileScreen() {
         }
         
         console.log("Photos reordered successfully");
+        
+        // Broadcast the photo reorder to update tab bar icon instantly
+        await supabase.channel("profile-photo-updates").send({
+          type: "broadcast",
+          event: "photo-reordered",
+          payload: { newMainPhoto: newPhotos[0] },
+        });
       }
     } catch (e: any) {
       console.error("Error reordering photos:", e);

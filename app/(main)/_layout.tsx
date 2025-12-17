@@ -29,52 +29,50 @@ export default function MainLayout() {
   // Hide tab bar on chat detail or filters screen
   const hideTabBar = isChatDetail || isFiltersScreen;
 
+  // Function to load profile photo
+  const loadProfilePhoto = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("users")
+      .select("photos")
+      .eq("id", user.id)
+      .single();
+
+    if (data?.photos && data.photos.length > 0) {
+      setProfilePhoto(data.photos[0]);
+    } else {
+      setProfilePhoto(null);
+    }
+  };
+
+  // Load profile photo on mount and subscribe to photo updates via broadcast
   useEffect(() => {
-    const loadProfilePhoto = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from("users")
-        .select("photos")
-        .eq("id", user.id)
-        .single();
-
-      if (data?.photos && data.photos.length > 0) {
-        setProfilePhoto(data.photos[0]);
-      } else {
-        setProfilePhoto(null);
-      }
-    };
-
     loadProfilePhoto();
 
+    // Subscribe to broadcast channel for instant photo updates
     const channel = supabase
-      .channel("profile-updates")
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "users",
-        },
-        async (payload) => {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user && payload.new.id === user.id && payload.new.photos) {
-            if (payload.new.photos.length > 0) {
-              setProfilePhoto(payload.new.photos[0]);
-            } else {
-              setProfilePhoto(null);
-            }
-          }
+      .channel("profile-photo-updates")
+      .on("broadcast", { event: "photo-reordered" }, (payload) => {
+        console.log("📸 Photo reorder broadcast received:", payload);
+        if (payload.payload?.newMainPhoto) {
+          setProfilePhoto(payload.payload.newMainPhoto);
+        } else {
+          loadProfilePhoto();
         }
-      )
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Refresh profile photo when navigating (backup for catching updates)
+  useEffect(() => {
+    loadProfilePhoto();
+  }, [pathname]);
 
   // Check for unread messages and pending compliments
   useEffect(() => {
