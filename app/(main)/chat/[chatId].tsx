@@ -265,6 +265,7 @@ export default function ChatScreen() {
   const { chatId } = useLocalSearchParams();
   const router = useRouter();
   const [text, setText] = useState("");
+  const [halalWarning, setHalalWarning] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
@@ -416,6 +417,11 @@ export default function ChatScreen() {
       }
       
       console.log("✅ Send message response:", JSON.stringify(data, null, 2));
+
+      // If strict halal filter blocked the message, return it (no optimistic clear)
+      if (data?.blocked) {
+        return data;
+      }
       
       // Check if the response includes media
       if (data?.message) {
@@ -426,7 +432,13 @@ export default function ChatScreen() {
       
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      if (data?.blocked) {
+        setHalalWarning(data.warning || "Please rephrase to keep the conversation halal and respectful.");
+        return;
+      }
+
+      setHalalWarning(null);
       setText("");
       setSelectedImage(null);
       setReplyingTo(null); // Clear reply after sending
@@ -656,6 +668,7 @@ export default function ChatScreen() {
   // Handle text input changes and broadcast typing events
   const handleTextChange = (newText: string) => {
     setText(newText);
+    if (halalWarning) setHalalWarning(null);
     
     // If user starts typing and we haven't sent typing_started yet
     if (newText.length > 0 && !hasSentTypingStartedRef.current) {
@@ -1324,7 +1337,17 @@ export default function ChatScreen() {
 
       {/* Input - Hide if blocked, unmatched, or compliment (until accepted) */}
       {!isBlocked && !isUnmatched && !isCompliment && (
-        <View className="bg-black px-4 py-3 flex-row items-center gap-3" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
+        <View className="bg-black px-4 py-3" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
+          {/* Strict halal warning (only visible to sender) */}
+          {halalWarning && (
+            <View className="mb-2 px-3 py-2 rounded-xl border border-red-500/40 bg-red-500/10">
+              <Text className="text-red-200 text-xs">
+                {halalWarning}
+              </Text>
+            </View>
+          )}
+
+          <View className="flex-row items-center gap-3">
         {/* Add/Attachment Button */}
         <Pressable 
           className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-[#B8860B]/30"
@@ -1366,6 +1389,7 @@ export default function ChatScreen() {
             />
           )}
         </Pressable>
+          </View>
       </View>
       )}
 

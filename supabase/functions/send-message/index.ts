@@ -6,6 +6,97 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ============================================================================
+// STRICT HALAL MODE (Layer 1): fast English + Arabic filter
+// Blocks sending if vulgar/derogatory/sexual language is detected.
+// NOTE: Keep this list curated and extend as needed.
+// ============================================================================
+function normalizeArabic(input: string) {
+  // Remove tashkeel + tatweel, normalize alef/hamza variants, etc.
+  return input
+    .replace(/[\u064B-\u065F\u0670]/g, "") // harakat/tashkeel
+    .replace(/\u0640/g, "") // tatweel
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ؤ/g, "و")
+    .replace(/ئ/g, "ي")
+    .replace(/ة/g, "ه");
+}
+
+function normalizeEnglish(input: string) {
+  const lower = input.toLowerCase();
+  // basic leetspeak mapping
+  return lower
+    .replace(/[@]/g, "a")
+    .replace(/[3]/g, "e")
+    .replace(/[1]/g, "i")
+    .replace(/[0]/g, "o")
+    .replace(/[5]/g, "s")
+    .replace(/[7]/g, "t");
+}
+
+function collapseRepeats(input: string) {
+  // reduce long repeats: "sooooo" -> "soo"
+  return input.replace(/(.)\1{2,}/g, "$1$1");
+}
+
+function compactForMatching(input: string) {
+  // remove spaces/punctuation (keep letters/digits)
+  return input.replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function isHalalBlocked(text: string): { blocked: boolean; reason?: string } {
+  const raw = text ?? "";
+  if (!raw.trim()) return { blocked: false };
+
+  const norm = collapseRepeats(normalizeArabic(normalizeEnglish(raw)));
+  const compact = compactForMatching(norm);
+
+  // Hard-block patterns (strict mode). Keep small + curated.
+  // English: profanity / sexual / harassment keywords (with light obfuscation handled by `compact`)
+  const hardEn = [
+    /fuck/i,
+    /shit/i,
+    /bitch/i,
+    /whore/i,
+    /slut/i,
+    /nude/i,
+    /nudes/i,
+    /sex/i,
+    /blowjob/i,
+  ];
+
+  // Arabic: common vulgar/sexual insults (normalized)
+  const hardAr = [
+    /قحبه/,
+    /شرموطه/,
+    /زنا/,
+    /جنس/,
+    /نيك/,
+    /كس/,
+    /طيز/,
+    /زب/,
+  ];
+
+  // Also check compact version to catch "f.u.c.k", "f u c k", etc.
+  for (const re of hardEn) {
+    if (re.test(norm) || re.test(compact)) return { blocked: true, reason: "inappropriate_language" };
+  }
+  for (const re of hardAr) {
+    if (re.test(norm) || re.test(compact)) return { blocked: true, reason: "inappropriate_language" };
+  }
+
+  // Additional cheap heuristics: aggressive patterns (English)
+  const aggressive = [
+    /you\s+are\s+(an?\s+)?(idiot|stupid|trash|garbage)/i,
+  ];
+  for (const re of aggressive) {
+    if (re.test(norm)) return { blocked: true, reason: "derogatory_language" };
+  }
+
+  return { blocked: false };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -79,6 +170,22 @@ serve(async (req) => {
         JSON.stringify({ error: "Unauthorized access to this chat" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Strict halal mode: block vulgar/derogatory language BEFORE inserting
+    if (content && content.trim()) {
+      const verdict = isHalalBlocked(content.trim());
+      if (verdict.blocked) {
+        return new Response(
+          JSON.stringify({
+            blocked: true,
+            reason: verdict.reason ?? "inappropriate_language",
+            warning:
+              "Please keep the conversation halal and respectful. Your message contains inappropriate or derogatory language—please rephrase.",
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Insert the message
