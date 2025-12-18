@@ -6,17 +6,28 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withSequence,
   Easing,
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import SwipeCard from "../../../components/SwipeCard";
 import LikesProfileView from "../../../components/LikesProfileView";
 import { supabase } from "../../../lib/supabase";
 import Logo from "../../../components/Logo";
 import DiamondIcon from "../../../components/DiamondIcon";
+
+// ============================================================================
+// REWIND FEATURE TYPES
+// ============================================================================
+interface RewindHistoryItem {
+  profile: any;           // The profile that was passed
+  swipedId: string;       // ID of the swiped user (for DB deletion)
+  index: number;          // Index in the profiles array when passed
+}
 
 const { width } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
@@ -62,6 +73,21 @@ export default function SwipeScreen() {
   // Track the exiting card to prevent blink during transitions
   const [exitingCard, setExitingCard] = useState<{ profile: any; exitX: number } | null>(null);
   const exitingX = useSharedValue(0);
+
+  // ============================================================================
+  // REWIND FEATURE STATE
+  // ============================================================================
+  // Last passed profile - only ONE rewind allowed (to previous user only)
+  const [lastPassedProfile, setLastPassedProfile] = useState<RewindHistoryItem | null>(null);
+  // Track if rewind is in progress
+  const [isRewinding, setIsRewinding] = useState(false);
+  // Track the card being rewound (for animation)
+  const [rewindingCard, setRewindingCard] = useState<any | null>(null);
+  // Rewind animation shared values
+  const rewindX = useSharedValue(-width * 1.5);
+  const rewindScale = useSharedValue(0.9);
+  const rewindOpacity = useSharedValue(0);
+  const rewindRotation = useSharedValue(-15);
 
   const fetchSpecificProfile = async (targetUserId: string) => {
     setLoadingSpecificProfile(true);
@@ -141,8 +167,11 @@ export default function SwipeScreen() {
       setProfiles(data.profiles);
       setIndex(0);
       viewedProfileIds.current.clear();
+      // Clear last passed profile when fetching new feed
+      setLastPassedProfile(null);
     } else {
       setProfiles([]);
+      setLastPassedProfile(null);
     }
   };
 
@@ -403,6 +432,22 @@ export default function SwipeScreen() {
 
       console.log("Swipe response:", responseData);
 
+      // ================================================================
+      // REWIND: Track last pass (left swipe) for ONE rewind only
+      // Only passes can be rewound - likes/superlikes clear the option
+      // ================================================================
+      if (action === "pass") {
+        // Store only the last passed profile (ONE rewind allowed)
+        setLastPassedProfile({
+          profile: currentProfile,
+          swipedId: currentProfile.id,
+          index: index,
+        });
+      } else {
+        // Clear rewind option on like/superlike (can't rewind after liking)
+        setLastPassedProfile(null);
+      }
+
       if (responseData?.matched && responseData?.matchId) {
         console.log("🎉 MATCHED with", currentProfile.name || currentProfile.first_name);
         console.log("Match data:", responseData);
@@ -505,6 +550,109 @@ export default function SwipeScreen() {
       opacity: 1,
     };
   });
+
+  // ============================================================================
+  // REWIND ANIMATION STYLE
+  // ============================================================================
+  const rewindCardStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: rewindX.value },
+        { scale: rewindScale.value },
+        { rotateZ: `${rewindRotation.value}deg` },
+      ],
+      opacity: rewindOpacity.value,
+    };
+  });
+
+  // ============================================================================
+  // REWIND FUNCTION - Undo last LEFT swipe (pass) - ONE REWIND ONLY
+  // ============================================================================
+  const handleRewind = useCallback(async () => {
+    // Guard: Don't rewind if already rewinding, swiping, or no last pass
+    if (isRewinding || isSwiping || !lastPassedProfile) return;
+    
+    setIsRewinding(true);
+    
+    try {
+      // Get current user for database operation
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsRewinding(false);
+        return;
+      }
+
+      // Delete the swipe record from database
+      const { error: deleteError } = await supabase
+        .from("swipes")
+        .delete()
+        .eq("swiper_id", user.id)
+        .eq("swiped_id", lastPassedProfile.swipedId);
+
+      if (deleteError) {
+        console.error("Error deleting swipe for rewind:", deleteError);
+        Alert.alert("Error", "Failed to undo swipe. Please try again.");
+        setIsRewinding(false);
+        return;
+      }
+
+      // Set the rewinding card for animation
+      setRewindingCard(lastPassedProfile.profile);
+
+      // Initialize rewind animation values (card starts from off-screen left)
+      rewindX.value = -width * 1.5;
+      rewindScale.value = 0.9;
+      rewindOpacity.value = 0;
+      rewindRotation.value = -15;
+
+      // Animate the card back into view with a smooth spring
+      rewindOpacity.value = withTiming(1, { duration: 150 });
+      rewindX.value = withSpring(0, {
+        damping: 18,
+        stiffness: 100,
+        mass: 0.8,
+      });
+      rewindScale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 120,
+      });
+      rewindRotation.value = withSequence(
+        withSpring(-5, { damping: 10, stiffness: 200 }),
+        withSpring(0, { damping: 15, stiffness: 100 })
+      );
+
+      // Store the index before clearing
+      const rewindToIndex = lastPassedProfile.index;
+
+      // After animation completes, update state
+      setTimeout(() => {
+        // Clear the last passed profile (ONE rewind only - can't rewind again)
+        setLastPassedProfile(null);
+        
+        // Go back to the rewound profile's index
+        setIndex(rewindToIndex);
+        
+        // Clear the rewinding card
+        setRewindingCard(null);
+        
+        // Reset animation values
+        rewindX.value = -width * 1.5;
+        rewindScale.value = 0.9;
+        rewindOpacity.value = 0;
+        rewindRotation.value = -15;
+        
+        setIsRewinding(false);
+      }, 400);
+
+    } catch (err) {
+      console.error("Error in handleRewind:", err);
+      Alert.alert("Error", "Failed to undo swipe. Please try again.");
+      setIsRewinding(false);
+    }
+  }, [isRewinding, isSwiping, lastPassedProfile, rewindX, rewindScale, rewindOpacity, rewindRotation]);
+
+  // Check if rewind is available (only after ONE left swipe, can't chain rewinds)
+  const canRewind = lastPassedProfile !== null && !isRewinding && !isSwiping;
 
   const current = profiles[index];
 
@@ -620,17 +768,58 @@ export default function SwipeScreen() {
       )}
 
       {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) && (
-        <Pressable
-          className="absolute left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
-          style={{ top: insets.top + 8 }}
-          onPress={() => router.push("/(main)/swipe/filters/")}
-        >
-          <Text className="text-white font-semibold text-sm">Apply Filters</Text>
-        </Pressable>
+        <>
+          {/* Apply Filters Button - Top Left */}
+          <Pressable
+            className="absolute left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
+            style={{ top: insets.top + 8 }}
+            onPress={() => router.push("/(main)/swipe/filters/")}
+          >
+            <Text className="text-white font-semibold text-sm">Apply Filters</Text>
+          </Pressable>
+
+          {/* ================================================================ */}
+          {/* REWIND BUTTON - Top Right */}
+          {/* Only visible after left swipes (passes) - hidden when no history */}
+          {/* ================================================================ */}
+          {canRewind && (
+            <Pressable
+              className="absolute right-4 z-50 w-12 h-12 rounded-full items-center justify-center bg-[#B8860B]"
+              style={{ top: insets.top + 8 }}
+              onPress={handleRewind}
+            >
+              <Ionicons name="arrow-undo" size={22} color="#FFFFFF" />
+            </Pressable>
+          )}
+        </>
       )}
 
       {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) ? (
         <>
+          {/* ================================================================ */}
+          {/* REWINDING CARD - Animates in from left during rewind */}
+          {/* Renders above everything with highest z-index */}
+          {/* ================================================================ */}
+          {rewindingCard && (
+            <Animated.View
+              key={`rewinding-${rewindingCard.id}`}
+              style={[
+                {
+                  width: "100%",
+                  height: "100%",
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  zIndex: 20, // Above exiting card
+                },
+                rewindCardStyle,
+              ]}
+              pointerEvents="none"
+            >
+              <SwipeCard profile={rewindingCard} />
+            </Animated.View>
+          )}
+
           {/* Exiting card - renders above everything during swipe transition */}
           {exitingCard && (
             <Animated.View
@@ -652,76 +841,54 @@ export default function SwipeScreen() {
             </Animated.View>
           )}
 
-          {/* Render cards by profile ID for stable component instances */}
+          {/* 
+            Render cards by profile ID with a STABLE root element.
+            IMPORTANT: The previous implementation swapped the root element type between
+            "next" (Animated.View) and "current" (GestureDetector), which can cause React
+            to remount the card when it changes roles — leading to blink/glitches.
+            We keep Animated.View as the stable root for all slots and only conditionally
+            wrap the inner content with GestureDetector for the active card.
+          */}
           {profiles.slice(index, index + 3).map((profile, slotIndex) => {
             if (!profile) return null;
-            
+
             // Skip if this is the exiting card (already rendered above)
             if (exitingCard && profile.id === exitingCard.profile.id) return null;
-            
+
             const isCurrent = slotIndex === 0;
             const isNext = slotIndex === 1;
-            
-            if (isCurrent) {
-              return (
-                <GestureDetector key={profile.id} gesture={pan}>
-                  <Animated.View
-                    style={[
-                      {
-                        width: "100%",
-                        height: "100%",
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        zIndex: 2,
-                      },
-                      cardAnimatedStyle,
-                    ]}
-                  >
-                    <SwipeCard profile={profile} />
-                  </Animated.View>
-                </GestureDetector>
-              );
-            }
-            
-            if (isNext) {
-              return (
-                <Animated.View
-                  key={profile.id}
-                  style={[
-                    {
-                      width: "100%",
-                      height: "100%",
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      zIndex: 1,
-                    },
-                    nextCardAnimatedStyle,
-                  ]}
-                  pointerEvents="none"
-                >
-                  <SwipeCard profile={profile} />
-                </Animated.View>
-              );
-            }
-            
+
+            const baseStyle = {
+              width: "100%",
+              height: "100%",
+              position: "absolute" as const,
+              top: 0,
+              left: 0,
+              zIndex: isCurrent ? 2 : isNext ? 1 : 0,
+            };
+
+            const slotStyle = isCurrent
+              ? cardAnimatedStyle
+              : isNext
+                ? nextCardAnimatedStyle
+                : { opacity: 0 };
+
             return (
-              <View
+              <Animated.View
                 key={profile.id}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  zIndex: 0,
-                  opacity: 0,
-                }}
-                pointerEvents="none"
+                style={[baseStyle, slotStyle]}
+                pointerEvents={isCurrent ? "auto" : "none"}
               >
-                <SwipeCard profile={profile} />
-              </View>
+                {isCurrent ? (
+                  <GestureDetector gesture={pan}>
+                    <View style={{ width: "100%", height: "100%" }}>
+                      <SwipeCard profile={profile} />
+                    </View>
+                  </GestureDetector>
+                ) : (
+                  <SwipeCard profile={profile} />
+                )}
+              </Animated.View>
             );
           })}
           
