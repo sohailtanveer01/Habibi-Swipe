@@ -1,4 +1,4 @@
-import { View, Text, Dimensions, StyleSheet, ScrollView } from "react-native";
+import { View, Text, Dimensions, StyleSheet, ScrollView, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -17,7 +17,7 @@ function calculateAge(dob: string | null): number | null {
   return age;
 }
 
-export default function SwipeCard({ profile }: any) {
+export default function SwipeCard({ profile, onOpenGallery }: any) {
   const photos = profile.photos || [];
   const [prompts, setPrompts] = useState<any[]>([]);
 
@@ -77,18 +77,25 @@ export default function SwipeCard({ profile }: any) {
           isMainPhoto ? styles.mainImageContainer : styles.secondaryImageContainer
         ]}
       >
-        <Image 
-          source={{ uri: photo }} 
-          style={[
-            isMainPhoto ? styles.mainImage : styles.secondaryImage
-          ]}
-          contentFit="cover"
-          transition={0}
-          cachePolicy="memory-disk"
-          priority={isMainPhoto ? "high" : "normal"}
-          placeholderContentFit="cover"
-          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-        />
+        <Pressable
+          onPress={() => {
+            if (typeof onOpenGallery === "function") onOpenGallery(index);
+          }}
+          style={{ width: "100%", height: "100%" }}
+        >
+          <Image 
+            source={{ uri: photo }} 
+            style={[
+              isMainPhoto ? styles.mainImage : styles.secondaryImage
+            ]}
+            contentFit="cover"
+            transition={0}
+            cachePolicy="memory-disk"
+            priority={isMainPhoto ? "high" : "normal"}
+            placeholderContentFit="cover"
+            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+          />
+        </Pressable>
         
         {/* Name and Age overlay on first image only */}
         {isMainPhoto && (

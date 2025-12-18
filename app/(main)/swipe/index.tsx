@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text, Dimensions, Pressable, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, Dimensions, Pressable, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, FlatList } from "react-native";
 import { Image } from "expo-image";
 import Animated, {
   useSharedValue,
@@ -63,6 +63,12 @@ export default function SwipeScreen() {
   const [complimentMessage, setComplimentMessage] = useState("");
   const [sendingCompliment, setSendingCompliment] = useState(false);
   const [hasCompliment, setHasCompliment] = useState(false);
+
+  // Photo gallery modal (tap main image -> swipe left/right through photos)
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const galleryListRef = useRef<FlatList<string> | null>(null);
 
   const x = useSharedValue(0);
   const y = useSharedValue(0);
@@ -148,6 +154,33 @@ export default function SwipeScreen() {
       setLoadingSpecificProfile(false);
     }
   };
+
+  const openGallery = useCallback((photos: string[], startIndex: number) => {
+    if (!photos || photos.length === 0) return;
+    setGalleryPhotos(photos);
+    setGalleryIndex(startIndex);
+    setGalleryVisible(true);
+
+    // Prefetch for smoother swipe inside gallery
+    photos.forEach((u) => {
+      if (u) Image.prefetch(u);
+    });
+
+    setTimeout(() => {
+      try {
+        galleryListRef.current?.scrollToIndex({ index: startIndex, animated: false });
+      } catch {}
+    }, 0);
+  }, []);
+
+  // (Removed) goToGalleryIndex helper when tap-zones are disabled; swipe is primary navigation.
+
+  const closeGallery = useCallback(() => {
+    setGalleryVisible(false);
+    // keep photos cached but clear state for next open
+    setGalleryPhotos([]);
+    setGalleryIndex(0);
+  }, []);
 
   const fetchFeed = async () => {
     const user = (await supabase.auth.getUser()).data.user;
@@ -477,7 +510,9 @@ export default function SwipeScreen() {
     }
   };
 
+  // Disable deck pan gesture while gallery is open (so swiping photos doesn't swipe the card)
   const pan = Gesture.Pan()
+    .enabled(!galleryVisible)
     .onBegin(() => {
       if (isSwiping) return;
     })
@@ -664,6 +699,119 @@ export default function SwipeScreen() {
     );
   }
 
+  // Full-screen photo gallery modal (swipe left/right)
+  const renderGallery = () => (
+    <Modal
+      visible={galleryVisible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={closeGallery}
+    >
+      <View style={{ flex: 1, backgroundColor: "black" }}>
+        {/* Close button */}
+        <Pressable
+          onPress={closeGallery}
+          style={{
+            position: "absolute",
+            top: insets.top + 12,
+            right: 16,
+            zIndex: 20,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: "rgba(255,255,255,0.1)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="close" size={22} color="#FFFFFF" />
+        </Pressable>
+
+        {/* Gold counter (1/N) */}
+        {galleryPhotos.length > 1 && (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: insets.top + 18,
+              left: 16,
+              zIndex: 20,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 14,
+              backgroundColor: "rgba(0,0,0,0.35)",
+              borderWidth: 1,
+              borderColor: "rgba(184,134,11,0.5)",
+            }}
+          >
+            <Text style={{ color: "#B8860B", fontSize: 12, fontWeight: "700" }}>
+              {galleryIndex + 1}/{galleryPhotos.length}
+            </Text>
+          </View>
+        )}
+
+        <FlatList
+          ref={(r) => (galleryListRef.current = r)}
+          data={galleryPhotos}
+          keyExtractor={(item, idx) => `${item}-${idx}`}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
+            setGalleryIndex(newIndex);
+          }}
+          renderItem={({ item }) => (
+            <View style={{ width, height: "100%", alignItems: "center", justifyContent: "center" }}>
+              <Image
+                source={{ uri: item }}
+                style={{ width, height: "100%" }}
+                contentFit="contain"
+                transition={0}
+                cachePolicy="memory-disk"
+              />
+            </View>
+          )}
+        />
+
+        {/* Chevrons + tap-zones removed; primary navigation is swipe */}
+
+        {/* Dots indicator */}
+        {galleryPhotos.length > 1 && (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: Math.max(insets.bottom, 10) + 14,
+              zIndex: 20,
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            {galleryPhotos.slice(0, 12).map((_, i) => {
+              const active = i === galleryIndex;
+              return (
+                <View
+                  key={`dot-${i}`}
+                  style={{
+                    width: active ? 9 : 7,
+                    height: active ? 9 : 7,
+                    borderRadius: 999,
+                    backgroundColor: active ? "#B8860B" : "rgba(255,255,255,0.4)",
+                  }}
+                />
+              );
+            })}
+          </View>
+        )}
+      </View>
+    </Modal>
+  );
+
   if (!current) {
     return (
       <View className="flex-1 bg-black items-center justify-center px-6">
@@ -734,6 +882,8 @@ export default function SwipeScreen() {
 
   return (
     <View className="flex-1 bg-black">
+      {renderGallery()}
+
       <Modal
         visible={!!matchData}
         transparent={true}
@@ -882,7 +1032,10 @@ export default function SwipeScreen() {
                 {isCurrent ? (
                   <GestureDetector gesture={pan}>
                     <View style={{ width: "100%", height: "100%" }}>
-                      <SwipeCard profile={profile} />
+                      <SwipeCard
+                        profile={profile}
+                        onOpenGallery={(startAt: number) => openGallery(profile.photos || [], startAt)}
+                      />
                     </View>
                   </GestureDetector>
                 ) : (
