@@ -69,7 +69,6 @@ export default function SwipeCard({ profile }: any) {
   // Render image with optional name/age overlay (only for first image)
   const renderImage = (photo: string, index: number) => {
     const isMainPhoto = index === 0;
-    const screenHeight = Dimensions.get('window').height;
     
     return (
       <View 
@@ -95,7 +94,8 @@ export default function SwipeCard({ profile }: any) {
         {isMainPhoto && (
           <View style={styles.nameOverlay}>
             <Text style={styles.nameOverlayText}>
-              {fullName}{age !== null ? `, ${age}` : ''}
+              {profile?.is_boosted ? "⚡ " : ""}
+              {fullName}{age !== null ? `, ${age}` : ""}
             </Text>
           </View>
         )}

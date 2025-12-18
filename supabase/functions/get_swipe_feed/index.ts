@@ -192,6 +192,7 @@ serve(async (req) => {
       .select("*")
       .neq("id", user.id)
       .eq("gender", oppositeGender) // Only show opposite gender
+      .order("last_active_at", { ascending: false })
       .limit(limit * 5); // Get more to account for filtering
 
     // If location filter is enabled, we'll filter client-side after fetching
@@ -287,6 +288,25 @@ serve(async (req) => {
       } else if (preferences.location_filter_type === "country" && preferences?.search_country) {
         searchCountry = preferences.search_country;
         console.log("Country filter enabled:", searchCountry);
+      }
+    }
+
+    // Fetch active boosts for candidate users (to bias ranking later)
+    const candidateIds = (allProfiles || []).map((p: any) => p.id);
+    const boostMap = new Map<string, string>(); // user_id -> expires_at (ISO)
+    if (candidateIds.length > 0) {
+      const { data: activeBoosts, error: boostsError } = await supabaseClient
+        .from("profile_boosts")
+        .select("user_id, expires_at")
+        .in("user_id", candidateIds)
+        .gt("expires_at", new Date().toISOString());
+
+      if (boostsError) {
+        console.error("Error fetching active boosts:", boostsError);
+      } else if (activeBoosts) {
+        activeBoosts.forEach((b: any) => {
+          if (b?.user_id && b?.expires_at) boostMap.set(b.user_id, b.expires_at);
+        });
       }
     }
 
@@ -411,8 +431,28 @@ serve(async (req) => {
       return true;
     });
 
-    // Limit results
-    const profiles = filteredProfiles.slice(0, limit);
+    // Mark boost state and apply a "biased shuffle" to keep the feed natural:
+    // Boosted profiles are more likely to appear earlier, but not in a spammy block.
+    const BOOST_BONUS = 3; // higher => stronger prioritization, still mixed via jitter
+    const JITTER = 2; // randomness to keep natural mix
+
+    const ranked = filteredProfiles
+      .map((p: any, idx: number) => {
+        const boostExpiresAt = boostMap.get(p.id) ?? null;
+        const isBoosted = Boolean(boostExpiresAt);
+        const sortKey = idx + (Math.random() * JITTER) - (isBoosted ? BOOST_BONUS : 0);
+        return {
+          ...p,
+          is_boosted: isBoosted,
+          boost_expires_at: boostExpiresAt,
+          __sortKey: sortKey,
+        };
+      })
+      .sort((a: any, b: any) => a.__sortKey - b.__sortKey)
+      .map(({ __sortKey, ...rest }: any) => rest);
+
+    // Limit results (no duplicates possible: we only sort existing unique profiles)
+    const profiles = ranked.slice(0, limit);
 
     return new Response(
       JSON.stringify({ profiles: profiles || [] }),
