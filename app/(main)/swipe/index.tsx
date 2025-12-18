@@ -5,6 +5,8 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
+  Easing,
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -257,18 +259,17 @@ export default function SwipeScreen() {
     if (currentProfile) {
       const exitDirection = x.value >= 0 ? 1 : -1;
       exitingX.value = x.value;
-      // Animate it flying off screen quickly
-      exitingX.value = withSpring(exitDirection * width * 1.5, {
-        damping: 50,
-        stiffness: 200,
-        mass: 0.5,
+      // Animate it flying off screen quickly with timing (faster than spring)
+      exitingX.value = withTiming(exitDirection * width * 1.5, {
+        duration: 150,
+        easing: Easing.out(Easing.ease),
       });
       setExitingCard({ profile: currentProfile, exitX: x.value });
       
       // Clear exiting card after animation completes
       setTimeout(() => {
         setExitingCard(null);
-      }, 300);
+      }, 180);
     }
     
     setIndex((i) => i + 1);
@@ -299,6 +300,29 @@ export default function SwipeScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
+
+  // Prefetch images for upcoming profiles to prevent any loading flashes
+  useEffect(() => {
+    const prefetchUpcomingImages = async () => {
+      // Prefetch next 5 profiles' images
+      for (let i = 1; i <= 5; i++) {
+        const nextProfile = profiles[index + i];
+        if (nextProfile?.photos?.length > 0) {
+          // Prefetch all photos for this profile
+          nextProfile.photos.forEach((photoUrl: string) => {
+            if (photoUrl) {
+              Image.prefetch(photoUrl);
+            }
+          });
+        }
+      }
+    };
+    
+    if (profiles.length > 0) {
+      prefetchUpcomingImages();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, profiles.length]);
 
   const sendCompliment = async () => {
     const currentProfile = profiles[index];
@@ -697,14 +721,14 @@ export default function SwipeScreen() {
             );
           })}
           
-          <View className="absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10 z-50">
+          <View className="absolute bottom-36 left-0 right-0 flex-row items-center justify-center gap-12 z-50">
             {availableActions.showPass && (
               <Pressable
                 className="bg-white w-20 h-20 rounded-full items-center justify-center"
                 onPress={() => sendSwipe("pass")}
                 disabled={isSwiping}
               >
-                <Text className="text-black text-3xl">✕</Text>
+                <Text className="text-black text-2xl">✕</Text>
               </Pressable>
             )}
 
@@ -714,7 +738,7 @@ export default function SwipeScreen() {
                 onPress={() => setComplimentModalVisible(true)}
                 disabled={isSwiping}
               >
-                <DiamondIcon size={28} color="#FFFFFF" />
+                <DiamondIcon size={22} color="#FFFFFF" />
               </Pressable>
             )}
 
@@ -724,7 +748,7 @@ export default function SwipeScreen() {
                 onPress={() => sendSwipe("like")}
                 disabled={isSwiping}
               >
-                <Text className="text-white text-3xl">♥</Text>
+                <Text className="text-white text-2xl">♥</Text>
               </Pressable>
             )}
           </View>
@@ -736,24 +760,24 @@ export default function SwipeScreen() {
           </View>
           
           {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn") && (
-            <View className="absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10 z-50">
+            <View className="absolute bottom-24 left-0 right-0 flex-row items-center justify-center gap-8 z-50">
               {availableActions.showPass && (
                 <Pressable
-                  className="bg-white w-20 h-20 rounded-full items-center justify-center"
+                  className="bg-white w-16 h-16 rounded-full items-center justify-center"
                   onPress={() => sendSwipe("pass")}
                   disabled={isSwiping}
                 >
-                  <Text className="text-black text-3xl">✕</Text>
+                  <Text className="text-black text-2xl">✕</Text>
                 </Pressable>
               )}
 
               {availableActions.showLike && (
                 <Pressable
-                  className="bg-[#B8860B] w-20 h-20 rounded-full items-center justify-center"
+                  className="bg-[#B8860B] w-16 h-16 rounded-full items-center justify-center"
                   onPress={() => sendSwipe("like")}
                   disabled={isSwiping}
                 >
-                  <Text className="text-white text-3xl">♥</Text>
+                  <Text className="text-white text-2xl">♥</Text>
                 </Pressable>
               )}
             </View>

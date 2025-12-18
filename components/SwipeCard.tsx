@@ -84,9 +84,11 @@ export default function SwipeCard({ profile }: any) {
             isMainPhoto ? styles.mainImage : styles.secondaryImage
           ]}
           contentFit="cover"
-          transition={200}
+          transition={0}
           cachePolicy="memory-disk"
           priority={isMainPhoto ? "high" : "normal"}
+          placeholderContentFit="cover"
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
         />
         
         {/* Name and Age overlay on first image only */}
@@ -337,17 +339,18 @@ const getStyles = () => {
     },
     nameOverlay: {
       position: 'absolute',
-      bottom: 20,
-      left: 20,
-      backgroundColor: 'rgba(0, 0, 0, 0.6)',
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 12,
+      bottom: 220, // Just above action buttons
+      left: 0,
+      right: 0,
+      alignItems: 'center',
     },
     nameOverlayText: {
       fontSize: 24,
       fontWeight: 'bold',
       color: '#FFFFFF',
+      // textShadowColor: 'rgba(0, 0, 0, 0.8)',
+      // textShadowOffset: { width: 0, height: 2 },
+      textShadowRadius: 8,
     },
     sectionCard: {
       backgroundColor: 'rgba(255, 255, 255, 0.05)',

@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 import { BlurView } from "expo-blur";
 import { useActiveStatus } from "../../lib/useActiveStatus";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Dimensions } from "react-native";
 
 
 export default function MainLayout() {
@@ -344,8 +345,9 @@ export default function MainLayout() {
         tabBarStyle: hideTabBar ? { display: "none" } : {
           position: "absolute",
           bottom: Platform.OS === "ios" ? 34 : 20,
-          left: 20,
-          right: 20,
+          width: "100%",
+          alignSelf: "center",
+          
           elevation: 20,
           backgroundColor: "rgba(237, 237, 237, 0.6)", // More transparent
           borderTopWidth: 0,
