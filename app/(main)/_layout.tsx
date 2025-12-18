@@ -1,6 +1,6 @@
 import { Tabs, usePathname, useGlobalSearchParams } from "expo-router";
 import { useEffect, useState, useRef } from "react";
-import { View, Text, Platform, StyleSheet } from "react-native";
+import { View, Text, Platform, StyleSheet, Dimensions } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
@@ -8,6 +8,8 @@ import { BlurView } from "expo-blur";
 import { useActiveStatus } from "../../lib/useActiveStatus";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 
 export default function MainLayout() {
@@ -346,12 +348,13 @@ export default function MainLayout() {
         tabBarStyle: hideTabBar ? { display: "none" } : {
           position: "absolute",
           bottom: Math.max(insets.bottom, 10) + 8, // Use safe area inset + padding
-          left: 24,
-          right: 24,
+          left: 0,
+          right: 0,
+          marginHorizontal: SCREEN_WIDTH * 0.1, // 10% margin = 80% width centered
           elevation: 20,
           backgroundColor: "rgba(237, 237, 237, 0.6)", // More transparent
           borderTopWidth: 0,
-          height: 65,
+          height: 75,
           borderRadius: 35,
           paddingTop: 8,
           paddingBottom: 8,
@@ -399,7 +402,7 @@ export default function MainLayout() {
             return (
               <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
               
-                <MaterialCommunityIcons name={isActive ? "cards" : "cards-outline"} size={28} color={isActive ? "#B8860B" : "#9CA3AF"} />
+                <MaterialCommunityIcons name={isActive ? "cards" : "cards-outline"} size={36} color={isActive ? "#B8860B" : "#9CA3AF"} />
               </View>
             );
           },
@@ -417,7 +420,7 @@ export default function MainLayout() {
               <View style={[styles.iconContainer, isActive && styles.activeIconContainer, { position: "relative" }]}>
                 <Ionicons 
                   name={isActive ? "heart" : "heart-outline"} 
-                  size={28} 
+                  size={36} 
                   color={isActive ? "#B8860B" : "#9CA3AF"} 
                 />
                 {newLikesCount > 0 && (
@@ -439,7 +442,7 @@ export default function MainLayout() {
             <View style={[styles.iconContainer, focused && styles.activeIconContainer, { position: "relative" }]}>
               <Ionicons 
                 name={focused ? "chatbubble" : "chatbubble-outline"} 
-                size={28} 
+                size={36} 
                 color={focused ? "#B8860B" : "#9CA3AF"} 
               />
               {unreadCount > 0 && (
@@ -463,9 +466,9 @@ export default function MainLayout() {
                   <Image
                     source={{ uri: profilePhoto }}
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
+                      width: 36,
+                      height: 36,
+                      borderRadius: 17,
                     }}
                     contentFit="cover"
                     transition={200}
@@ -478,9 +481,9 @@ export default function MainLayout() {
               <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
                 <View
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 17,
                     backgroundColor: "#9CA3AF",
                     alignItems: "center",
                     justifyContent: "center",
@@ -521,9 +524,9 @@ const styles = StyleSheet.create({
     borderRadius: 35,
   },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
   },
