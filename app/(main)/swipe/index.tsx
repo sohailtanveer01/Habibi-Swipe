@@ -11,6 +11,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SwipeCard from "../../../components/SwipeCard";
 import LikesProfileView from "../../../components/LikesProfileView";
 import { supabase } from "../../../lib/supabase";
@@ -34,6 +35,7 @@ const TRANSITION_SPRING = {
 
 export default function SwipeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { userId, source } = useLocalSearchParams<{ userId?: string; source?: string }>();
   const [profiles, setProfiles] = useState<any[]>([]);
   const [index, setIndex] = useState(0);
@@ -602,7 +604,8 @@ export default function SwipeScreen() {
 
       {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn" || source === "chat") && (
         <Pressable
-          className="absolute top-12 left-4 z-50 bg-black/50 w-10 h-10 rounded-full items-center justify-center"
+          className="absolute left-4 z-50 bg-black/50 w-10 h-10 rounded-full items-center justify-center"
+          style={{ top: insets.top + 8 }}
           onPress={() => {
             router.setParams({ userId: undefined, source: undefined });
             if (source === "chat") {
@@ -618,7 +621,8 @@ export default function SwipeScreen() {
 
       {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) && (
         <Pressable
-          className="absolute top-12 left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
+          className="absolute left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
+          style={{ top: insets.top + 8 }}
           onPress={() => router.push("/(main)/swipe/filters/")}
         >
           <Text className="text-white font-semibold text-sm">Apply Filters</Text>
@@ -721,7 +725,10 @@ export default function SwipeScreen() {
             );
           })}
           
-          <View className="absolute bottom-36 left-0 right-0 flex-row items-center justify-center gap-12 z-50">
+          <View 
+            className="absolute left-0 right-0 flex-row items-center justify-center gap-12 z-50"
+            style={{ bottom: Math.max(insets.bottom, 10) + 100 }}
+          >
             {availableActions.showPass && (
               <Pressable
                 className="bg-white w-20 h-20 rounded-full items-center justify-center"
@@ -760,7 +767,10 @@ export default function SwipeScreen() {
           </View>
           
           {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn") && (
-            <View className="absolute bottom-24 left-0 right-0 flex-row items-center justify-center gap-8 z-50">
+            <View 
+              className="absolute left-0 right-0 flex-row items-center justify-center gap-8 z-50"
+              style={{ bottom: Math.max(insets.bottom, 10) + 100 }}
+            >
               {availableActions.showPass && (
                 <Pressable
                   className="bg-white w-16 h-16 rounded-full items-center justify-center"

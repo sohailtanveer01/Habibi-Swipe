@@ -7,7 +7,7 @@ import { supabase } from "../../lib/supabase";
 import { BlurView } from "expo-blur";
 import { useActiveStatus } from "../../lib/useActiveStatus";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { Dimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
 export default function MainLayout() {
@@ -16,6 +16,7 @@ export default function MainLayout() {
   const [newLikesCount, setNewLikesCount] = useState(0); // Use local state like unreadCount
   const pathname = usePathname();
   const searchParams = useGlobalSearchParams();
+  const insets = useSafeAreaInsets();
   
   // Track user's active status (updates last_active_at periodically)
   useActiveStatus();
@@ -344,17 +345,16 @@ export default function MainLayout() {
         tabBarInactiveTintColor: "#FFFFFF", // White for inactive icons
         tabBarStyle: hideTabBar ? { display: "none" } : {
           position: "absolute",
-          bottom: Platform.OS === "ios" ? 34 : 20,
-          width: "100%",
-          alignSelf: "center",
-          
+          bottom: Math.max(insets.bottom, 10) + 8, // Use safe area inset + padding
+          left: 24,
+          right: 24,
           elevation: 20,
           backgroundColor: "rgba(237, 237, 237, 0.6)", // More transparent
           borderTopWidth: 0,
-          height: Platform.OS === "ios" ? 70 : 65,
+          height: 65,
           borderRadius: 35,
           paddingTop: 8,
-          paddingBottom: Platform.OS === "ios" ? 20 : 12,
+          paddingBottom: 8,
           paddingHorizontal: 8,
           overflow: "hidden", // Clip content to prevent shadow bleed
           // Minimal shadow to prevent visible shade outside
