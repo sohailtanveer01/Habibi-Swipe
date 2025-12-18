@@ -276,10 +276,12 @@ export default function SwipeCard({ profile }: any) {
     <View style={styles.container}>
       {photos.length > 0 ? (
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+      >
+      
           {sections}
         </ScrollView>
       ) : (
@@ -435,4 +437,3 @@ const getStyles = () => {
 };
 
 const styles = getStyles();
-

@@ -6,7 +6,6 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   runOnJS,
-  cancelAnimation,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -19,7 +18,6 @@ import DiamondIcon from "../../../components/DiamondIcon";
 const { width } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
 
-// Spring config for soft, premium feel
 const SPRING_CONFIG = {
   damping: 20,
   stiffness: 90,
@@ -37,8 +35,8 @@ export default function SwipeScreen() {
   const { userId, source } = useLocalSearchParams<{ userId?: string; source?: string }>();
   const [profiles, setProfiles] = useState<any[]>([]);
   const [index, setIndex] = useState(0);
-  const [isSwiping, setIsSwiping] = useState(false); // prevents double swipe
-  const viewedProfileIds = useRef<Set<string>>(new Set()); // Track which profiles have been viewed
+  const [isSwiping, setIsSwiping] = useState(false);
+  const viewedProfileIds = useRef<Set<string>>(new Set());
   const [matchData, setMatchData] = useState<{
     matchId: string;
     otherUser: any;
@@ -53,24 +51,20 @@ export default function SwipeScreen() {
 
   const x = useSharedValue(0);
   const y = useSharedValue(0);
-  
-  // Entry animation for new card
   const cardScale = useSharedValue(1);
   const cardOpacity = useSharedValue(1);
   const cardTranslateY = useSharedValue(0);
   
-  // Track if we're in the middle of a fly-off animation
-  // When true, the current card should be hidden to prevent flash-back
-  const isExiting = useSharedValue(false);
+  // Track the exiting card to prevent blink during transitions
+  const [exitingCard, setExitingCard] = useState<{ profile: any; exitX: number } | null>(null);
+  const exitingX = useSharedValue(0);
 
-  // Fetch a specific user's profile
   const fetchSpecificProfile = async (targetUserId: string) => {
     setLoadingSpecificProfile(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch the specific user's profile
       const { data: profile, error } = await supabase
         .from("users")
         .select("*")
@@ -85,14 +79,12 @@ export default function SwipeScreen() {
       }
 
       if (profile) {
-        // Fetch prompts for this user
         const { data: promptsData } = await supabase
           .from("user_prompts")
           .select("question, answer, display_order")
           .eq("user_id", targetUserId)
           .order("display_order", { ascending: true });
 
-        // Check if current user has already swiped on this profile
         const { data: existingSwipeData } = await supabase
           .from("swipes")
           .select("action")
@@ -102,7 +94,6 @@ export default function SwipeScreen() {
         
         setExistingSwipe(existingSwipeData);
 
-        // Check if user has already sent a compliment to this profile
         const { data: existingCompliment } = await supabase
           .from("compliments")
           .select("id")
@@ -112,13 +103,11 @@ export default function SwipeScreen() {
         
         setHasCompliment(!!existingCompliment);
 
-        // Add prompts to profile object (SwipeCard expects it this way)
         const profileWithPrompts = {
           ...profile,
           prompts: promptsData || []
         };
 
-        // Set this profile as the first (and only) profile in the feed
         setProfiles([profileWithPrompts]);
         setIndex(0);
         viewedProfileIds.current.clear();
@@ -130,7 +119,6 @@ export default function SwipeScreen() {
     }
   };
 
-  // Fetch swipe feed
   const fetchFeed = async () => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) return;
@@ -148,63 +136,37 @@ export default function SwipeScreen() {
     if (data?.profiles) {
       setProfiles(data.profiles);
       setIndex(0);
-      // Reset viewed profiles when feed refreshes
       viewedProfileIds.current.clear();
     } else {
       setProfiles([]);
     }
   };
 
-  // Determine available actions based on source and existing swipe
   const determineAvailableActions = (source: string | undefined, existingSwipe: { action: string } | null) => {
-    if (source === "myLikes") {
-      // User already liked them - only show Pass button
-      return { showLike: false, showPass: true };
-    }
-    
-    if (source === "likedMe") {
-      // User hasn't swiped yet - show both buttons
-      return { showLike: true, showPass: true };
-    }
-    
-    if (source === "passedOn") {
-      // User previously passed on them - only show Like button (allow changing mind)
-      return { showLike: true, showPass: false };
-    }
-    
-    if (source === "chat") {
-      // Viewing from chat - they're already matched, show no buttons (just view profile)
-      return { showLike: false, showPass: false };
-    }
+    if (source === "myLikes") return { showLike: false, showPass: true };
+    if (source === "likedMe") return { showLike: true, showPass: true };
+    if (source === "passedOn") return { showLike: true, showPass: false };
+    if (source === "chat") return { showLike: false, showPass: false };
     
     if (source === "viewers") {
-      // Check existing swipe status
       if (existingSwipe?.action === "like" || existingSwipe?.action === "superlike") {
-        // Already liked - show no buttons
         return { showLike: false, showPass: false };
       } else if (existingSwipe?.action === "pass") {
-        // Already passed - show both (allow changing mind)
         return { showLike: true, showPass: true };
       } else {
-        // No swipe yet - show both
         return { showLike: true, showPass: true };
       }
     }
     
-    // Default (normal swipe feed) - show both
     return { showLike: true, showPass: true };
   };
 
   useEffect(() => {
-    // If userId and source are both provided, fetch that specific profile
     if (userId && source) {
       fetchSpecificProfile(userId);
     } else if (!userId && !source) {
-      // Otherwise, fetch the normal swipe feed
       fetchFeed();
     } else {
-      // If we have one but not the other, clear both and fetch normal feed
-      // This handles cases where parameters are lingering from previous navigation
       if (userId || source) {
         router.setParams({ userId: undefined, source: undefined });
         fetchFeed();
@@ -212,54 +174,36 @@ export default function SwipeScreen() {
     }
   }, [userId, source, router]);
 
-  // Update available actions when source or existingSwipe changes
   useEffect(() => {
     const actions = determineAvailableActions(source, existingSwipe);
     setAvailableActions(actions);
   }, [source, existingSwipe]);
 
-  // Refresh feed when screen comes into focus (e.g., returning from filters)
-  // Clear userId and source if navigating to normal swipe feed
   useFocusEffect(
     useCallback(() => {
-      // When screen comes into focus, if we have parameters, it means we're viewing from likes
-      // But if user tapped the swipe tab directly, we should clear parameters and show normal feed
-      // We detect this by checking if both userId and source exist - if only one exists, it's stale
       if (userId && source) {
-        // Both exist - this is intentional (viewing from likes), do nothing
-        // The useEffect above will handle fetching the specific profile
+        // Both exist - intentional
       } else if (userId || source) {
-        // Only one exists - this is stale state, clear both and fetch normal feed
         router.setParams({ userId: undefined, source: undefined });
         fetchFeed();
       } else {
-        // No parameters - fetch normal feed
         fetchFeed();
       }
     }, [userId, source, router])
   );
 
-  // Track profile views when a profile becomes current in the swipe feed
   useEffect(() => {
     const trackProfileView = async () => {
       const currentProfile = profiles[index];
       if (!currentProfile || !currentProfile.id) return;
 
-      // Skip if we've already tracked a view for this profile
-      if (viewedProfileIds.current.has(currentProfile.id)) {
-        return;
-      }
+      if (viewedProfileIds.current.has(currentProfile.id)) return;
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.id === currentProfile.id) {
-        // Don't track views for own profile
-        return;
-      }
+      if (!user || user.id === currentProfile.id) return;
 
-      // Mark as viewed to prevent duplicates
       viewedProfileIds.current.add(currentProfile.id);
 
-      // Record the view
       try {
         await supabase.functions.invoke("create-profile-view", {
           body: { viewed_id: currentProfile.id },
@@ -267,17 +211,14 @@ export default function SwipeScreen() {
         console.log("✅ Profile view recorded for swipe feed:", currentProfile.id);
       } catch (error) {
         console.error("Error recording profile view from swipe feed:", error);
-        // Remove from set if it failed so we can retry
         viewedProfileIds.current.delete(currentProfile.id);
       }
     };
 
-    // Track view when index changes (new profile shown)
     if (profiles.length > 0 && index < profiles.length) {
       trackProfileView();
     }
 
-    // Check if user has already sent a compliment to current profile
     const checkCompliment = async () => {
       if (profiles.length > 0 && index < profiles.length) {
         const currentProfile = profiles[index];
@@ -300,74 +241,54 @@ export default function SwipeScreen() {
     checkCompliment();
   }, [index, profiles]);
 
-  // Reset compliment state when index changes
   useEffect(() => {
     setComplimentMessage("");
     setHasCompliment(false);
   }, [index]);
 
-  // Track if this is a swipe transition (card was already visible) vs initial load
+  // Track if we're transitioning from a swipe (vs initial load)
   const isSwipeTransition = useRef(false);
-  // Track if the current action is from a gesture swipe vs button press
-  const isGestureSwipe = useRef(false);
 
-  // Move to next card - called from button press
   const moveToNextCard = useCallback(() => {
-    isSwipeTransition.current = true;
+    isSwipeTransition.current = true;  // Mark as swipe transition
     
-    // Set values to final state - no animation needed
-    // The next card was already visible behind, just make it current
-    x.value = 0;
-    y.value = 0;
-    cardScale.value = 1;
-    cardOpacity.value = 1;
-    cardTranslateY.value = 0;
+    // Capture exiting card with its current x position
+    const currentProfile = profiles[index];
+    if (currentProfile) {
+      const exitDirection = x.value >= 0 ? 1 : -1;
+      exitingX.value = x.value;
+      // Animate it flying off screen quickly
+      exitingX.value = withSpring(exitDirection * width * 1.5, {
+        damping: 50,
+        stiffness: 200,
+        mass: 0.5,
+      });
+      setExitingCard({ profile: currentProfile, exitX: x.value });
+      
+      // Clear exiting card after animation completes
+      setTimeout(() => {
+        setExitingCard(null);
+      }, 300);
+    }
     
     setIndex((i) => i + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [profiles, index]);
 
-  // Move to next card - called from swipe gesture
-  const moveToNextCardFromSwipe = useCallback(() => {
-    isSwipeTransition.current = true;
-    
-    // Mark that we're exiting - this hides the current card
-    // so when we reset x, the jump isn't visible
-    isExiting.value = true;
-    
-    // IMPORTANT: Cancel any running animations on x and y
-    cancelAnimation(x);
-    cancelAnimation(y);
-    
-    // Reset position values
-    x.value = 0;
-    y.value = 0;
-    
-    // Set animation values to final state
-    cardScale.value = 1;
-    cardOpacity.value = 1;
-    cardTranslateY.value = 0;
-    
-    // Change index - this swaps which profile is "current"
-    setIndex((i) => i + 1);
-    
-    // Clear exit flag after React has rendered
-    // Use 16ms (one frame) to ensure the new current card is ready
-    setTimeout(() => {
-      isExiting.value = false;
-    }, 16);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Animate card entry when index changes
   useEffect(() => {
+    // Reset position
+    x.value = 0;
+    y.value = 0;
+    
     if (isSwipeTransition.current) {
-      // Coming from a swipe/button - values already set to final state, no animation needed
+      // Coming from swipe - card was already visible, just reset position
+      // NO entry animation needed - prevents blink!
+      cardScale.value = 1;
+      cardOpacity.value = 1;
+      cardTranslateY.value = 0;
       isSwipeTransition.current = false;
     } else {
-      // Initial load or refresh - do the full entry animation
-      x.value = 0;
-      y.value = 0;
+      // Initial load or refresh - do the entry animation
       cardScale.value = 0.95;
       cardOpacity.value = 0.7;
       cardTranslateY.value = 20;
@@ -379,7 +300,6 @@ export default function SwipeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
-  // Send compliment
   const sendCompliment = async () => {
     const currentProfile = profiles[index];
     if (!currentProfile || !complimentMessage.trim()) return;
@@ -407,7 +327,6 @@ export default function SwipeScreen() {
             setComplimentMessage("");
             setHasCompliment(true);
             setSendingCompliment(false);
-            // Move to next card
             if (index < profiles.length - 1) {
               moveToNextCard();
             } else {
@@ -423,7 +342,6 @@ export default function SwipeScreen() {
     }
   };
 
-  // Send swipe to server
   const sendSwipe = async (action: "like" | "pass" | "superlike") => {
     if (isSwiping) return;
     setIsSwiping(true);
@@ -448,7 +366,6 @@ export default function SwipeScreen() {
         return;
       }
 
-      // Parse response if it's a string
       let responseData = data;
       if (typeof data === 'string') {
         try {
@@ -460,7 +377,6 @@ export default function SwipeScreen() {
 
       console.log("Swipe response:", responseData);
 
-      // If matched, show celebration screen
       if (responseData?.matched && responseData?.matchId) {
         console.log("🎉 MATCHED with", currentProfile.name || currentProfile.first_name);
         console.log("Match data:", responseData);
@@ -468,32 +384,21 @@ export default function SwipeScreen() {
           matchId: responseData.matchId,
           otherUser: responseData.otherUser || currentProfile,
         });
-        // Don't move to next card yet - wait for user to dismiss celebration
       } else {
-        // Move to next card if no match
-        // If we're viewing a specific user, navigate back based on source
         if (userId) {
           setTimeout(() => {
-            // Navigate back to the appropriate section based on source
             if (source === "chat") {
-              router.back(); // Go back to chat
+              router.back();
             } else {
               router.push("/(main)/likes");
             }
-          }, 300); // Small delay to show the swipe animation
+          }, 300);
         } else {
-          // Move to next card - use appropriate transition based on how action was triggered
-          if (isGestureSwipe.current) {
-            moveToNextCardFromSwipe();
-            isGestureSwipe.current = false;
-          } else {
-            moveToNextCard();
-          }
+          moveToNextCard();
         }
       }
     } catch (err) {
       console.error("Error in sendSwipe:", err);
-      // Don't navigate on error - just reset the swiping state
       setIsSwiping(false);
       return;
     } finally {
@@ -501,58 +406,45 @@ export default function SwipeScreen() {
     }
   };
 
-  // Helper to mark gesture swipe before calling sendSwipe
-  const handleGestureSwipe = (action: "like" | "pass") => {
-    isGestureSwipe.current = true;
-    sendSwipe(action);
-  };
-
-  // Gesture handler - only activate for horizontal swipes, allow vertical scroll
   const pan = Gesture.Pan()
-    .activeOffsetX([-15, 15]) // Activate when horizontal movement > 15px
-    .failOffsetY([-10, 10])   // Fail (allow scroll) when vertical movement > 10px first
     .onBegin(() => {
       if (isSwiping) return;
     })
     .onUpdate((e) => {
       if (isSwiping) return;
       x.value = e.translationX;
-      y.value = e.translationY;
+      y.value = e.translationY * 0.1;
     })
-    .onEnd(() => {
+    .onEnd((e) => {
       if (isSwiping) return;
 
-      const shouldLike = x.value > SWIPE_THRESHOLD && availableActions.showLike;
-      const shouldPass = x.value < -SWIPE_THRESHOLD && availableActions.showPass;
+      const absX = Math.abs(e.translationX);
+      const absY = Math.abs(e.translationY);
+      
+      const isHorizontalSwipe = absX > absY * 1.5 && absX > 50;
 
-      if (shouldLike) {
-        x.value = withSpring(width * 1.5, SPRING_CONFIG);
-        runOnJS(handleGestureSwipe)("like");
-      } else if (shouldPass) {
-        x.value = withSpring(-width * 1.5, SPRING_CONFIG);
-        runOnJS(handleGestureSwipe)("pass");
+      if (isHorizontalSwipe) {
+        const shouldLike = x.value > SWIPE_THRESHOLD && availableActions.showLike;
+        const shouldPass = x.value < -SWIPE_THRESHOLD && availableActions.showPass;
+
+        if (shouldLike) {
+          x.value = withSpring(width * 1.5, SPRING_CONFIG);
+          runOnJS(sendSwipe)("like");
+        } else if (shouldPass) {
+          x.value = withSpring(-width * 1.5, SPRING_CONFIG);
+          runOnJS(sendSwipe)("pass");
+        } else {
+          x.value = withSpring(0, SPRING_CONFIG);
+          y.value = withSpring(0, SPRING_CONFIG);
+        }
       } else {
         x.value = withSpring(0, SPRING_CONFIG);
         y.value = withSpring(0, SPRING_CONFIG);
       }
-    });
+    })
+    .simultaneousWithExternalGesture();
 
-  // Current card animation style (handles swipe gesture and entry animation)
   const cardAnimatedStyle = useAnimatedStyle(() => {
-    // If we're in the exit phase (between fly-off and index change),
-    // hide the card completely to prevent the "flash back to center" effect
-    if (isExiting.value) {
-      return {
-        transform: [
-          { translateX: 0 },
-          { translateY: 0 },
-          { rotateZ: '0deg' },
-          { scale: 1 },
-        ],
-        opacity: 0, // Hidden during transition
-      };
-    }
-    
     return {
       transform: [
         { translateX: x.value },
@@ -564,35 +456,29 @@ export default function SwipeScreen() {
     };
   });
 
-  // Next card style (sits behind current card, scales up as current card is swiped away)
   const nextCardAnimatedStyle = useAnimatedStyle(() => {
-    // During exit transition, show next card at full scale/opacity
-    // This ensures seamless handoff when the index changes
-    if (isExiting.value) {
-      return {
-        transform: [{ scale: 1 }],
-        opacity: 1,
-      };
-    }
-    
-    // Calculate how far the current card has been dragged (normalized 0 to 1)
     const absX = Math.abs(x.value);
     const dragProgress = Math.min(absX / (width * 0.4), 1);
     
-    // Next card starts at 0.95 scale and grows to 1 as current card is dragged
     const scale = 0.95 + (dragProgress * 0.05);
-    
-    // Next card starts slightly faded and becomes more visible
     const opacity = 0.8 + (dragProgress * 0.2);
     
     return {
-      transform: [
-        { scale },
-      ],
+      transform: [{ scale }],
       opacity,
     };
   });
 
+  // Animated style for exiting card (continues from where swipe left off)
+  const exitingCardStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: exitingX.value },
+        { rotateZ: `${exitingX.value / 20}deg` },
+      ],
+      opacity: 1,
+    };
+  });
 
   const current = profiles[index];
 
@@ -643,39 +529,30 @@ export default function SwipeScreen() {
 
   const handleMatchCelebrationClose = (navigateToChat: boolean) => {
     if (navigateToChat && matchData?.matchId) {
-      // Capture matchId before clearing state
       const matchIdToNavigate = matchData.matchId;
       console.log("Navigating to chat with matchId:", matchIdToNavigate);
-      // Close modal first
       setMatchData(null);
-      // If we're viewing a specific user, navigate to likes screen; otherwise move to next card
       if (userId) {
         setTimeout(() => {
           router.push(`/(main)/chat/${matchIdToNavigate}`);
         }, 100);
       } else {
-        // Move to next card
         moveToNextCard();
-        // Navigate to chat
         setTimeout(() => {
           router.push(`/(main)/chat/${matchIdToNavigate}`);
         }, 400);
       }
     } else {
-      // Keep swiping
       setMatchData(null);
-      // If we're viewing a specific user, navigate back based on source; otherwise move to next card
       if (userId) {
         setTimeout(() => {
-          // Navigate back to the appropriate section based on source
           if (source === "chat") {
-            router.back(); // Go back to chat
+            router.back();
           } else {
             router.push("/(main)/likes");
           }
         }, 100);
       } else {
-        // Move to next card
         moveToNextCard();
       }
     }
@@ -683,7 +560,6 @@ export default function SwipeScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      {/* Match Celebration Modal */}
       <Modal
         visible={!!matchData}
         transparent={true}
@@ -700,16 +576,13 @@ export default function SwipeScreen() {
         )}
       </Modal>
 
-      {/* Back Button - Top Left (when viewing from likes or chat) */}
       {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn" || source === "chat") && (
         <Pressable
           className="absolute top-12 left-4 z-50 bg-black/50 w-10 h-10 rounded-full items-center justify-center"
           onPress={() => {
-            // Clear parameters before navigating to ensure clean state
             router.setParams({ userId: undefined, source: undefined });
-            // Navigate back to the appropriate section based on source
             if (source === "chat") {
-              router.back(); // Go back to chat
+              router.back();
             } else {
               router.push("/(main)/likes");
             }
@@ -719,7 +592,6 @@ export default function SwipeScreen() {
         </Pressable>
       )}
 
-      {/* Apply Filters Button - Top Left (only for normal swipe feed) */}
       {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) && (
         <Pressable
           className="absolute top-12 left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
@@ -729,75 +601,103 @@ export default function SwipeScreen() {
         </Pressable>
       )}
 
-      {/* Conditionally wrap with gesture detector only for normal swipe feed */}
       {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) ? (
         <>
-          {/* Stack-based card rendering - render cards by profile ID to prevent remounts */}
-          {/* Third card (preloaded, hidden) */}
-          {profiles[index + 2] && (
-            <View
-              key={profiles[index + 2].id}
-              style={{ 
-                width: "100%", 
-                height: "100%",
-                position: "absolute",
-                top: 0,
-                left: 0,
-                zIndex: 0,
-                opacity: 0,
-              }}
-              pointerEvents="none"
-            >
-              <SwipeCard profile={profiles[index + 2]} />
-            </View>
-          )}
-          
-          {/* Next card */}
-          {profiles[index + 1] && (
+          {/* Exiting card - renders above everything during swipe transition */}
+          {exitingCard && (
             <Animated.View
-              key={profiles[index + 1].id}
+              key={`exiting-${exitingCard.profile.id}`}
               style={[
-                { 
-                  width: "100%", 
+                {
+                  width: "100%",
                   height: "100%",
                   position: "absolute",
                   top: 0,
                   left: 0,
-                  zIndex: 1,
+                  zIndex: 10,
                 },
-                nextCardAnimatedStyle
+                exitingCardStyle,
               ]}
               pointerEvents="none"
             >
-              <SwipeCard profile={profiles[index + 1]} />
+              <SwipeCard profile={exitingCard.profile} />
             </Animated.View>
           )}
-          
-          {/* Current card with gesture handler */}
-          {current && (
-            <GestureDetector gesture={pan}>
-              <Animated.View
-                key={current.id}
-                style={[
-                  { 
-                    width: "100%", 
-                    height: "100%",
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    zIndex: 2,
-                  },
-                  cardAnimatedStyle
-                ]}
+
+          {/* Render cards by profile ID for stable component instances */}
+          {profiles.slice(index, index + 3).map((profile, slotIndex) => {
+            if (!profile) return null;
+            
+            // Skip if this is the exiting card (already rendered above)
+            if (exitingCard && profile.id === exitingCard.profile.id) return null;
+            
+            const isCurrent = slotIndex === 0;
+            const isNext = slotIndex === 1;
+            
+            if (isCurrent) {
+              return (
+                <GestureDetector key={profile.id} gesture={pan}>
+                  <Animated.View
+                    style={[
+                      {
+                        width: "100%",
+                        height: "100%",
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        zIndex: 2,
+                      },
+                      cardAnimatedStyle,
+                    ]}
+                  >
+                    <SwipeCard profile={profile} />
+                  </Animated.View>
+                </GestureDetector>
+              );
+            }
+            
+            if (isNext) {
+              return (
+                <Animated.View
+                  key={profile.id}
+                  style={[
+                    {
+                      width: "100%",
+                      height: "100%",
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      zIndex: 1,
+                    },
+                    nextCardAnimatedStyle,
+                  ]}
+                  pointerEvents="none"
+                >
+                  <SwipeCard profile={profile} />
+                </Animated.View>
+              );
+            }
+            
+            return (
+              <View
+                key={profile.id}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  zIndex: 0,
+                  opacity: 0,
+                }}
+                pointerEvents="none"
               >
-                <SwipeCard profile={current} />
-              </Animated.View>
-            </GestureDetector>
-          )}
+                <SwipeCard profile={profile} />
+              </View>
+            );
+          })}
           
-          {/* Action buttons for normal swipe feed */}
-          <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10 z-50`}>
-            {/* Pass - only show if available */}
+          <View className="absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10 z-50">
             {availableActions.showPass && (
               <Pressable
                 className="bg-white w-20 h-20 rounded-full items-center justify-center"
@@ -808,7 +708,6 @@ export default function SwipeScreen() {
               </Pressable>
             )}
 
-            {/* Send Compliment - show if not already sent and viewing normal feed */}
             {!hasCompliment && (!source || source === "likedMe") && (
               <Pressable
                 className="bg-red-500 w-20 h-20 rounded-full items-center justify-center"
@@ -819,7 +718,6 @@ export default function SwipeScreen() {
               </Pressable>
             )}
 
-            {/* Like - only show if available */}
             {availableActions.showLike && (
               <Pressable
                 className="bg-[#B8860B] w-20 h-20 rounded-full items-center justify-center"
@@ -837,10 +735,8 @@ export default function SwipeScreen() {
             <LikesProfileView profile={current} />
           </View>
           
-          {/* Action buttons - only show when viewing from likes section (not from chat) */}
           {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn") && (
-            <View className={`absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10 z-50`}>
-              {/* Pass - only show if available */}
+            <View className="absolute bottom-40 left-0 right-0 flex-row items-center justify-center gap-10 z-50">
               {availableActions.showPass && (
                 <Pressable
                   className="bg-white w-20 h-20 rounded-full items-center justify-center"
@@ -851,7 +747,6 @@ export default function SwipeScreen() {
                 </Pressable>
               )}
 
-              {/* Like - only show if available */}
               {availableActions.showLike && (
                 <Pressable
                   className="bg-[#B8860B] w-20 h-20 rounded-full items-center justify-center"
@@ -866,7 +761,6 @@ export default function SwipeScreen() {
         </>
       )}
 
-      {/* Compliment Modal */}
       <Modal
         visible={complimentModalVisible}
         transparent={true}
@@ -944,7 +838,6 @@ export default function SwipeScreen() {
   );
 }
 
-// Match Celebration Modal Component
 function MatchCelebrationModal({
   matchId,
   otherUser,
@@ -969,7 +862,6 @@ function MatchCelebrationModal({
   return (
     <View style={matchModalStyles.container}>
       <View style={matchModalStyles.content}>
-        {/* Logo */}
         <View style={matchModalStyles.logoContainer}>
           <Logo variant="transparent" width={100} />
         </View>
@@ -979,7 +871,6 @@ function MatchCelebrationModal({
           You and {fullName} liked each other
         </Text>
 
-        {/* Matched User Photo */}
         <View style={matchModalStyles.photoContainer}>
           {mainPhoto ? (
             <Image
@@ -998,7 +889,6 @@ function MatchCelebrationModal({
 
         <Text style={matchModalStyles.nameText}>{fullName}</Text>
 
-        {/* Action Buttons */}
         <View style={matchModalStyles.buttonContainer}>
           <Pressable
             style={[matchModalStyles.button, matchModalStyles.keepSwipingButton]}
