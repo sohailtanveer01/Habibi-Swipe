@@ -1,15 +1,27 @@
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { supabase } from "./supabase";
 
-// Show notifications while app is foregrounded (optional, but usually desired)
+// ----------------------------------------------------------------------------
+// Foreground behavior:
+// In strict UX, DO NOT show push banners/sounds while the app is actively open.
+// (Messages should be visible in the UI already.)
+// ----------------------------------------------------------------------------
+let currentAppState: string = AppState.currentState ?? "active";
+AppState.addEventListener("change", (next) => {
+  currentAppState = next;
+});
+
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async () => {
+    const isForeground = currentAppState === "active";
+    return {
+      shouldShowAlert: !isForeground,
+      shouldPlaySound: !isForeground,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 function getProjectId(): string | undefined {
