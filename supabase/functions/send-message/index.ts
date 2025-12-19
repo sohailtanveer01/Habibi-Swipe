@@ -1,3 +1,4 @@
+/* eslint-disable import/no-unresolved */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -5,6 +6,33 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Expo push helper (uses Expo push service)
+async function sendExpoPush(
+  tokens: string[],
+  payload: { title: string; body: string; data?: Record<string, unknown> }
+) {
+  if (!tokens || tokens.length === 0) return;
+  const messages = tokens.map((to) => ({
+    to,
+    sound: "default",
+    title: payload.title,
+    body: payload.body,
+    data: payload.data ?? {},
+  }));
+
+  try {
+    const res = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(messages),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) console.error("Expo push error:", res.status, json);
+  } catch (e) {
+    console.error("Expo push exception:", e);
+  }
+}
 
 // ============================================================================
 // STRICT HALAL MODE (Layer 1): fast English + Arabic filter
@@ -262,6 +290,46 @@ serve(async (req) => {
         JSON.stringify({ error: messageError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // ------------------------------------------------------------------------
+    // PUSH NOTIFICATION: notify the other participant when a TEXT message is sent
+    // ------------------------------------------------------------------------
+    try {
+      const recipientId = match.user1 === user.id ? match.user2 : match.user1;
+
+      if (messageData.content && recipientId) {
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!serviceKey) {
+          console.error("Missing SUPABASE_SERVICE_ROLE_KEY in Edge Function secrets; skipping push.");
+          throw new Error("Missing service role key");
+        }
+        const tokenClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey, {
+          auth: { persistSession: false },
+        });
+
+        const { data: rows, error: tokenErr } = await tokenClient
+          .from("user_push_tokens")
+          .select("token")
+          .eq("user_id", recipientId)
+          .eq("revoked", false)
+          .order("last_seen_at", { ascending: false })
+          .limit(5);
+
+        if (tokenErr) {
+          console.error("Error fetching push tokens:", tokenErr);
+        } else {
+          const tokens = (rows ?? []).map((r: any) => r.token).filter(Boolean);
+          const body = String(messageData.content).slice(0, 120);
+          await sendExpoPush(tokens, {
+            title: "New message",
+            body,
+            data: { type: "chat_message", chatId: matchId },
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Push notify failed:", e);
     }
 
     console.log("✅ Message sent successfully:", message.id);

@@ -3,6 +3,11 @@ export default {
       name: "Habibi Swipe",
       slug: "habibi-swipe",
       scheme: "habibiswipe",
+      extra: {
+        eas: {
+          projectId: "5401771d-589a-47b5-8e0c-e0850eea1cc3",
+        },
+      },
       plugins: [
         "expo-router",
         [

@@ -1,11 +1,17 @@
 import "../global.css";
+// eslint-disable-next-line import/no-duplicates
 import "react-native-gesture-handler";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+// eslint-disable-next-line import/no-duplicates
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { LikesNotificationProvider } from "../lib/likesNotificationContext";
+import { useEffect } from "react";
+import { registerAndSyncPushToken } from "../lib/pushNotifications";
+import * as Notifications from "expo-notifications";
+import { supabase } from "../lib/supabase";
 
 // Configure QueryClient with optimized cache settings
 const qc = new QueryClient({
@@ -20,6 +26,31 @@ const qc = new QueryClient({
 });
 
 export default function RootLayout() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Register push token after app mounts AND after login.
+    // (This can run before auth is ready, so also listen for auth changes.)
+    registerAndSyncPushToken();
+
+    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) registerAndSyncPushToken();
+    });
+
+    // Navigate on notification tap (to chat)
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data: any = response?.notification?.request?.content?.data;
+      if (data?.type === "chat_message" && data?.chatId) {
+        router.push(`/(main)/chat/${data.chatId}`);
+      }
+    });
+
+    return () => {
+      sub.remove();
+      authSub?.subscription?.unsubscribe();
+    };
+  }, [router]);
+
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
