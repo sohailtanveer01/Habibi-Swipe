@@ -76,6 +76,7 @@ export default function SwipeScreen() {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [detailsProfile, setDetailsProfile] = useState<any | null>(null);
   const [detailsPrompts, setDetailsPrompts] = useState<any[]>([]);
+  const detailsPhotosRef = useRef<string[]>([]);
   // When user taps an image inside the details sheet, we close the sheet first,
   // then open the full-screen gallery AFTER the sheet is dismissed.
   // This avoids nested-modal presentation quirks (esp. iOS) where the gallery may not appear.
@@ -650,6 +651,30 @@ export default function SwipeScreen() {
       });
   }, [SHEET_HEIGHT, backdrop, sheetY, closeDetails]);
 
+  // Tap on the main photo inside the details sheet should open gallery.
+  // We close the sheet first (pendingGallery handles opening after dismissal).
+  const queueGalleryFromDetails = useCallback(
+    (startIndex: number) => {
+      const photos = detailsPhotosRef.current;
+      if (!photos || photos.length === 0) return;
+      setPendingGallery({ photos, startIndex });
+      closeDetails();
+    },
+    [closeDetails]
+  );
+
+  const detailsMainPhotoTapGesture = useMemo(() => {
+    return Gesture.Tap().onEnd(() => {
+      // Only pass primitives across the worklet -> JS boundary (arrays/objects can crash on device)
+      runOnJS(queueGalleryFromDetails)(0);
+    });
+  }, [queueGalleryFromDetails]);
+
+  // Important: memoize combined gestures so we don't create new native gesture objects on every render.
+  const detailsMainPhotoGesture = useMemo(() => {
+    return Gesture.Simultaneous(detailsMainPhotoTapGesture, sheetGesture);
+  }, [detailsMainPhotoTapGesture, sheetGesture]);
+
   const cardAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -696,8 +721,12 @@ export default function SwipeScreen() {
     return a;
   }, [detailsProfile?.dob]);
 
-  const detailsPhotos: string[] = detailsProfile?.photos || [];
+  const detailsPhotos: string[] = useMemo(() => detailsProfile?.photos || [], [detailsProfile?.photos]);
   const detailsInterests: string[] = detailsProfile?.hobbies || [];
+
+  useEffect(() => {
+    detailsPhotosRef.current = detailsPhotos;
+  }, [detailsPhotos]);
 
   // Additional profile details for the modal
   const detailsHeight = detailsProfile?.height || "";
@@ -1367,36 +1396,49 @@ export default function SwipeScreen() {
               sheetStyle,
             ]}
           >
-            {/* Handle (drag-to-dismiss ONLY from handle so taps on images/buttons never get swallowed) */}
-            <GestureDetector gesture={sheetGesture}>
-              <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 8 }}>
-                <View style={{ width: 48, height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.3)" }} />
-              </View>
-            </GestureDetector>
+            {/* Floating close button (gold X) - pinned to the sheet (does NOT scroll) */}
+            <Pressable
+              onPress={closeDetails}
+              style={{
+                position: "absolute",
+                // Slightly higher than before
+                top: 10,
+                right: 16,
+                zIndex: 50,
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: "rgba(0,0,0,0.35)",
+                borderWidth: 1,
+                borderColor: "rgba(184,134,11,0.6)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="close" size={22} color="#B8860B" />
+            </Pressable>
 
-              {/* Scrollable Content */}
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                // Extra bottom padding so content can scroll "behind" the fixed action buttons bar
-                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 10) + 180 }}
-                bounces={true}
-              >
-                {/* Main Photo at Top - Tap to open gallery */}
+            {/* Scrollable Content */}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              // Extra bottom padding so content can scroll "behind" the fixed action buttons bar
+              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 10) + 180 }}
+              bounces={true}
+            >
+                {/* Main Photo at Top - tap to open gallery, drag down to close */}
                 {detailsPhotos && detailsPhotos.length > 0 && (
-                  <Pressable
-                    onPress={() => {
-                      // Close sheet first, then open gallery after dismissal.
-                      setPendingGallery({ photos: detailsPhotos, startIndex: 0 });
-                      closeDetails();
-                    }}
-                    style={{ width: width, height: width * 1.1, marginBottom: 16, position: "relative" }}
-                  >
-                    <Image
-                      source={{ uri: detailsPhotos[0] }}
-                      style={{ width: "100%", height: "100%" }}
-                      contentFit="cover"
-                      transition={0}
-                    />
+                  <View style={{ width: width, height: width * 1.1, marginBottom: 16, position: "relative" }}>
+                    {/* Photo gestures: tap opens gallery, drag-down closes sheet */}
+                    <GestureDetector gesture={detailsMainPhotoGesture}>
+                      <View style={{ width: "100%", height: "100%" }}>
+                        <Image
+                          source={{ uri: detailsPhotos[0] }}
+                          style={{ width: "100%", height: "100%" }}
+                          contentFit="cover"
+                          transition={0}
+                        />
+                      </View>
+                    </GestureDetector>
 
                     {/* Name + Age overlay (bottom-left of main image) */}
                     <View
@@ -1424,7 +1466,7 @@ export default function SwipeScreen() {
                         {detailsAge !== null ? `, ${detailsAge}` : ""}
                       </Text>
                     </View>
-                  </Pressable>
+                  </View>
                 )}
 
                 {/* Gallery (moved to directly after action buttons) */}
@@ -1436,8 +1478,7 @@ export default function SwipeScreen() {
                         <Pressable
                           key={`${p}-${i}`}
                           onPress={() => {
-                            setPendingGallery({ photos: detailsPhotos, startIndex: i + 1 });
-                            closeDetails();
+                            queueGalleryFromDetails(i + 1);
                           }}
                           style={{
                             width: "48%",
@@ -1596,7 +1637,7 @@ export default function SwipeScreen() {
                   )}
 
                 </View>
-              </ScrollView>
+            </ScrollView>
 
               {/* Fixed Action Buttons bar (modal content scrolls behind) */}
               <View
