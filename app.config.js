@@ -25,6 +25,8 @@ export default {
             "Habibi Swipe needs access to your gallery to upload profile photos.",
           NSCameraUsageDescription:
             "Habibi Swipe needs access to your camera to take profile photos.",
+          NSMicrophoneUsageDescription:
+            "Habibi Swipe needs access to your microphone to send voice messages.",
         },
       },
       android: {

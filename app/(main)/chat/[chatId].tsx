@@ -8,7 +8,8 @@ import * as ImagePicker from "expo-image-picker";
 import { Image as ExpoImage } from "expo-image";
 import { isUserActive } from "../../../lib/useActiveStatus";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS, withRepeat, withTiming, Easing } from "react-native-reanimated";
+import { Audio } from "expo-av";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -30,7 +31,11 @@ function MessageItem({
   otherUser, 
   currentUser, 
   onReply, 
-  onImagePress 
+  onImagePress,
+  onToggleVoice,
+  isVoicePlaying,
+  voiceProgress,
+  voiceDurationLabel
 }: { 
   item: any; 
   isMe: boolean; 
@@ -39,6 +44,10 @@ function MessageItem({
   currentUser: any; 
   onReply: (message: any) => void;
   onImagePress: (imageUrl: string) => void;
+  onToggleVoice: (message: any) => void;
+  isVoicePlaying: boolean;
+  voiceProgress: number; // 0..1
+  voiceDurationLabel: string;
 }) {
   // Get screen width for drag limit
   const screenWidth = Dimensions.get('window').width;
@@ -172,12 +181,39 @@ function MessageItem({
               </Pressable>
             )}
             
-            {/* Show voice note if voice_url exists (for future implementation) */}
+            {/* Voice note bubble */}
             {item.voice_url && (
               <View className="px-4 py-3">
-                <Text className="text-white/60 text-sm">
-                  🎤 Voice note (coming soon)
-                </Text>
+                <View className="flex-row items-center">
+                  <Pressable
+                    onPress={() => onToggleVoice(item)}
+                    className={`w-10 h-10 rounded-full items-center justify-center ${
+                      isMe ? "bg-[#B8860B]" : "bg-white/15"
+                    }`}
+                  >
+                    <Ionicons
+                      name={isVoicePlaying ? "pause" : "play"}
+                      size={18}
+                      color={isMe ? "#000000" : "#FFFFFF"}
+                    />
+                  </Pressable>
+
+                  <View className="flex-1 ml-3">
+                    {/* Progress bar */}
+                    <View className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+                      <View
+                        style={{
+                          width: `${Math.min(100, Math.max(0, voiceProgress * 100))}%`,
+                          height: "100%",
+                          backgroundColor: "#B8860B",
+                        }}
+                      />
+                    </View>
+                    <Text className="text-white/60 text-xs mt-1">
+                      {voiceDurationLabel}
+                    </Text>
+                  </View>
+                </View>
               </View>
             )}
             
@@ -237,6 +273,30 @@ async function uploadChatMedia(uri: string, matchId: string, userId: string): Pr
   return publicData.publicUrl;
 }
 
+// Upload voice note (m4a) to Supabase Storage
+async function uploadChatVoice(uri: string, matchId: string, userId: string): Promise<string> {
+  const timestamp = Date.now();
+  const filePath = `${matchId}/${userId}/${timestamp}.m4a`;
+
+  const response = await fetch(uri);
+  const blob = await response.arrayBuffer();
+
+  const { error } = await supabase.storage
+    .from("chat-media")
+    .upload(filePath, blob, {
+      contentType: "audio/m4a",
+      upsert: false,
+    });
+
+  if (error) throw error;
+
+  const { data: publicData } = supabase.storage
+    .from("chat-media")
+    .getPublicUrl(filePath);
+
+  return publicData.publicUrl;
+}
+
 // Get signed URL for chat media (fallback if bucket is not public)
 async function getChatMediaUrl(mediaUrl: string): Promise<string> {
   // If it's already a full URL, return it
@@ -268,6 +328,9 @@ export default function ChatScreen() {
   const [halalWarning, setHalalWarning] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [recordCancelArmed, setRecordCancelArmed] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<any | null>(null); // Message being replied to
@@ -278,6 +341,17 @@ export default function ChatScreen() {
   const hasSentTypingStartedRef = useRef<boolean>(false);
   const typingIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<any>(null);
+
+  // Voice recording refs
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recordTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordStartRef = useRef<number>(0);
+  const micPulse = useSharedValue(1);
+
+  // Voice playback (only one at a time)
+  const playingSoundRef = useRef<Audio.Sound | null>(null);
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const [playbackProgress, setPlaybackProgress] = useState<Record<string, { pos: number; dur: number }>>({});
 
   // Fetch chat data with React Query (cached)
   // Always refetch on mount to ensure messages are marked as read
@@ -710,6 +784,130 @@ export default function ChatScreen() {
     }
   }, [sendMessageMutation.isSuccess]);
 
+  const micPulseStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: micPulse.value }],
+    };
+  });
+
+  const startRecording = useCallback(async () => {
+    if (isRecording || uploadingMedia || sendMessageMutation.isPending) return;
+    setHalalWarning(null);
+    setRecordCancelArmed(false);
+
+    try {
+      const perm = await Audio.requestPermissionsAsync();
+      if (!perm?.granted) {
+        Alert.alert("Microphone Permission", "Please allow microphone access to send voice messages.");
+        return;
+      }
+
+      // iOS audio mode
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      });
+
+      const recording = new Audio.Recording();
+      recordingRef.current = recording;
+      recordStartRef.current = Date.now();
+      setRecordSeconds(0);
+      setIsRecording(true);
+
+      // Pulse animation while recording
+      micPulse.value = withRepeat(withTiming(1.25, { duration: 500, easing: Easing.inOut(Easing.ease) }), -1, true);
+
+      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await recording.startAsync();
+
+      // Timer UI
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+      recordTimerRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordStartRef.current) / 1000);
+        setRecordSeconds(elapsed);
+      }, 250);
+    } catch (e: any) {
+      console.error("Start recording error:", e);
+      Alert.alert("Error", "Could not start recording.");
+      setIsRecording(false);
+      micPulse.value = 1;
+    }
+  }, [isRecording, uploadingMedia, sendMessageMutation.isPending, micPulse]);
+
+  const stopRecordingAndSend = useCallback(async (cancel: boolean) => {
+    if (!isRecording) return;
+
+    try {
+      if (recordTimerRef.current) {
+        clearInterval(recordTimerRef.current);
+        recordTimerRef.current = null;
+      }
+
+      micPulse.value = 1;
+
+      const recording = recordingRef.current;
+      recordingRef.current = null;
+      setIsRecording(false);
+
+      if (!recording) return;
+
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      const durationMs = Date.now() - recordStartRef.current;
+
+      // discard short recordings or cancelled
+      if (cancel || durationMs < 1000 || !uri) {
+        setRecordSeconds(0);
+        setRecordCancelArmed(false);
+        return;
+      }
+
+      setUploadingMedia(true);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setUploadingMedia(false);
+        return;
+      }
+
+      const voiceUrl = await uploadChatVoice(uri, chatId as string, user.id);
+      sendMessageMutation.mutate({
+        mediaUrl: voiceUrl,
+        mediaType: "audio",
+        replyToId: replyingTo?.id,
+      });
+
+      setReplyingTo(null);
+      setRecordSeconds(0);
+      setRecordCancelArmed(false);
+    } catch (e: any) {
+      console.error("Stop/send recording error:", e);
+      Alert.alert("Error", "Failed to send voice message.");
+    } finally {
+      setUploadingMedia(false);
+      micPulse.value = 1;
+    }
+  }, [isRecording, chatId, sendMessageMutation, replyingTo, micPulse]);
+
+  // Optional bonus: slide left to cancel while holding
+  const micGesture = useMemo(() => {
+    return Gesture.Pan()
+      .minDistance(0)
+      .onBegin(() => {
+        runOnJS(startRecording)();
+      })
+      .onUpdate((e) => {
+        // arm cancel if user slides left enough
+        const armed = e.translationX < -70;
+        runOnJS(setRecordCancelArmed)(armed);
+      })
+      .onFinalize(() => {
+        runOnJS(stopRecordingAndSend)(recordCancelArmed);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startRecording, stopRecordingAndSend, recordCancelArmed]);
+
   const pickImage = async () => {
     try {
       // Check & request permission
@@ -749,6 +947,8 @@ export default function ChatScreen() {
   };
 
   const send = useCallback(async () => {
+    // Disable normal send while recording (voice notes auto-send on release)
+    if (isRecording) return;
     // Allow sending if there's text OR an image
     const hasText = text && text.trim().length > 0;
     const hasImage = !!selectedImage;
@@ -794,7 +994,67 @@ export default function ChatScreen() {
         replyToId: replyingTo?.id,
       });
     setUploadingMedia(false);
-  }, [text, selectedImage, sendMessageMutation, uploadingMedia, chatId]);
+  }, [text, selectedImage, sendMessageMutation, uploadingMedia, chatId, isRecording]);
+
+  const formatTime = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const toggleVoicePlayback = useCallback(async (message: any) => {
+    try {
+      if (!message?.voice_url) return;
+
+      // If tapping currently playing -> pause and clear
+      if (playingMessageId === message.id && playingSoundRef.current) {
+        const status: any = await playingSoundRef.current.getStatusAsync();
+        if (status?.isLoaded && status?.isPlaying) {
+          await playingSoundRef.current.pauseAsync();
+          setPlayingMessageId(null);
+          return;
+        }
+      }
+
+      // Stop any existing sound (only one playing at a time)
+      if (playingSoundRef.current) {
+        try { await playingSoundRef.current.stopAsync(); } catch {}
+        try { await playingSoundRef.current.unloadAsync(); } catch {}
+        playingSoundRef.current = null;
+      }
+
+      setPlayingMessageId(message.id);
+      const playableUrl = await getChatMediaUrl(message.voice_url);
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: playableUrl },
+        { shouldPlay: true },
+        (status) => {
+          if (!status.isLoaded) return;
+          const pos = status.positionMillis ?? 0;
+          const dur = status.durationMillis ?? 0;
+          setPlaybackProgress((prev) => ({ ...prev, [message.id]: { pos, dur } }));
+          if (status.didJustFinish) setPlayingMessageId(null);
+        }
+      );
+
+      playingSoundRef.current = sound;
+    } catch (e) {
+      console.error("Voice playback error:", e);
+      setPlayingMessageId(null);
+    }
+  }, [playingMessageId]);
+
+  // Cleanup voice playback on unmount
+  useEffect(() => {
+    return () => {
+      if (playingSoundRef.current) {
+        playingSoundRef.current.unloadAsync().catch(() => {});
+        playingSoundRef.current = null;
+      }
+    };
+  }, []);
 
   const fullName = otherUser?.first_name && otherUser?.last_name
     ? `${otherUser.first_name} ${otherUser.last_name}`
@@ -998,6 +1258,9 @@ export default function ChatScreen() {
           }
 
           const isMe = item.sender_id === currentUser?.id;
+          const prog = playbackProgress[item.id] ?? { pos: 0, dur: 0 };
+          const progress = prog.dur > 0 ? prog.pos / prog.dur : 0;
+          const durationLabel = prog.dur > 0 ? `${formatTime(prog.pos)} / ${formatTime(prog.dur)}` : "0:00";
           
           return (
             <MessageItem
@@ -1008,6 +1271,10 @@ export default function ChatScreen() {
               currentUser={currentUser}
               onReply={setReplyingTo}
               onImagePress={setFullScreenImage}
+              onToggleVoice={toggleVoicePlayback}
+              isVoicePlaying={playingMessageId === item.id}
+              voiceProgress={progress}
+              voiceDurationLabel={durationLabel}
             />
           );
         }}
@@ -1352,21 +1619,35 @@ export default function ChatScreen() {
         <Pressable 
           className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-[#B8860B]/30"
           onPress={pickImage}
-          disabled={uploadingMedia}
+          disabled={uploadingMedia || isRecording}
         >
           <Ionicons name="add" size={24} color="#B8860B" />
         </Pressable>
 
+        {/* Mic Button (hold-to-record; slide left to cancel) */}
+        <GestureDetector gesture={micGesture}>
+          <Animated.View style={micPulseStyle}>
+            <View
+              className={`w-10 h-10 rounded-full items-center justify-center border ${
+                isRecording ? "bg-red-500/20 border-red-500/50" : "bg-white/10 border-[#B8860B]/30"
+              }`}
+            >
+              <Ionicons name="mic" size={20} color={isRecording ? "#EF4444" : "#B8860B"} />
+            </View>
+          </Animated.View>
+        </GestureDetector>
+
         {/* Message Input Field */}
         <TextInput
           className="flex-1 bg-white/10 text-white px-4 py-3 rounded-2xl border border-[#B8860B]/30"
-          placeholder="Type a message..."
+          placeholder={isRecording ? "Recording..." : "Type a message..."}
           placeholderTextColor="#9CA3AF"
           value={text}
           onChangeText={handleTextChange}
           multiline
           maxLength={500}
-          style={{ maxHeight: 100, fontSize: 16 }}
+          editable={!isRecording}
+          style={{ maxHeight: 100, fontSize: 16, opacity: isRecording ? 0.5 : 1 }}
           returnKeyType="send"
           onSubmitEditing={send}
         />
@@ -1374,9 +1655,9 @@ export default function ChatScreen() {
         {/* Send Button */}
         <Pressable 
           onPress={send} 
-          disabled={((!text || !text.trim()) && !selectedImage) || sendMessageMutation.isPending || uploadingMedia}
+          disabled={isRecording || ((!text || !text.trim()) && !selectedImage) || sendMessageMutation.isPending || uploadingMedia}
           className={`w-10 h-10 rounded-full bg-[#B8860B] items-center justify-center ${
-            ((!text || !text.trim()) && !selectedImage) ? 'opacity-50' : ''
+            (isRecording || ((!text || !text.trim()) && !selectedImage)) ? 'opacity-50' : ''
           }`}
         >
           {uploadingMedia ? (
@@ -1390,6 +1671,21 @@ export default function ChatScreen() {
           )}
         </Pressable>
           </View>
+
+          {/* Recording feedback */}
+          {isRecording && (
+            <View className="mt-2 flex-row items-center justify-between">
+              <View className="flex-row items-center">
+                <View className={`w-2 h-2 rounded-full ${recordCancelArmed ? "bg-white/40" : "bg-red-500"}`} />
+                <Text className="text-white/70 text-xs ml-2">
+                  {recordCancelArmed ? "Release to cancel" : `Recording • ${recordSeconds}s`}
+                </Text>
+              </View>
+              <Text className="text-white/40 text-xs">
+                Slide left to cancel
+              </Text>
+            </View>
+          )}
       </View>
       )}
 
