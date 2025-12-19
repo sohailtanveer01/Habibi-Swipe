@@ -330,7 +330,7 @@ export default function ChatScreen() {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
-  const [recordCancelArmed, setRecordCancelArmed] = useState(false);
+  const [pendingVoice, setPendingVoice] = useState<{ uri: string; durationMs: number } | null>(null);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<any | null>(null); // Message being replied to
@@ -790,16 +790,35 @@ export default function ChatScreen() {
     };
   });
 
+  const ensureMicPermission = useCallback(async () => {
+    try {
+      const existing = await Audio.getPermissionsAsync();
+      if (existing?.granted) return true;
+      const requested = await Audio.requestPermissionsAsync();
+      return !!requested?.granted;
+    } catch (e) {
+      console.error("Mic permission check error:", e);
+      return false;
+    }
+  }, []);
+
   const startRecording = useCallback(async () => {
-    if (isRecording || uploadingMedia || sendMessageMutation.isPending) return;
+    if (isRecording || pendingVoice || selectedImage || uploadingMedia || sendMessageMutation.isPending) return;
     setHalalWarning(null);
-    setRecordCancelArmed(false);
 
     try {
-      const perm = await Audio.requestPermissionsAsync();
-      if (!perm?.granted) {
+      const granted = await ensureMicPermission();
+      if (!granted) {
         Alert.alert("Microphone Permission", "Please allow microphone access to send voice messages.");
         return;
+      }
+
+      // Stop any existing playback before recording
+      if (playingSoundRef.current) {
+        try { await playingSoundRef.current.stopAsync(); } catch {}
+        try { await playingSoundRef.current.unloadAsync(); } catch {}
+        playingSoundRef.current = null;
+        setPlayingMessageId(null);
       }
 
       // iOS audio mode
@@ -833,9 +852,9 @@ export default function ChatScreen() {
       setIsRecording(false);
       micPulse.value = 1;
     }
-  }, [isRecording, uploadingMedia, sendMessageMutation.isPending, micPulse]);
+  }, [isRecording, pendingVoice, selectedImage, uploadingMedia, sendMessageMutation.isPending, micPulse, ensureMicPermission]);
 
-  const stopRecordingAndSend = useCallback(async (cancel: boolean) => {
+  const stopRecordingToPreview = useCallback(async () => {
     if (!isRecording) return;
 
     try {
@@ -856,60 +875,32 @@ export default function ChatScreen() {
       const uri = recording.getURI();
       const durationMs = Date.now() - recordStartRef.current;
 
-      // discard short recordings or cancelled
-      if (cancel || durationMs < 1000 || !uri) {
+      // discard short recordings
+      if (durationMs < 1000 || !uri) {
         setRecordSeconds(0);
-        setRecordCancelArmed(false);
+        setPendingVoice(null);
         return;
       }
 
-      setUploadingMedia(true);
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setUploadingMedia(false);
-        return;
-      }
-
-      const voiceUrl = await uploadChatVoice(uri, chatId as string, user.id);
-      sendMessageMutation.mutate({
-        mediaUrl: voiceUrl,
-        mediaType: "audio",
-        replyToId: replyingTo?.id,
-      });
-
-      setReplyingTo(null);
+      setPendingVoice({ uri, durationMs });
       setRecordSeconds(0);
-      setRecordCancelArmed(false);
     } catch (e: any) {
       console.error("Stop/send recording error:", e);
-      Alert.alert("Error", "Failed to send voice message.");
-    } finally {
-      setUploadingMedia(false);
+      Alert.alert("Error", "Failed to stop recording.");
       micPulse.value = 1;
     }
-  }, [isRecording, chatId, sendMessageMutation, replyingTo, micPulse]);
+  }, [isRecording, micPulse]);
 
-  // Optional bonus: slide left to cancel while holding
-  const micGesture = useMemo(() => {
-    return Gesture.Pan()
-      .minDistance(0)
-      .onBegin(() => {
-        runOnJS(startRecording)();
-      })
-      .onUpdate((e) => {
-        // arm cancel if user slides left enough
-        const armed = e.translationX < -70;
-        runOnJS(setRecordCancelArmed)(armed);
-      })
-      .onFinalize(() => {
-        runOnJS(stopRecordingAndSend)(recordCancelArmed);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startRecording, stopRecordingAndSend, recordCancelArmed]);
+  const onPressMic = useCallback(() => {
+    if (uploadingMedia || sendMessageMutation.isPending) return;
+    if (pendingVoice || selectedImage) return; // keep UX simple: one media type at a time
+    if (isRecording) stopRecordingToPreview();
+    else startRecording();
+  }, [uploadingMedia, sendMessageMutation.isPending, pendingVoice, selectedImage, isRecording, startRecording, stopRecordingToPreview]);
 
   const pickImage = async () => {
     try {
+      if (isRecording || pendingVoice) return;
       // Check & request permission
       const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
       let hasPermission = existingStatus === 'granted';
@@ -949,17 +940,39 @@ export default function ChatScreen() {
   const send = useCallback(async () => {
     // Disable normal send while recording (voice notes auto-send on release)
     if (isRecording) return;
-    // Allow sending if there's text OR an image
+    // Allow sending if there's text OR an image OR a pending voice note
     const hasText = text && text.trim().length > 0;
     const hasImage = !!selectedImage;
+    const hasVoice = !!pendingVoice;
     
-    if ((!hasText && !hasImage) || sendMessageMutation.isPending || uploadingMedia) return;
+    if ((!hasText && !hasImage && !hasVoice) || sendMessageMutation.isPending || uploadingMedia) return;
     
     let mediaUrl: string | undefined;
     let mediaType: string | undefined;
 
+    // If voice note is pending, upload it first
+    if (pendingVoice) {
+      try {
+        setUploadingMedia(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          Alert.alert("Error", "Please log in to send messages.");
+          setUploadingMedia(false);
+          return;
+        }
+
+        mediaUrl = await uploadChatVoice(pendingVoice.uri, chatId as string, user.id);
+        mediaType = "audio";
+      } catch (error: any) {
+        console.error("Error uploading voice:", error);
+        Alert.alert("Error", "Failed to upload voice note. Please try again.");
+        setUploadingMedia(false);
+        return;
+      }
+    }
+
     // If image is selected, upload it first
-    if (selectedImage) {
+    if (selectedImage && !mediaUrl) {
       try {
         setUploadingMedia(true);
         const { data: { user } } = await supabase.auth.getUser();
@@ -982,7 +995,7 @@ export default function ChatScreen() {
     // Send message with text and/or media
     console.log("📤 Sending message:", {
       hasText,
-      hasImage: !!mediaUrl,
+      hasMedia: !!mediaUrl,
       mediaUrl,
       mediaType,
     });
@@ -993,8 +1006,9 @@ export default function ChatScreen() {
         mediaType,
         replyToId: replyingTo?.id,
       });
+    setPendingVoice(null);
     setUploadingMedia(false);
-  }, [text, selectedImage, sendMessageMutation, uploadingMedia, chatId, isRecording]);
+  }, [text, selectedImage, pendingVoice, sendMessageMutation, uploadingMedia, chatId, isRecording, replyingTo]);
 
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -1029,7 +1043,8 @@ export default function ChatScreen() {
 
       const { sound } = await Audio.Sound.createAsync(
         { uri: playableUrl },
-        { shouldPlay: true },
+        // Ensure frequent progress callbacks so the progress bar visibly moves.
+        { shouldPlay: true, progressUpdateIntervalMillis: 250 },
         (status) => {
           if (!status.isLoaded) return;
           const pos = status.positionMillis ?? 0;
@@ -1038,6 +1053,21 @@ export default function ChatScreen() {
           if (status.didJustFinish) setPlayingMessageId(null);
         }
       );
+
+      // Immediately capture initial duration/position so the label shows right away
+      // (some devices delay the first status callback).
+      try {
+        const initial: any = await sound.getStatusAsync();
+        if (initial?.isLoaded) {
+          setPlaybackProgress((prev) => ({
+            ...prev,
+            [message.id]: {
+              pos: initial.positionMillis ?? 0,
+              dur: initial.durationMillis ?? 0,
+            },
+          }));
+        }
+      } catch {}
 
       playingSoundRef.current = sound;
     } catch (e) {
@@ -1260,7 +1290,12 @@ export default function ChatScreen() {
           const isMe = item.sender_id === currentUser?.id;
           const prog = playbackProgress[item.id] ?? { pos: 0, dur: 0 };
           const progress = prog.dur > 0 ? prog.pos / prog.dur : 0;
-          const durationLabel = prog.dur > 0 ? `${formatTime(prog.pos)} / ${formatTime(prog.dur)}` : "0:00";
+          const durationLabel =
+            prog.dur > 0
+              ? (playingMessageId === item.id
+                  ? `${formatTime(prog.pos)} / ${formatTime(prog.dur)}`
+                  : `${formatTime(prog.dur)}`)
+              : "…";
           
           return (
             <MessageItem
@@ -1602,6 +1637,46 @@ export default function ChatScreen() {
         </View>
       )}
 
+      {/* Voice Note Preview */}
+      {pendingVoice && (
+        <View className="px-4 py-2 bg-black border-t border-white/10">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              <View className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-[#B8860B]/30">
+                <Ionicons name="mic" size={18} color="#B8860B" />
+              </View>
+              <View className="ml-3">
+                <Text className="text-white text-sm font-semibold">Voice note ready</Text>
+                <Text className="text-white/60 text-xs">
+                  {formatTime(pendingVoice.durationMs)}
+                </Text>
+              </View>
+            </View>
+
+            <View className="flex-row items-center">
+              <Pressable
+                onPress={() => setPendingVoice(null)}
+                className="w-9 h-9 rounded-full bg-red-500 items-center justify-center mr-2"
+                disabled={uploadingMedia || sendMessageMutation.isPending}
+              >
+                <Ionicons name="close" size={18} color="#FFFFFF" />
+              </Pressable>
+              <Pressable
+                onPress={send}
+                className="px-4 h-9 rounded-full bg-[#B8860B] items-center justify-center"
+                disabled={uploadingMedia || sendMessageMutation.isPending}
+              >
+                {uploadingMedia ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className="text-white text-sm font-semibold">Send</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Input - Hide if blocked, unmatched, or compliment (until accepted) */}
       {!isBlocked && !isUnmatched && !isCompliment && (
         <View className="bg-black px-4 py-3" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
@@ -1619,23 +1694,26 @@ export default function ChatScreen() {
         <Pressable 
           className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-[#B8860B]/30"
           onPress={pickImage}
-          disabled={uploadingMedia || isRecording}
+          disabled={uploadingMedia || isRecording || !!pendingVoice}
         >
           <Ionicons name="add" size={24} color="#B8860B" />
         </Pressable>
 
-        {/* Mic Button (hold-to-record; slide left to cancel) */}
-        <GestureDetector gesture={micGesture}>
+        {/* Mic Button (tap to start, tap again to stop; then send/cancel) */}
+        <Pressable
+          onPress={onPressMic}
+          disabled={uploadingMedia || sendMessageMutation.isPending || !!pendingVoice || !!selectedImage}
+        >
           <Animated.View style={micPulseStyle}>
             <View
               className={`w-10 h-10 rounded-full items-center justify-center border ${
                 isRecording ? "bg-red-500/20 border-red-500/50" : "bg-white/10 border-[#B8860B]/30"
               }`}
             >
-              <Ionicons name="mic" size={20} color={isRecording ? "#EF4444" : "#B8860B"} />
+              <Ionicons name={isRecording ? "stop" : "mic"} size={20} color={isRecording ? "#EF4444" : "#B8860B"} />
             </View>
           </Animated.View>
-        </GestureDetector>
+        </Pressable>
 
         {/* Message Input Field */}
         <TextInput
@@ -1655,9 +1733,9 @@ export default function ChatScreen() {
         {/* Send Button */}
         <Pressable 
           onPress={send} 
-          disabled={isRecording || ((!text || !text.trim()) && !selectedImage) || sendMessageMutation.isPending || uploadingMedia}
+          disabled={isRecording || ((!text || !text.trim()) && !selectedImage && !pendingVoice) || sendMessageMutation.isPending || uploadingMedia}
           className={`w-10 h-10 rounded-full bg-[#B8860B] items-center justify-center ${
-            (isRecording || ((!text || !text.trim()) && !selectedImage)) ? 'opacity-50' : ''
+            (isRecording || ((!text || !text.trim()) && !selectedImage && !pendingVoice)) ? 'opacity-50' : ''
           }`}
         >
           {uploadingMedia ? (
@@ -1676,13 +1754,13 @@ export default function ChatScreen() {
           {isRecording && (
             <View className="mt-2 flex-row items-center justify-between">
               <View className="flex-row items-center">
-                <View className={`w-2 h-2 rounded-full ${recordCancelArmed ? "bg-white/40" : "bg-red-500"}`} />
+                <View className="w-2 h-2 rounded-full bg-red-500" />
                 <Text className="text-white/70 text-xs ml-2">
-                  {recordCancelArmed ? "Release to cancel" : `Recording • ${recordSeconds}s`}
+                  {`Recording • ${recordSeconds}s`}
                 </Text>
               </View>
               <Text className="text-white/40 text-xs">
-                Slide left to cancel
+                Tap mic to stop
               </Text>
             </View>
           )}
