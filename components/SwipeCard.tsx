@@ -1,7 +1,6 @@
-import { View, Text, Dimensions, StyleSheet } from "react-native";
+import { View, Text, Dimensions, StyleSheet, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 
 const { width, height } = Dimensions.get("window");
 
@@ -17,12 +16,18 @@ function calculateAge(dob: string | null): number | null {
   return age;
 }
 
+interface SwipeCardProps {
+  profile: any;
+  onTap?: () => void; // Called when user taps on the card (opens modal)
+}
+
 /**
  * Minimal image-first swipe card.
  * Shows only the main photo with a subtle gradient + name/age overlay.
- * Swipe down to open profile details modal (handled in parent).
+ * - Tap to open profile details modal (via onTap prop)
+ * - Swipe up to open profile details modal (handled in parent gesture)
  */
-export default function SwipeCard({ profile }: { profile: any }) {
+export default function SwipeCard({ profile, onTap }: SwipeCardProps) {
   const photos = profile?.photos || [];
   const mainPhoto = photos.length > 0 ? photos[0] : null;
 
@@ -33,25 +38,26 @@ export default function SwipeCard({ profile }: { profile: any }) {
 
   const age = calculateAge(profile?.dob);
   const profession = profile?.profession || "";
-  const location = profile?.location
-    ? typeof profile.location === "string"
-      ? profile.location
-      : `${profile.location.city || ""}${profile.location.city && profile.location.country ? ", " : ""}${profile.location.country || ""}`
-    : "";
 
   return (
     <View style={styles.container}>
       {mainPhoto ? (
-        <Image
-          source={{ uri: mainPhoto }}
-          style={styles.image}
-          contentFit="cover"
-          transition={0}
-          cachePolicy="memory-disk"
-          priority="high"
-          placeholderContentFit="cover"
-          placeholder={{ blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
-        />
+        <Pressable
+          onPress={onTap}
+          style={styles.imageContainer}
+          disabled={!onTap}
+        >
+          <Image
+            source={{ uri: mainPhoto }}
+            style={styles.image}
+            contentFit="cover"
+            transition={0}
+            cachePolicy="memory-disk"
+            priority="high"
+            placeholderContentFit="cover"
+            placeholder={{ blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
+          />
+        </Pressable>
       ) : (
         <View style={styles.placeholder}>
           <Text style={styles.placeholderText}>👤</Text>
@@ -65,26 +71,18 @@ export default function SwipeCard({ profile }: { profile: any }) {
         pointerEvents="none"
       />
 
-      {/* Name, Age, and optional profession/location */}
+      {/* Name, Age, and optional profession */}
       <View style={styles.infoContainer} pointerEvents="none">
         <Text style={styles.nameText}>
           {profile?.is_boosted ? "⚡ " : ""}
           {fullName}
           {age !== null ? `, ${age}` : ""}
         </Text>
-        {(profession || location) && (
+        {!!profession && (
           <Text style={styles.subText} numberOfLines={1}>
             {profession}
-            {profession && location ? " • " : ""}
-            {location}
           </Text>
         )}
-
-        {/* Swipe up hint */}
-        <View style={styles.swipeHint}>
-          <Ionicons name="chevron-up" size={18} color="rgba(255,255,255,0.6)" />
-          <Text style={styles.swipeHintText}>Swipe up for more</Text>
-        </View>
       </View>
     </View>
   );
@@ -96,6 +94,10 @@ const styles = StyleSheet.create({
     height,
     backgroundColor: "#000",
     position: "relative",
+  },
+  imageContainer: {
+    width: "100%",
+    height: "100%",
   },
   image: {
     width: "100%",
@@ -123,7 +125,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 180, // Above the action buttons
+    bottom: 220, // Slightly above the action buttons (avoid overlap)
     paddingHorizontal: 24,
     alignItems: "center",
   },
@@ -145,17 +147,5 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.5)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
-  },
-  swipeHint: {
-    marginTop: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    opacity: 0.7,
-  },
-  swipeHintText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "rgba(255,255,255,0.6)",
   },
 });

@@ -613,6 +613,9 @@ export default function SwipeScreen() {
   // Sheet drag-to-dismiss gesture
   const sheetGesture = useMemo(() => {
     return Gesture.Pan()
+      // Important: allow taps inside the sheet (photo tap, buttons, etc).
+      // Without this, micro-movements during a tap can activate the pan and cancel Pressable onPress.
+      .minDistance(12)
       .onUpdate((e) => {
         const nextY = Math.max(0, e.translationY);
         sheetY.value = nextY;
@@ -674,15 +677,6 @@ export default function SwipeScreen() {
     if (md < 0 || (md === 0 && today.getDate() < birthDate.getDate())) a--;
     return a;
   }, [detailsProfile?.dob]);
-
-  const detailsLocation = useMemo(() => {
-    const loc = detailsProfile?.location;
-    if (!loc) return "";
-    if (typeof loc === "string") return loc;
-    const city = loc.city || "";
-    const country = loc.country || "";
-    return `${city}${city && country ? ", " : ""}${country}`;
-  }, [detailsProfile?.location]);
 
   const detailsPhotos: string[] = detailsProfile?.photos || [];
   const detailsInterests: string[] = detailsProfile?.hobbies || [];
@@ -1014,8 +1008,6 @@ export default function SwipeScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      {renderGallery()}
-
       <Modal
         visible={!!matchData}
         transparent={true}
@@ -1164,7 +1156,10 @@ export default function SwipeScreen() {
                 {isCurrent ? (
                   <GestureDetector gesture={cardGesture}>
                     <View style={{ width: "100%", height: "100%" }}>
-                      <SwipeCard profile={profile} />
+                      <SwipeCard 
+                        profile={profile} 
+                        onTap={() => openDetails(profile)}
+                      />
                     </View>
                   </GestureDetector>
                 ) : (
@@ -1353,17 +1348,17 @@ export default function SwipeScreen() {
               {/* Scrollable Content */}
               <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 40 }}
+                // Extra bottom padding so content can scroll "behind" the fixed action buttons bar
+                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 10) + 180 }}
                 bounces={true}
               >
-                {/* Main Photo at Top */}
+                {/* Main Photo at Top - Tap to open gallery */}
                 {detailsPhotos && detailsPhotos.length > 0 && (
                   <Pressable
                     onPress={() => {
-                      closeDetails();
-                      setTimeout(() => openGallery(detailsPhotos, 0), 200);
+                      openGallery(detailsPhotos, 0);
                     }}
-                    style={{ width: width, height: width * 1.1, marginBottom: 16 }}
+                    style={{ width: width, height: width * 1.1, marginBottom: 16, position: "relative" }}
                   >
                     <Image
                       source={{ uri: detailsPhotos[0] }}
@@ -1371,93 +1366,69 @@ export default function SwipeScreen() {
                       contentFit="cover"
                       transition={0}
                     />
+
+                    {/* Name + Age overlay (bottom-left of main image) */}
+                    <View
+                      pointerEvents="none"
+                      style={{
+                        position: "absolute",
+                        left: 16,
+                        bottom: 16,
+                        right: 16,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#FFFFFF",
+                          fontSize: 26,
+                          fontWeight: "900",
+                          textShadowColor: "rgba(0,0,0,0.75)",
+                          textShadowOffset: { width: 0, height: 2 },
+                          textShadowRadius: 8,
+                        }}
+                      >
+                        {detailsProfile?.first_name && detailsProfile?.last_name
+                          ? `${detailsProfile.first_name} ${detailsProfile.last_name}`
+                          : detailsProfile?.name || "Unknown"}
+                        {detailsAge !== null ? `, ${detailsAge}` : ""}
+                      </Text>
+                    </View>
                   </Pressable>
                 )}
 
-                {/* Action Buttons (same style as main screen) */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    paddingVertical: 16,
-                    gap: 48,
-                  }}
-                >
-                  {availableActions.showPass && (
-                    <Pressable
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                        closeDetails();
-                        setTimeout(() => sendSwipe("pass"), 150);
-                      }}
-                      disabled={isSwiping}
-                      style={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: 40,
-                        backgroundColor: "#FFFFFF",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Text style={{ color: "#000", fontSize: 24 }}>✕</Text>
-                    </Pressable>
-                  )}
-
-                  {!hasCompliment && (!source || source === "likedMe") && (
-                    <Pressable
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                        closeDetails();
-                        setTimeout(() => setComplimentModalVisible(true), 200);
-                      }}
-                      disabled={isSwiping}
-                      style={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: 40,
-                        backgroundColor: "#EF4444",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <DiamondIcon size={22} color="#FFFFFF" />
-                    </Pressable>
-                  )}
-
-                  {availableActions.showLike && (
-                    <Pressable
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-                        closeDetails();
-                        setTimeout(() => sendSwipe("like"), 150);
-                      }}
-                      disabled={isSwiping}
-                      style={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: 40,
-                        backgroundColor: "#B8860B",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Text style={{ color: "#FFF", fontSize: 24 }}>♥</Text>
-                    </Pressable>
-                  )}
-                </View>
+                {/* Gallery (moved to directly after action buttons) */}
+                {detailsPhotos && detailsPhotos.length > 1 && (
+                  <View style={{ paddingHorizontal: 20, marginTop: 10 }}>
+                    {/* Big tiles (match Profile tab grid feel) */}
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 16 }}>
+                      {detailsPhotos.slice(1, 5).map((p: string, i: number) => (
+                        <Pressable
+                          key={`${p}-${i}`}
+                          onPress={() => {
+                            openGallery(detailsPhotos, i + 1);
+                          }}
+                          style={{
+                            width: "48%",
+                            aspectRatio: 0.8,
+                            borderRadius: 24,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <Image
+                            source={{ uri: p }}
+                            style={{ width: "100%", height: "100%" }}
+                            contentFit="cover"
+                            transition={0}
+                            cachePolicy="memory-disk"
+                          />
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                )}
 
                 {/* Profile Details */}
                 <View style={{ paddingHorizontal: 20 }}>
-                  {/* Name & Age */}
-                  <Text style={{ fontSize: 26, fontWeight: "800", color: "#FFFFFF", textAlign: "center" }}>
-                    {detailsProfile?.first_name && detailsProfile?.last_name
-                      ? `${detailsProfile.first_name} ${detailsProfile.last_name}`
-                      : detailsProfile?.name || "Unknown"}
-                    {detailsAge !== null ? `, ${detailsAge}` : ""}
-                  </Text>
-
                   {/* Personal Info Section */}
                   {hasPersonalInfo && (
                     <View style={{ marginTop: 20, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 20, padding: 16 }}>
@@ -1538,11 +1509,6 @@ export default function SwipeScreen() {
                             <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>🎯 {hobby}</Text>
                           </View>
                         ))}
-                        {detailsLocation ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>📍 {detailsLocation}</Text>
-                          </View>
-                        ) : null}
                       </View>
                     </View>
                   )}
@@ -1597,42 +1563,94 @@ export default function SwipeScreen() {
                     </View>
                   )}
 
-                  {/* Gallery */}
-                  {detailsPhotos && detailsPhotos.length > 1 && (
-                    <View style={{ marginTop: 20 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                        <Text style={{ fontSize: 18, fontWeight: "600", color: "#FFFFFF" }}>Gallery</Text>
-                        <Pressable
-                          onPress={() => {
-                            closeDetails();
-                            setTimeout(() => openGallery(detailsPhotos, 0), 200);
-                          }}
-                        >
-                          <Text style={{ color: "#B8860B", fontWeight: "800", fontSize: 14 }}>See all</Text>
-                        </Pressable>
-                      </View>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                        {detailsPhotos.slice(1, 5).map((p: string, i: number) => (
-                          <Pressable
-                            key={`${p}-${i}`}
-                            onPress={() => {
-                              closeDetails();
-                              setTimeout(() => openGallery(detailsPhotos, i + 1), 200);
-                            }}
-                            style={{ width: (width - 40 - 10) / 2, height: 180, borderRadius: 20, overflow: "hidden" }}
-                          >
-                            <Image source={{ uri: p }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={0} />
-                          </Pressable>
-                        ))}
-                      </View>
-                    </View>
-                  )}
                 </View>
               </ScrollView>
+
+              {/* Fixed Action Buttons bar (modal content scrolls behind) */}
+              <View
+                pointerEvents="box-none"
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  paddingBottom: Math.max(insets.bottom, 10) + 10,
+                  paddingTop: 12,
+                  alignItems: "center",
+                }}
+              >
+                <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 48 }}>
+                  {availableActions.showPass && (
+                    <Pressable
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                        closeDetails();
+                        setTimeout(() => sendSwipe("pass"), 150);
+                      }}
+                      disabled={isSwiping}
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 40,
+                        backgroundColor: "#FFFFFF",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text style={{ color: "#000", fontSize: 24 }}>✕</Text>
+                    </Pressable>
+                  )}
+
+                  {!hasCompliment && (!source || source === "likedMe") && (
+                    <Pressable
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                        closeDetails();
+                        setTimeout(() => setComplimentModalVisible(true), 200);
+                      }}
+                      disabled={isSwiping}
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 40,
+                        backgroundColor: "#EF4444",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <DiamondIcon size={22} color="#FFFFFF" />
+                    </Pressable>
+                  )}
+
+                  {availableActions.showLike && (
+                    <Pressable
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                        closeDetails();
+                        setTimeout(() => sendSwipe("like"), 150);
+                      }}
+                      disabled={isSwiping}
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 40,
+                        backgroundColor: "#B8860B",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text style={{ color: "#FFF", fontSize: 24 }}>♥</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
             </Animated.View>
           </GestureDetector>
         </View>
       </Modal>
+
+      {/* Keep gallery modal rendered LAST so it appears above the details sheet modal */}
+      {renderGallery()}
     </View>
   );
 }
