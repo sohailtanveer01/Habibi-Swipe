@@ -76,6 +76,10 @@ export default function SwipeScreen() {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [detailsProfile, setDetailsProfile] = useState<any | null>(null);
   const [detailsPrompts, setDetailsPrompts] = useState<any[]>([]);
+  // When user taps an image inside the details sheet, we close the sheet first,
+  // then open the full-screen gallery AFTER the sheet is dismissed.
+  // This avoids nested-modal presentation quirks (esp. iOS) where the gallery may not appear.
+  const [pendingGallery, setPendingGallery] = useState<{ photos: string[]; startIndex: number } | null>(null);
   const SHEET_HEIGHT = Math.min(SCREEN_HEIGHT * 0.92, SCREEN_HEIGHT - 40);
   const sheetY = useSharedValue(SHEET_HEIGHT);
   const backdrop = useSharedValue(0);
@@ -172,9 +176,16 @@ export default function SwipeScreen() {
     setGalleryVisible(true);
 
     // Prefetch for smoother swipe inside gallery
-    photos.forEach((u) => {
-      if (u) Image.prefetch(u);
-    });
+    try {
+      const anyImage: any = Image as any;
+      if (typeof anyImage?.prefetch === "function") {
+        photos.forEach((u) => {
+          if (u) anyImage.prefetch(u);
+        });
+      }
+    } catch {
+      // ignore prefetch errors (should never block opening the gallery)
+    }
 
     setTimeout(() => {
       try {
@@ -182,6 +193,13 @@ export default function SwipeScreen() {
       } catch {}
     }, 0);
   }, []);
+
+  useEffect(() => {
+    if (!detailsVisible && pendingGallery) {
+      openGallery(pendingGallery.photos, pendingGallery.startIndex);
+      setPendingGallery(null);
+    }
+  }, [detailsVisible, openGallery, pendingGallery]);
 
   // (Removed) goToGalleryIndex helper when tap-zones are disabled; swipe is primary navigation.
 
@@ -829,7 +847,10 @@ export default function SwipeScreen() {
   const renderGallery = () => (
     <Modal
       visible={galleryVisible}
-      transparent={true}
+      // Use a real full-screen modal so it reliably appears above other modals (like the details sheet)
+      transparent={false}
+      presentationStyle="fullScreen"
+      statusBarTranslucent
       animationType="fade"
       onRequestClose={closeGallery}
     >
@@ -1176,8 +1197,11 @@ export default function SwipeScreen() {
             {availableActions.showPass && (
               <Pressable
                 className="bg-white w-20 h-20 rounded-full items-center justify-center"
-                onPress={() => sendSwipe("pass")}
-                disabled={isSwiping}
+                onPress={() => {
+                  // Always capture taps so they don't fall through to the card (which can open details/gallery).
+                  if (isSwiping) return;
+                  sendSwipe("pass");
+                }}
               >
                 <Text className="text-black text-2xl">✕</Text>
               </Pressable>
@@ -1186,8 +1210,10 @@ export default function SwipeScreen() {
             {!hasCompliment && (!source || source === "likedMe") && (
               <Pressable
                 className="bg-red-500 w-20 h-20 rounded-full items-center justify-center"
-                onPress={() => setComplimentModalVisible(true)}
-                disabled={isSwiping}
+                onPress={() => {
+                  if (isSwiping) return;
+                  setComplimentModalVisible(true);
+                }}
               >
                 <DiamondIcon size={22} color="#FFFFFF" />
               </Pressable>
@@ -1196,8 +1222,10 @@ export default function SwipeScreen() {
             {availableActions.showLike && (
               <Pressable
                 className="bg-[#B8860B] w-20 h-20 rounded-full items-center justify-center"
-                onPress={() => sendSwipe("like")}
-                disabled={isSwiping}
+                onPress={() => {
+                  if (isSwiping) return;
+                  sendSwipe("like");
+                }}
               >
                 <Text className="text-white text-2xl">♥</Text>
               </Pressable>
@@ -1327,23 +1355,24 @@ export default function SwipeScreen() {
           </Pressable>
 
           {/* Bottom Sheet */}
-          <GestureDetector gesture={sheetGesture}>
-            <Animated.View
-              style={[
-                {
-                  height: SHEET_HEIGHT,
-                  backgroundColor: "#000000",
-                  borderTopLeftRadius: 28,
-                  borderTopRightRadius: 28,
-                  overflow: "hidden",
-                },
-                sheetStyle,
-              ]}
-            >
-              {/* Handle */}
+          <Animated.View
+            style={[
+              {
+                height: SHEET_HEIGHT,
+                backgroundColor: "#000000",
+                borderTopLeftRadius: 28,
+                borderTopRightRadius: 28,
+                overflow: "hidden",
+              },
+              sheetStyle,
+            ]}
+          >
+            {/* Handle (drag-to-dismiss ONLY from handle so taps on images/buttons never get swallowed) */}
+            <GestureDetector gesture={sheetGesture}>
               <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 8 }}>
                 <View style={{ width: 48, height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.3)" }} />
               </View>
+            </GestureDetector>
 
               {/* Scrollable Content */}
               <ScrollView
@@ -1356,7 +1385,9 @@ export default function SwipeScreen() {
                 {detailsPhotos && detailsPhotos.length > 0 && (
                   <Pressable
                     onPress={() => {
-                      openGallery(detailsPhotos, 0);
+                      // Close sheet first, then open gallery after dismissal.
+                      setPendingGallery({ photos: detailsPhotos, startIndex: 0 });
+                      closeDetails();
                     }}
                     style={{ width: width, height: width * 1.1, marginBottom: 16, position: "relative" }}
                   >
@@ -1405,7 +1436,8 @@ export default function SwipeScreen() {
                         <Pressable
                           key={`${p}-${i}`}
                           onPress={() => {
-                            openGallery(detailsPhotos, i + 1);
+                            setPendingGallery({ photos: detailsPhotos, startIndex: i + 1 });
+                            closeDetails();
                           }}
                           style={{
                             width: "48%",
@@ -1583,11 +1615,12 @@ export default function SwipeScreen() {
                   {availableActions.showPass && (
                     <Pressable
                       onPress={() => {
+                        // Always capture taps so they don't fall through to the scroll content (images) and open the gallery.
+                        if (isSwiping) return;
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                         closeDetails();
                         setTimeout(() => sendSwipe("pass"), 150);
                       }}
-                      disabled={isSwiping}
                       style={{
                         width: 80,
                         height: 80,
@@ -1604,11 +1637,11 @@ export default function SwipeScreen() {
                   {!hasCompliment && (!source || source === "likedMe") && (
                     <Pressable
                       onPress={() => {
+                        if (isSwiping) return;
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                         closeDetails();
                         setTimeout(() => setComplimentModalVisible(true), 200);
                       }}
-                      disabled={isSwiping}
                       style={{
                         width: 80,
                         height: 80,
@@ -1625,11 +1658,11 @@ export default function SwipeScreen() {
                   {availableActions.showLike && (
                     <Pressable
                       onPress={() => {
+                        if (isSwiping) return;
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
                         closeDetails();
                         setTimeout(() => sendSwipe("like"), 150);
                       }}
-                      disabled={isSwiping}
                       style={{
                         width: 80,
                         height: 80,
@@ -1644,8 +1677,7 @@ export default function SwipeScreen() {
                   )}
                 </View>
               </View>
-            </Animated.View>
-          </GestureDetector>
+          </Animated.View>
         </View>
       </Modal>
 
