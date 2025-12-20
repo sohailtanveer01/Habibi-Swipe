@@ -74,7 +74,6 @@ export default function SwipeCard({ profile, onTap }: SwipeCardProps) {
       {/* Name, Age, and optional profession */}
       <View style={styles.infoContainer} pointerEvents="none">
         <Text style={styles.nameText}>
-          {profile?.is_boosted ? "⚡ " : ""}
           {fullName}
           {age !== null ? `, ${age}` : ""}
         </Text>
