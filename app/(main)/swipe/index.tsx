@@ -1317,29 +1317,45 @@ export default function SwipeScreen() {
                 setComplimentMessage("");
               }}
             />
-            <View className="bg-black border-t border-white/20 rounded-t-3xl p-6">
-              <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-white text-xl font-bold">
-                  Send Compliment 💬
-                </Text>
+            <View className="bg-[#0B0B0B] border-t border-[#B8860B]/30 rounded-t-[32px] p-6">
+              <View className="flex-row items-center justify-between mb-5">
+                <View className="flex-row items-center">
+                  {/* Match the red compliment action button (red circle + white diamond) */}
+                  <View className="w-10 h-10 rounded-full items-center justify-center bg-[#EF4444] border border-[#EF4444]/50 mr-3">
+                    <DiamondIcon size={18} color="#FFFFFF" />
+                  </View>
+                  <View>
+                    <Text className="text-white text-xl font-extrabold">Send Compliment</Text>
+                    <Text className="text-white/60 text-xs mt-0.5">
+                      Stand out with a thoughtful message
+                    </Text>
+                  </View>
+                </View>
+
                 <Pressable
                   onPress={() => {
                     setComplimentModalVisible(false);
                     setComplimentMessage("");
                   }}
+                  className="w-10 h-10 rounded-full items-center justify-center bg-white/5 border border-white/10"
                 >
-                  <Text className="text-white/70 text-lg">✕</Text>
+                  <Ionicons name="close" size={20} color="rgba(255,255,255,0.8)" />
                 </Pressable>
               </View>
               
               {profiles[index] && (
                 <>
-                  <Text className="text-white/80 text-sm mb-4">
-                    Send a message to {profiles[index].first_name || profiles[index].name || "this user"} before matching
-                  </Text>
+                  <View className="mb-4">
+                    <Text className="text-white/80 text-sm">
+                      To{" "}
+                      <Text className="text-white font-semibold">
+                        {profiles[index].first_name || profiles[index].name || "this user"}
+                      </Text>
+                    </Text>
+                  </View>
                   
                   <TextInput
-                    className="bg-white/10 text-white rounded-2xl p-4 mb-4 min-h-[120px] text-base"
+                    className="bg-white/5 text-white rounded-3xl p-4 min-h-[120px] text-base border border-white/10"
                     placeholder="Write your compliment (max 200 characters)..."
                     placeholderTextColor="#FFFFFF60"
                     multiline
@@ -1350,16 +1366,22 @@ export default function SwipeScreen() {
                     style={{ textAlignVertical: "top" }}
                   />
                   
-                  <Text className="text-white/50 text-xs mb-4 text-right">
-                    {complimentMessage.length}/200
-                  </Text>
+                  <View className="flex-row items-center justify-between mt-3 mb-5">
+                    <Text className="text-white/50 text-xs">
+                      Keep it kind and respectful
+                    </Text>
+                    <Text className="text-white/50 text-xs">
+                      {complimentMessage.length}/200
+                    </Text>
+                  </View>
                   
                   <Pressable
-                    className={`bg-[#B8860B] rounded-2xl py-4 items-center ${sendingCompliment || !complimentMessage.trim() ? "opacity-50" : ""}`}
+                    className={`bg-[#EF4444] rounded-3xl py-4 items-center flex-row justify-center ${sendingCompliment || !complimentMessage.trim() ? "opacity-50" : ""}`}
                     disabled={sendingCompliment || !complimentMessage.trim()}
                     onPress={sendCompliment}
                   >
-                    <Text className="text-white text-base font-bold">
+                    <DiamondIcon size={18} color="#FFFFFF" />
+                    <Text className="text-white text-base font-extrabold ml-2">
                       {sendingCompliment ? "Sending..." : "Send Compliment"}
                     </Text>
                   </Pressable>
