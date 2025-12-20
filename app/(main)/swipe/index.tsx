@@ -1309,7 +1309,8 @@ export default function SwipeScreen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           className="flex-1"
         >
-          <View className="flex-1 bg-black/80 justify-end">
+          {/* No background tint behind the compliment sheet */}
+          <View className="flex-1 justify-end">
             <Pressable
               className="flex-1"
               onPress={() => {
