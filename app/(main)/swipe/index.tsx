@@ -70,6 +70,7 @@ export default function SwipeScreen() {
   const [boostExpiresAt, setBoostExpiresAt] = useState<string | null>(null);
   const [boostRemaining, setBoostRemaining] = useState<string | null>(null);
   const [boostActivating, setBoostActivating] = useState(false);
+  const [boostModalVisible, setBoostModalVisible] = useState(false);
 
   // Photo gallery modal (tap main image -> swipe left/right through photos)
   const [galleryVisible, setGalleryVisible] = useState(false);
@@ -114,6 +115,8 @@ export default function SwipeScreen() {
   const rewindScale = useSharedValue(0.9);
   const rewindOpacity = useSharedValue(0);
   const rewindRotation = useSharedValue(-15);
+
+  const BOOST_ICON_SIZE = 22;
 
   // Countdown timer for active boost
   useEffect(() => {
@@ -303,6 +306,22 @@ export default function SwipeScreen() {
       setBoostActivating(false);
     }
   }, [boostActivating, boostExpiresAt, boostRemaining, refreshActiveBoost]);
+
+  const openBoostModal = useCallback(() => {
+    // Keep state fresh when opening
+    refreshActiveBoost();
+    setBoostModalVisible(true);
+  }, [refreshActiveBoost]);
+
+  const closeBoostModal = useCallback(() => {
+    setBoostModalVisible(false);
+  }, []);
+
+  const handleBoostNowFromModal = useCallback(async () => {
+    await handleBoost();
+    // If boost was activated, close the modal (or keep it open if already active)
+    closeBoostModal();
+  }, [handleBoost, closeBoostModal]);
 
   // Open profile details bottom sheet
   const openDetails = useCallback(async (profile: any) => {
@@ -1210,36 +1229,26 @@ export default function SwipeScreen() {
             }}
           >
             <Pressable
-              onPress={handleBoost}
+              onPress={openBoostModal}
               style={{
                 width: 48,
                 height: 48,
                 borderRadius: 24,
-                backgroundColor: boostExpiresAt ? "rgba(184, 134, 11, 0.18)" : "#B8860B",
+                backgroundColor: boostExpiresAt ? "rgba(255,255,255,0.06)" : "#B8860B",
                 borderWidth: 1,
                 borderColor: boostExpiresAt ? "rgba(184, 134, 11, 0.6)" : "#B8860B",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="flash" size={22} color={boostExpiresAt ? "#B8860B" : "#FFFFFF"} />
-              {!!boostRemaining && (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: "absolute",
-                    bottom: -10,
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 999,
-                    backgroundColor: "rgba(0,0,0,0.6)",
-                    borderWidth: 1,
-                    borderColor: "rgba(184,134,11,0.45)",
-                  }}
-                >
-                  <Text style={{ color: "#B8860B", fontSize: 11, fontWeight: "800" }}>{boostRemaining}</Text>
-                </View>
-              )}
+              <View style={{ alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="flash" size={BOOST_ICON_SIZE} color={boostExpiresAt ? "#B8860B" : "#FFFFFF"} />
+                {!!boostRemaining && (
+                  <Text style={{ marginTop: 2, fontSize: 10, fontWeight: "800", color: "#B8860B" }}>
+                    {boostRemaining}
+                  </Text>
+                )}
+              </View>
             </Pressable>
 
             {canRewind && (
@@ -1527,6 +1536,84 @@ export default function SwipeScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Boost pop-up (similar to compliment pop-up) */}
+      <Modal
+        visible={boostModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={closeBoostModal}
+      >
+        <View className="flex-1 justify-end">
+          <Pressable className="flex-1" onPress={closeBoostModal} />
+
+          <View className="bg-[#0B0B0B] border-t border-[#B8860B]/30 rounded-t-[32px] p-6">
+            <View className="flex-row items-center justify-between mb-5">
+              <View className="flex-row items-center">
+                <View className="w-10 h-10 rounded-full items-center justify-center bg-[#B8860B]/15 border border-[#B8860B]/30 mr-3">
+                  <Ionicons name="flash" size={18} color="#B8860B" />
+                </View>
+                <View>
+                  <Text className="text-white text-xl font-extrabold">Boost My Profile</Text>
+                  <Text className="text-white/60 text-xs mt-0.5">
+                    Get more visibility for 30 minutes
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={closeBoostModal}
+                className="w-10 h-10 rounded-full items-center justify-center bg-white/5 border border-white/10"
+              >
+                <Ionicons name="close" size={20} color="rgba(255,255,255,0.8)" />
+              </Pressable>
+            </View>
+
+            {/* Timer */}
+            <View
+              style={{
+                borderRadius: 24,
+                paddingVertical: 18,
+                paddingHorizontal: 18,
+                backgroundColor: "rgba(255,255,255,0.04)",
+                borderWidth: 1,
+                borderColor: "rgba(184,134,11,0.25)",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "700" }}>
+                {boostExpiresAt ? "BOOST ACTIVE" : "BOOST DURATION"}
+              </Text>
+              <Text style={{ color: "#B8860B", fontSize: 36, fontWeight: "900", marginTop: 6 }}>
+                {boostExpiresAt ? (boostRemaining || "—") : "30:00"}
+              </Text>
+            </View>
+
+            {/* Big CTA */}
+            <Pressable
+              onPress={() => {
+                if (boostActivating) return;
+                handleBoostNowFromModal();
+              }}
+              className={`rounded-3xl py-4 items-center flex-row justify-center ${boostActivating ? "opacity-70" : ""}`}
+              style={{
+                backgroundColor: boostExpiresAt ? "rgba(184, 134, 11, 0.18)" : "#B8860B",
+                borderWidth: 1,
+                borderColor: boostExpiresAt ? "rgba(184, 134, 11, 0.6)" : "#B8860B",
+              }}
+            >
+              <Ionicons name="flash" size={18} color={boostExpiresAt ? "#B8860B" : "#FFFFFF"} />
+              <Text
+                className="ml-2 text-base font-extrabold"
+                style={{ color: boostExpiresAt ? "#B8860B" : "#000000" }}
+              >
+                {boostExpiresAt ? "Boost Active" : boostActivating ? "Boosting..." : "Boost Now"}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* Profile Details Bottom Sheet Modal */}
