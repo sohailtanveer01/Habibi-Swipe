@@ -66,6 +66,11 @@ export default function SwipeScreen() {
   const [sendingCompliment, setSendingCompliment] = useState(false);
   const [hasCompliment, setHasCompliment] = useState(false);
 
+  // Boost (moved from Profile tab to Swipe screen)
+  const [boostExpiresAt, setBoostExpiresAt] = useState<string | null>(null);
+  const [boostRemaining, setBoostRemaining] = useState<string | null>(null);
+  const [boostActivating, setBoostActivating] = useState(false);
+
   // Photo gallery modal (tap main image -> swipe left/right through photos)
   const [galleryVisible, setGalleryVisible] = useState(false);
   const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
@@ -109,6 +114,31 @@ export default function SwipeScreen() {
   const rewindScale = useSharedValue(0.9);
   const rewindOpacity = useSharedValue(0);
   const rewindRotation = useSharedValue(-15);
+
+  // Countdown timer for active boost
+  useEffect(() => {
+    if (!boostExpiresAt) {
+      setBoostRemaining(null);
+      return;
+    }
+
+    const tick = () => {
+      const ms = new Date(boostExpiresAt).getTime() - Date.now();
+      if (ms <= 0) {
+        setBoostExpiresAt(null);
+        setBoostRemaining(null);
+        return;
+      }
+      const totalSeconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      setBoostRemaining(`${minutes}:${seconds.toString().padStart(2, "0")}`);
+    };
+
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [boostExpiresAt]);
 
   const fetchSpecificProfile = async (targetUserId: string) => {
     setLoadingSpecificProfile(true);
@@ -210,6 +240,69 @@ export default function SwipeScreen() {
     setGalleryPhotos([]);
     setGalleryIndex(0);
   }, []);
+
+  const refreshActiveBoost = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: activeBoost, error } = await supabase
+        .from("profile_boosts")
+        .select("expires_at")
+        .eq("user_id", user.id)
+        .gt("expires_at", new Date().toISOString())
+        .order("expires_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error loading active boost:", error);
+        return;
+      }
+
+      setBoostExpiresAt(activeBoost?.expires_at ?? null);
+    } catch (e) {
+      console.error("Error refreshing boost:", e);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Keep boost status fresh when returning to the swipe screen
+      refreshActiveBoost();
+    }, [refreshActiveBoost])
+  );
+
+  const handleBoost = useCallback(async () => {
+    if (boostActivating) return;
+
+    // If already active, show remaining time
+    if (boostExpiresAt) {
+      Alert.alert("Boost Active", boostRemaining ? `Time left: ${boostRemaining}` : "Your boost is currently active.");
+      return;
+    }
+
+    setBoostActivating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("activate_profile_boost", {
+        body: { minutes: 30 },
+      });
+      if (error) throw error;
+
+      const expiresAt = data?.boost?.expires_at ?? null;
+      if (expiresAt) {
+        setBoostExpiresAt(expiresAt);
+      } else {
+        await refreshActiveBoost();
+      }
+      Alert.alert("Boost Activated", "Your profile is boosted for 30 minutes.");
+    } catch (e: any) {
+      console.error("Boost activation error:", e);
+      Alert.alert("Error", e?.message || "Failed to activate boost.");
+    } finally {
+      setBoostActivating(false);
+    }
+  }, [boostActivating, boostExpiresAt, boostRemaining, refreshActiveBoost]);
 
   // Open profile details bottom sheet
   const openDetails = useCallback(async (profile: any) => {
@@ -1103,18 +1196,61 @@ export default function SwipeScreen() {
           </Pressable>
 
           {/* ================================================================ */}
-          {/* REWIND BUTTON - Top Right */}
-          {/* Only visible after left swipes (passes) - hidden when no history */}
+          {/* BOOST + REWIND (Top Right) */}
           {/* ================================================================ */}
-          {canRewind && (
+          <View
+            style={{
+              position: "absolute",
+              right: 16,
+              top: insets.top + 8,
+              zIndex: 50,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
             <Pressable
-              className="absolute right-4 z-50 w-12 h-12 rounded-full items-center justify-center bg-[#B8860B]"
-              style={{ top: insets.top + 8 }}
-              onPress={handleRewind}
+              onPress={handleBoost}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: boostExpiresAt ? "rgba(184, 134, 11, 0.18)" : "#B8860B",
+                borderWidth: 1,
+                borderColor: boostExpiresAt ? "rgba(184, 134, 11, 0.6)" : "#B8860B",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <Ionicons name="arrow-undo" size={22} color="#FFFFFF" />
+              <Ionicons name="flash" size={22} color={boostExpiresAt ? "#B8860B" : "#FFFFFF"} />
+              {!!boostRemaining && (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    bottom: -10,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 999,
+                    backgroundColor: "rgba(0,0,0,0.6)",
+                    borderWidth: 1,
+                    borderColor: "rgba(184,134,11,0.45)",
+                  }}
+                >
+                  <Text style={{ color: "#B8860B", fontSize: 11, fontWeight: "800" }}>{boostRemaining}</Text>
+                </View>
+              )}
             </Pressable>
-          )}
+
+            {canRewind && (
+              <Pressable
+                className="w-12 h-12 rounded-full items-center justify-center bg-[#B8860B]"
+                onPress={handleRewind}
+              >
+                <Ionicons name="arrow-undo" size={22} color="#FFFFFF" />
+              </Pressable>
+            )}
+          </View>
         </>
       )}
 

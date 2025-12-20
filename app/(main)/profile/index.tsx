@@ -360,9 +360,6 @@ export default function ProfileScreen() {
   const [prompts, setPrompts] = useState<any[]>([]);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [boostExpiresAt, setBoostExpiresAt] = useState<string | null>(null);
-  const [boostRemaining, setBoostRemaining] = useState<string | null>(null);
-  const [boostActivating, setBoostActivating] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [hoverTargetIndex, setHoverTargetIndex] = useState<number | null>(null);
   const layoutPositions = useRef<{ [key: number]: { x: number; y: number; width: number; height: number } }>({});
@@ -374,31 +371,6 @@ export default function ProfileScreen() {
     loadProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Countdown timer for active boost
-  useEffect(() => {
-    if (!boostExpiresAt) {
-      setBoostRemaining(null);
-      return;
-    }
-
-    const tick = () => {
-      const ms = new Date(boostExpiresAt).getTime() - Date.now();
-      if (ms <= 0) {
-        setBoostExpiresAt(null);
-        setBoostRemaining(null);
-        return;
-      }
-      const totalSeconds = Math.floor(ms / 1000);
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      setBoostRemaining(`${minutes}:${seconds.toString().padStart(2, "0")}`);
-    };
-
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [boostExpiresAt]);
 
   // Reset state when photos change (after reorder)
   useEffect(() => {
@@ -459,51 +431,10 @@ export default function ProfileScreen() {
       setPhotos(data.photos || []);
       // Reset layout positions when photos change
       layoutPositions.current = {};
-
-      // Load active boost (if any) for countdown UI
-      const { data: activeBoost, error: boostErr } = await supabase
-        .from("profile_boosts")
-        .select("expires_at")
-        .eq("user_id", user.id)
-        .gt("expires_at", new Date().toISOString())
-        .order("expires_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (boostErr) {
-        console.error("Error loading active boost:", boostErr);
-      } else {
-        setBoostExpiresAt(activeBoost?.expires_at ?? null);
-      }
     } catch (e: any) {
       console.error("Error loading profile:", e);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleBoost = async () => {
-    if (boostExpiresAt) return;
-    setBoostActivating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("activate_profile_boost", {
-        body: { minutes: 30 },
-      });
-      if (error) throw error;
-
-      const expiresAt = data?.boost?.expires_at ?? null;
-      if (expiresAt) {
-        setBoostExpiresAt(expiresAt);
-      } else {
-        // Fallback: refetch boost state
-        await loadProfile();
-      }
-      Alert.alert("Boost Activated", "Your profile is boosted for 30 minutes.");
-    } catch (e: any) {
-      console.error("Boost activation error:", e);
-      Alert.alert("Error", e?.message || "Failed to activate boost.");
-    } finally {
-      setBoostActivating(false);
     }
   };
 
@@ -847,32 +778,24 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
 
-          {/* Boost My Profile */}
+          {/* My Subscription */}
           <View className="w-full items-center mt-4">
             <Pressable
-              onPress={handleBoost}
-              disabled={boostActivating || Boolean(boostExpiresAt)}
+              onPress={() => router.push("/(main)/profile/subscription")}
               className="w-full max-w-sm px-6 py-3 rounded-full items-center justify-center"
               style={{
-                backgroundColor: boostExpiresAt ? "rgba(184, 134, 11, 0.18)" : "#B8860B",
+                backgroundColor: "rgba(184, 134, 11, 0.18)",
                 borderWidth: 1,
-                borderColor: boostExpiresAt ? "rgba(184, 134, 11, 0.6)" : "#B8860B",
-                opacity: boostActivating ? 0.7 : 1,
+                borderColor: "rgba(184, 134, 11, 0.6)",
               }}
             >
               <View className="flex-row items-center justify-center">
-                <Ionicons
-                  name="flash"
-                  size={20}
-                  color={boostExpiresAt ? "#B8860B" : "#000000"}
-                />
+                <Ionicons name="diamond" size={20} color="#B8860B" />
                 <Text
                   className="ml-2 font-semibold"
-                  style={{ color: boostExpiresAt ? "#B8860B" : "#000000" }}
+                  style={{ color: "#B8860B" }}
                 >
-                  {boostExpiresAt
-                    ? `Boost Active${boostRemaining ? ` • ${boostRemaining}` : ""}`
-                    : "Boost My Profile"}
+                  My Subscription
                 </Text>
               </View>
             </Pressable>
