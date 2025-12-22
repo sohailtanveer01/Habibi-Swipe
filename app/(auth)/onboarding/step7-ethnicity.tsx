@@ -4,53 +4,41 @@ import { useOnboarding } from "../../../lib/onboardingStore";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import OnboardingBackground from "@/components/OnboardingBackground";
+import { COUNTRIES, countryFlag } from "@/lib/countries";
 
 const ETHNICITY_OPTIONS = [
+  // Expanded set + searchable (kept as user-friendly labels)
   "Arab",
+  "Berber / Amazigh",
+  "Persian",
+  "Turkic",
+  "Kurdish",
   "South Asian",
-  "African",
+  "Punjabi",
+  "Sindhi",
+  "Pashtun",
+  "Baloch",
+  "Bengali",
+  "Tamil",
+  "Gujarati",
+  "Malayali",
   "East Asian",
+  "Southeast Asian",
   "Central Asian",
-  "European",
+  "West African",
+  "East African",
   "North African",
+  "Southern African",
+  "Horn of Africa",
+  "European",
+  "Eastern European",
+  "Western European",
+  "Latino / Hispanic",
+  "Caribbean",
+  "Native / Indigenous",
   "Mixed",
   "Other",
   "Prefer not to say",
-];
-
-const NATIONALITY_OPTIONS = [
-  "Afghanistan",
-  "Algeria",
-  "Bahrain",
-  "Bangladesh",
-  "Egypt",
-  "India",
-  "Indonesia",
-  "Iran",
-  "Iraq",
-  "Jordan",
-  "Kazakhstan",
-  "Kuwait",
-  "Lebanon",
-  "Libya",
-  "Malaysia",
-  "Morocco",
-  "Nigeria",
-  "Oman",
-  "Pakistan",
-  "Palestine",
-  "Qatar",
-  "Saudi Arabia",
-  "Somalia",
-  "Sudan",
-  "Syria",
-  "Tunisia",
-  "Turkey",
-  "United Arab Emirates",
-  "United Kingdom",
-  "United States",
-  "Yemen",
-  "Other",
 ];
 
 const TOTAL_STEPS = 8;
@@ -64,6 +52,7 @@ export default function Step7Ethnicity() {
   const [nationality, setNationality] = useState(data.nationality);
   const [showEthnicityDropdown, setShowEthnicityDropdown] = useState(false);
   const [showNationalityDropdown, setShowNationalityDropdown] = useState(false);
+  const [ethnicitySearch, setEthnicitySearch] = useState("");
   const [nationalitySearch, setNationalitySearch] = useState("");
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
@@ -76,9 +65,15 @@ export default function Step7Ethnicity() {
     };
   }, []);
 
-  const filteredNationalities = NATIONALITY_OPTIONS.filter((n) =>
-    n.toLowerCase().includes(nationalitySearch.toLowerCase())
+  const filteredEthnicities = ETHNICITY_OPTIONS.filter((e) =>
+    e.toLowerCase().includes(ethnicitySearch.toLowerCase())
   );
+
+  const filteredCountries = COUNTRIES.filter((c) =>
+    c.name.toLowerCase().includes(nationalitySearch.toLowerCase())
+  );
+
+  const selectedCountry = COUNTRIES.find((c) => c.name === nationality) || null;
 
   const next = () => {
     if (!ethnicity || !nationality) {
@@ -168,13 +163,25 @@ export default function Step7Ethnicity() {
           </Pressable>
           {showEthnicityDropdown && (
             <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/30 mt-2 overflow-hidden max-h-64">
+              {/* Search Input */}
+              <View className="p-3 border-b border-[#eebd2b]/20">
+                <TextInput
+                  className="bg-white/5 text-white p-3 rounded-xl border border-[#eebd2b]/30"
+                  placeholder="Search ethnicity..."
+                  placeholderTextColor="#999"
+                  value={ethnicitySearch}
+                  onChangeText={setEthnicitySearch}
+                  autoFocus={false}
+                />
+              </View>
               <ScrollView showsVerticalScrollIndicator={false}>
-                {ETHNICITY_OPTIONS.map((option) => (
+                {filteredEthnicities.map((option) => (
                   <Pressable
                     key={option}
                     onPress={() => {
                       setEthnicity(option);
                       setShowEthnicityDropdown(false);
+                      setEthnicitySearch("");
                     }}
                     className={`p-4 border-b border-white/5 ${
                       ethnicity === option ? "bg-[#B8860B]/20" : ""
@@ -201,7 +208,7 @@ export default function Step7Ethnicity() {
             className="bg-white/5 p-4 rounded-2xl border border-[#eebd2b]/30"
           >
             <Text className="text-white text-lg">
-              {nationality || "Select nationality"}
+              {selectedCountry ? `${countryFlag(selectedCountry.code)} ${selectedCountry.name}` : (nationality || "Select nationality")}
             </Text>
           </Pressable>
           {showNationalityDropdown && (
@@ -218,19 +225,19 @@ export default function Step7Ethnicity() {
                 />
               </View>
               <ScrollView showsVerticalScrollIndicator={false}>
-                {filteredNationalities.map((option) => (
+                {filteredCountries.map((c) => (
                   <Pressable
-                    key={option}
+                    key={c.code}
                     onPress={() => {
-                      setNationality(option);
+                      setNationality(c.name);
                       setShowNationalityDropdown(false);
                       setNationalitySearch("");
                     }}
                     className={`p-4 border-b border-white/5 ${
-                      nationality === option ? "bg-[#B8860B]/20" : ""
+                      nationality === c.name ? "bg-[#B8860B]/20" : ""
                     }`}
                   >
-                    <Text className="text-white text-lg">{option}</Text>
+                    <Text className="text-white text-lg">{countryFlag(c.code)} {c.name}</Text>
                   </Pressable>
                 ))}
               </ScrollView>
