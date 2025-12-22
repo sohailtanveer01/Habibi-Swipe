@@ -66,9 +66,8 @@ export default function Step5Photos() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsMultipleSelection: false,
-        // Let user crop/adjust before saving (matches typical profile-photo UX)
-        allowsEditing: true,
-        aspect: [1,5],
+        // No crop/adjust on upload (select as-is)
+        allowsEditing: false,
         quality: 0.8,
       });
 
@@ -107,18 +106,16 @@ export default function Step5Photos() {
   const removePhoto = (slotIndex: number) => {
     const photo = photosArray[slotIndex];
     if (!photo || photo.trim() === "") return;
-    
-    // Check if this is the last photo
+
+    // Remove by slot position (stable even if there are duplicate URLs)
     const filledPhotos = data.photos.filter((p) => p && p.trim() !== "");
-    if (filledPhotos.length <= 1) {
-      Alert.alert("Cannot Remove", "You must have at least 1 photo. Please add another photo before removing this one.");
-      return;
+    let filledIndex = 0;
+    for (let i = 0; i < slotIndex; i++) {
+      if (photosArray[i] && photosArray[i].trim() !== "") filledIndex++;
     }
-    
-    // Remove from filled photos array
-    const photoIndex = filledPhotos.indexOf(photo);
-    if (photoIndex !== -1) {
-      filledPhotos.splice(photoIndex, 1);
+
+    if (filledIndex >= 0 && filledIndex < filledPhotos.length) {
+      filledPhotos.splice(filledIndex, 1);
       setData((d) => ({ ...d, photos: filledPhotos }));
     }
   };
@@ -172,8 +169,8 @@ export default function Step5Photos() {
 
   const next = () => {
     const filledPhotos = data.photos.filter((p) => p && p.trim() !== "");
-    if (filledPhotos.length < 1) {
-      Alert.alert("Photo Required", "Please upload at least 1 photo to continue.");
+    if (filledPhotos.length < 3) {
+      Alert.alert("More Photos Needed", "Please upload at least 3 photos to continue (including a main photo).");
       return;
     }
     // Filter out empty slots before saving
@@ -243,9 +240,7 @@ export default function Step5Photos() {
 
         {/* Photo Grid */}
         <View className="mb-10">
-          <Text className="text-white/60 text-sm mb-3 text-center">
-            Long press and drag to reorder photos
-          </Text>
+          
           <View className="flex-row flex-wrap gap-4 justify-between">
             {photosArray.slice(0, 6).map((photo, index) => {
               const isDragging = draggingIndex === index;
@@ -260,6 +255,8 @@ export default function Step5Photos() {
                   isMainPhoto={isMainPhoto}
                   isDragging={isDragging}
                   onLayout={(e) => onLayout(index, e)}
+                  // Bigger tiles on onboarding Step 5 (2 columns instead of 3)
+                  containerClassName="w-[48%]"
                   onLongPress={() => {
                     if (photo && photo.trim() !== "") {
                       setDraggingIndex(index);

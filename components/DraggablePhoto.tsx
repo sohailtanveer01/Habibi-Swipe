@@ -23,6 +23,7 @@ interface DraggablePhotoProps {
   layoutPositions: { [key: number]: { x: number; y: number; width: number; height: number } };
   hoverTargetIndex: number | null;
   draggingIndex: number | null;
+  containerClassName?: string;
 }
 
 export default function DraggablePhoto({
@@ -40,6 +41,7 @@ export default function DraggablePhoto({
   layoutPositions,
   hoverTargetIndex,
   draggingIndex,
+  containerClassName = "w-[30%]",
 }: DraggablePhotoProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -74,7 +76,7 @@ export default function DraggablePhoto({
       scale.value = withSpring(1);
       opacity.value = withSpring(1);
     }
-  }, [isDragging]);
+  }, [isDragging, opacity, scale]);
 
   const panGesture = Gesture.Pan()
     .enabled(isDragging && !!photo && photo.trim() !== "")
@@ -164,7 +166,7 @@ export default function DraggablePhoto({
       shiftX.value = withSpring(0);
       shiftY.value = withSpring(0);
     }
-  }, [hoverTargetIndex, draggingIndex, index, layoutPositions]);
+  }, [hoverTargetIndex, draggingIndex, index, layoutPositions, photo, shiftX, shiftY]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -179,7 +181,7 @@ export default function DraggablePhoto({
   });
 
   return (
-    <View className="w-[30%]" onLayout={onLayout}>
+    <View className={containerClassName} onLayout={onLayout}>
       <GestureDetector gesture={panGesture}>
         <Animated.View style={animatedStyle}>
           <Pressable
@@ -219,7 +221,7 @@ export default function DraggablePhoto({
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <>
-                    <Text className="text-white/50 text-3xl mb-2">+</Text>
+                    <Text className="text-white/50 text-4xl mb-2">+</Text>
                     <Text className="text-white/50 text-xs text-center">
                       {index === 0 ? "Main Photo" : `Photo ${index + 1}`}
                     </Text>
