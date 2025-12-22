@@ -1,4 +1,4 @@
-import { View, Text, TextInput, Pressable, ScrollView, Platform, KeyboardAvoidingView } from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, Platform, KeyboardAvoidingView, Keyboard } from "react-native";
 import { useRouter } from "expo-router";
 import { useOnboarding } from "../../../lib/onboardingStore";
 import { useState, useEffect } from "react";
@@ -34,6 +34,7 @@ export default function Step1Basic() {
   const [maritalStatus, setMaritalStatus] = useState(data.maritalStatus);
   const [hasChildren, setHasChildren] = useState<boolean | null>(data.hasChildren);
   const [showMaritalStatusDropdown, setShowMaritalStatusDropdown] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   // Height input state
   const [feet, setFeet] = useState("");
@@ -66,6 +67,15 @@ export default function Step1Basic() {
       setHeight(`${feet}'${inches}"`);
     }
   }, [feet, inches]);
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   const formatDateForDB = (date: Date): string => {
     const year = date.getFullYear();
@@ -161,7 +171,7 @@ export default function Step1Basic() {
 
       <ScrollView 
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: keyboardVisible ? 20 : 120 }}
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
       >
@@ -383,21 +393,23 @@ export default function Step1Basic() {
       </ScrollView>
 
       {/* Fixed Next Button */}
-      <View className="px-6 pb-8 pt-4">
-        <Pressable
-          className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
-          onPress={next}
-          style={{ 
-            shadowColor: "#B8860B",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 8,
-          }}
-        >
-          <Text className="text-white text-lg font-bold">Next</Text>
-        </Pressable>
-      </View>
+      {!keyboardVisible && (
+        <View className="px-6 pb-8 pt-4">
+          <Pressable
+            className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
+            onPress={next}
+            style={{ 
+              shadowColor: "#B8860B",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+          >
+            <Text className="text-white text-lg font-bold">Next</Text>
+          </Pressable>
+        </View>
+      )}
       </KeyboardAvoidingView>
     </OnboardingBackground>
   );

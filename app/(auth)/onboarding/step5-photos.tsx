@@ -187,15 +187,9 @@ export default function Step5Photos() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 20 }}
-        showsVerticalScrollIndicator={true}
-      >
-        {/* Header with Back Button and Progress Indicators */}
-        <View className="pt-20 px-6 pb-8">
-        <View className="flex-row items-center justify-between mb-8">
-          {/* Back Button */}
+      {/* Sticky top bar (Back + progress + step count) */}
+      <View className="pt-20 px-6 pb-4">
+        <View className="flex-row items-center justify-between">
           <Pressable
             onPress={() => router.back()}
             className="w-10 h-10 rounded-full border border-[#B8860B] items-center justify-center"
@@ -203,7 +197,6 @@ export default function Step5Photos() {
             <Ionicons name="chevron-back" size={20} color="white" />
           </Pressable>
 
-          {/* Step Indicators - Centered */}
           <View className="flex-row items-center gap-2 flex-1 justify-center px-4">
             {Array.from({ length: 5 }, (_, i) => i + 1).map((indicator) => {
               const getIndicatorForStep = (step: number) => {
@@ -223,14 +216,18 @@ export default function Step5Photos() {
             })}
           </View>
 
-          {/* Step Text - Right Aligned */}
-          <Text className="text-[#B8860B] text-xs font-medium" style={{ width: 50, textAlign: 'right' }}>
+          <Text className="text-[#B8860B] text-xs font-medium" style={{ width: 50, textAlign: "right" }}>
             step {CURRENT_STEP}/{TOTAL_STEPS}
           </Text>
         </View>
       </View>
 
-      <View className="px-6 pb-10">
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 20 }}
+        showsVerticalScrollIndicator={true}
+      >
+      <View className="px-6 pt-2 pb-10">
         {/* Header Section */}
         <View className="mb-10">
           <Text className="text-white text-4xl font-bold mb-3 leading-tight">

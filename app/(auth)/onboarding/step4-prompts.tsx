@@ -1,7 +1,7 @@
-import { View, Text, Pressable, ScrollView, TextInput, Platform, KeyboardAvoidingView } from "react-native";
+import { View, Text, Pressable, ScrollView, TextInput, Platform, KeyboardAvoidingView, Keyboard } from "react-native";
 import { useRouter } from "expo-router";
 import { useOnboarding } from "../../../lib/onboardingStore";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import OnboardingBackground from "@/components/OnboardingBackground";
 
@@ -59,9 +59,19 @@ export default function Step5Prompts() {
 
   const [prompts, setPrompts] = useState<Prompt[]>(initializePrompts());
   const [showDropdown, setShowDropdown] = useState<number | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   // If user has filled at least one prompt fully, the step is effectively complete (no need to show Skip).
   const isComplete = prompts.some((p) => p.question.trim() && p.answer.trim());
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   const clearPrompt = (index: number) => {
     const newPrompts = [...prompts];
@@ -117,50 +127,53 @@ export default function Step5Prompts() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
+        {/* Sticky top bar (Back + progress + step count) */}
+        <View className="pt-20 px-6 pb-4">
+          <View className="flex-row items-center justify-between">
+            <Pressable
+              onPress={() => router.back()}
+              className="w-10 h-10 rounded-full border border-[#B8860B] items-center justify-center"
+            >
+              <Ionicons name="chevron-back" size={20} color="white" />
+            </Pressable>
+
+            <View className="flex-row items-center gap-2 flex-1 justify-center px-4">
+              {Array.from({ length: 5 }, (_, i) => i + 1).map((indicator) => {
+                const getIndicatorForStep = (step: number) => {
+                  if (step <= 5) return step;
+                  return 5;
+                };
+                const activeIndicator = getIndicatorForStep(CURRENT_STEP);
+                const isActive = indicator === activeIndicator;
+                return (
+                  <View
+                    key={indicator}
+                    className={`h-1 rounded-full ${
+                      isActive ? "bg-[#F5F573] w-8" : "bg-[#B8860B] w-6"
+                    }`}
+                  />
+                );
+              })}
+            </View>
+
+            <Text
+              className="text-[#B8860B] text-xs font-medium"
+              style={{ width: 50, textAlign: "right" }}
+            >
+              step {CURRENT_STEP}/{TOTAL_STEPS}
+            </Text>
+          </View>
+        </View>
+
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingBottom: 200 }}
+          // When keyboard is open, don't reserve a huge bottom gap (it crushes the typing area)
+          contentContainerStyle={{ paddingBottom: keyboardVisible ? 48 : 200 }}
           showsVerticalScrollIndicator={true}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header with Back Button and Progress Indicators */}
-          <View className="pt-20 px-6 pb-8">
-            <View className="flex-row items-center justify-between mb-8">
-              {/* Back Button */}
-              <Pressable
-                onPress={() => router.back()}
-                className="w-10 h-10 rounded-full border border-[#B8860B] items-center justify-center"
-              >
-                <Ionicons name="chevron-back" size={20} color="white" />
-              </Pressable>
-
-              {/* Step Indicators - Centered */}
-              <View className="flex-row items-center gap-2 flex-1 justify-center px-4">
-                {Array.from({ length: 5 }, (_, i) => i + 1).map((indicator) => {
-                  const getIndicatorForStep = (step: number) => {
-                    if (step <= 5) return step;
-                    return 5;
-                  };
-                  const activeIndicator = getIndicatorForStep(CURRENT_STEP);
-                  const isActive = indicator === activeIndicator;
-                  return (
-                    <View
-                      key={indicator}
-                      className={`h-1 rounded-full ${
-                        isActive ? "bg-[#F5F573] w-8" : "bg-[#B8860B] w-6"
-                      }`}
-                    />
-                  );
-                })}
-              </View>
-
-              {/* Step Text - Right Aligned */}
-              <Text className="text-[#B8860B] text-xs font-medium" style={{ width: 50, textAlign: 'right' }}>
-                step {CURRENT_STEP}/{TOTAL_STEPS}
-              </Text>
-            </View>
-
-            {/* Header Section */}
+          {/* Header Section */}
+          <View className="px-6 pt-2 pb-8">
             <View className="mb-10">
               <Text className="text-white text-4xl font-bold mb-3 leading-tight">
                 Add Your Prompts
@@ -283,30 +296,32 @@ export default function Step5Prompts() {
           </View>
         </ScrollView>
 
-        {/* Fixed Buttons */}
-        <View className="px-6 pb-8 pt-4">
-          {!isComplete && (
+        {/* Fixed Buttons (hide both while keyboard is open) */}
+        {!keyboardVisible && (
+          <View className="px-6 pb-8 pt-4">
+            {!isComplete && (
+              <Pressable
+                className="bg-white/10 p-5 rounded-2xl items-center mb-3"
+                onPress={() => router.push("/onboarding/step5-photos")}
+              >
+                <Text className="text-white/80 text-lg font-semibold">Skip</Text>
+              </Pressable>
+            )}
             <Pressable
-              className="bg-white/10 p-5 rounded-2xl items-center mb-3"
-              onPress={() => router.push("/onboarding/step5-photos")}
+              className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
+              onPress={next}
+              style={{
+                shadowColor: "#B8860B",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 8,
+              }}
             >
-              <Text className="text-white/80 text-lg font-semibold">Skip</Text>
+              <Text className="text-white text-lg font-bold">Next</Text>
             </Pressable>
-          )}
-          <Pressable
-            className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
-            onPress={next}
-            style={{
-              shadowColor: "#B8860B",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 8,
-            }}
-          >
-            <Text className="text-white text-lg font-bold">Next</Text>
-          </Pressable>
-        </View>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </OnboardingBackground>
   );
