@@ -75,6 +75,16 @@ export default function Step7Ethnicity() {
 
   const selectedCountry = COUNTRIES.find((c) => c.name === nationality) || null;
 
+  const skip = () => {
+    // Allow skipping without validation; save whatever is currently selected (if anything)
+    setData((d) => ({
+      ...d,
+      ethnicity: ethnicity || d.ethnicity,
+      nationality: nationality || d.nationality,
+    }));
+    router.push("/onboarding/step8-background");
+  };
+
   const next = () => {
     if (!ethnicity || !nationality) {
       alert("Please select both ethnicity and nationality.");
@@ -247,9 +257,15 @@ export default function Step7Ethnicity() {
       </View>
       </ScrollView>
 
-      {/* Fixed Next Button */}
+      {/* Fixed Buttons */}
       {!keyboardVisible && (
         <View className="px-6 pb-8 pt-4">
+          <Pressable
+            className="bg-white/10 p-5 rounded-2xl items-center mb-3"
+            onPress={skip}
+          >
+            <Text className="text-white/80 text-lg font-semibold">Skip</Text>
+          </Pressable>
           <Pressable
             className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
             onPress={next}

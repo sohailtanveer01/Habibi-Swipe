@@ -67,6 +67,17 @@ export default function Step8Background() {
     p.toLowerCase().includes(professionSearch.toLowerCase())
   );
 
+  const skip = () => {
+    // Allow skipping without validation; save whatever user typed so far
+    setData((d) => ({
+      ...d,
+      education: education.trim(),
+      profession: profession.trim(),
+      bio: bio.trim(),
+    }));
+    router.push("/onboarding/done");
+  };
+
   const next = () => {
     setData((d) => ({
       ...d,
@@ -222,9 +233,15 @@ export default function Step8Background() {
       </View>
       </ScrollView>
 
-      {/* Fixed Next Button */}
+      {/* Fixed Buttons */}
       {!keyboardVisible && (
         <View className="px-6 pb-8 pt-4">
+          <Pressable
+            className="bg-white/10 p-5 rounded-2xl items-center mb-3"
+            onPress={skip}
+          >
+            <Text className="text-white/80 text-lg font-semibold">Skip</Text>
+          </Pressable>
           <Pressable
             className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
             onPress={next}
