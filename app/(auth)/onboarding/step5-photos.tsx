@@ -68,7 +68,7 @@ export default function Step5Photos() {
         allowsMultipleSelection: false,
         // Let user crop/adjust before saving (matches typical profile-photo UX)
         allowsEditing: true,
-        aspect: [4, 5],
+        aspect: [1,5],
         quality: 0.8,
       });
 

@@ -11,8 +11,10 @@ const CURRENT_STEP = 6;
 
 export default function Step6Location() {
   const router = useRouter();
-  const { setData } = useOnboarding();
+  const { data, setData } = useOnboarding();
   const [loading, setLoading] = useState(false);
+
+  const hasLocation = Boolean(data?.location?.lat) && Boolean(data?.location?.lon);
 
   const enableLocation = async () => {
     setLoading(true);
@@ -112,12 +114,14 @@ export default function Step6Location() {
             </Text>
           </Pressable>
 
-          <Pressable
-            className="bg-white/10 p-4 rounded-2xl items-center"
-            onPress={() => router.push("/onboarding/step8-ethnicity")}
-          >
-            <Text className="text-white/80">Skip for now</Text>
-          </Pressable>
+          {!hasLocation && (
+            <Pressable
+              className="bg-white/10 p-4 rounded-2xl items-center"
+              onPress={() => router.push("/onboarding/step8-ethnicity")}
+            >
+              <Text className="text-white/80">Skip for now</Text>
+            </Pressable>
+          )}
         </View>
       </View>
       </View>

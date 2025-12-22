@@ -60,6 +60,9 @@ export default function Step5Prompts() {
   const [prompts, setPrompts] = useState<Prompt[]>(initializePrompts());
   const [showDropdown, setShowDropdown] = useState<number | null>(null);
 
+  // If user has filled at least one prompt fully, the step is effectively complete (no need to show Skip).
+  const isComplete = prompts.some((p) => p.question.trim() && p.answer.trim());
+
   const clearPrompt = (index: number) => {
     const newPrompts = [...prompts];
     newPrompts[index] = {
@@ -282,12 +285,14 @@ export default function Step5Prompts() {
 
         {/* Fixed Buttons */}
         <View className="px-6 pb-8 pt-4">
-          <Pressable
-            className="bg-white/10 p-5 rounded-2xl items-center mb-3"
-            onPress={() => router.push("/onboarding/step5-photos")}
-          >
-            <Text className="text-white/80 text-lg font-semibold">Skip</Text>
-          </Pressable>
+          {!isComplete && (
+            <Pressable
+              className="bg-white/10 p-5 rounded-2xl items-center mb-3"
+              onPress={() => router.push("/onboarding/step5-photos")}
+            >
+              <Text className="text-white/80 text-lg font-semibold">Skip</Text>
+            </Pressable>
+          )}
           <Pressable
             className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
             onPress={next}

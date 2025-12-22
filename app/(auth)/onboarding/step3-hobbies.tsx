@@ -61,6 +61,8 @@ export default function Step4Hobbies() {
 
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>(data.hobbies || []);
 
+  const isComplete = selectedHobbies.length > 0 && selectedHobbies.length <= 3;
+
   const toggleHobby = (hobbyName: string) => {
     setSelectedHobbies((prev) => {
       if (prev.includes(hobbyName)) {
@@ -191,12 +193,14 @@ export default function Step4Hobbies() {
 
       {/* Fixed Buttons */}
       <View className="px-6 pb-8 pt-4">
-        <Pressable
-          className="bg-white/10 p-5 rounded-2xl items-center mb-3"
-          onPress={() => router.push("/onboarding/step4-prompts")}
-        >
-          <Text className="text-white/80 text-lg font-semibold">Skip</Text>
-        </Pressable>
+        {!isComplete && (
+          <Pressable
+            className="bg-white/10 p-5 rounded-2xl items-center mb-3"
+            onPress={() => router.push("/onboarding/step4-prompts")}
+          >
+            <Text className="text-white/80 text-lg font-semibold">Skip</Text>
+          </Pressable>
+        )}
         <Pressable
           className="bg-[#B8860B] p-5 rounded-2xl items-center shadow-lg"
           onPress={next}
