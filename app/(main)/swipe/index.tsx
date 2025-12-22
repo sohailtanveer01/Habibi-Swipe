@@ -20,15 +20,9 @@ import { supabase } from "../../../lib/supabase";
 import Logo from "../../../components/Logo";
 import DiamondIcon from "../../../components/DiamondIcon";
 import * as Haptics from "expo-haptics";
+import { useSwipeStore } from "../../../lib/stores/swipeStore";
 
-// ============================================================================
-// REWIND FEATURE TYPES
-// ============================================================================
-interface RewindHistoryItem {
-  profile: any;           // The profile that was passed
-  swipedId: string;       // ID of the swiped user (for DB deletion)
-  index: number;          // Index in the profiles array when passed
-}
+// RewindHistoryItem type imported from swipeStore
 
 const { width } = Dimensions.get("window");
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -50,10 +44,37 @@ export default function SwipeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userId, source } = useLocalSearchParams<{ userId?: string; source?: string }>();
-  const [profiles, setProfiles] = useState<any[]>([]);
+  
+  // Zustand store for swipe state (allows other components to access feed state)
+  const storeSetProfiles = useSwipeStore((s) => s.setProfiles);
+  const storeSetIndex = useSwipeStore((s) => s.setCurrentIndex);
+  const storeSetIsSwiping = useSwipeStore((s) => s.setIsSwiping);
+  const storeSetLastPassed = useSwipeStore((s) => s.setLastPassedProfile);
+  const storeLastPassed = useSwipeStore((s) => s.lastPassedProfile);
+  const storeSetIsRewinding = useSwipeStore((s) => s.setIsRewinding);
+  const storeIsRewinding = useSwipeStore((s) => s.isRewinding);
+  
+  // Local state (synced with store via useEffect) - keeps animations working
+  const [profiles, setProfilesLocal] = useState<any[]>([]);
   const [index, setIndex] = useState(0);
-  const [isSwiping, setIsSwiping] = useState(false);
+  const [isSwiping, setIsSwipingLocal] = useState(false);
   const viewedProfileIds = useRef<Set<string>>(new Set());
+  
+  // Sync local profiles to store
+  const setProfiles = useCallback((newProfiles: any[]) => {
+    setProfilesLocal(newProfiles);
+    storeSetProfiles(newProfiles);
+  }, [storeSetProfiles]);
+  
+  // Sync local index to store via useEffect (avoids setState during render)
+  useEffect(() => {
+    storeSetIndex(index);
+  }, [index, storeSetIndex]);
+  
+  const setIsSwiping = useCallback((val: boolean) => {
+    setIsSwipingLocal(val);
+    storeSetIsSwiping(val);
+  }, [storeSetIsSwiping]);
   const [matchData, setMatchData] = useState<{
     matchId: string;
     otherUser: any;
@@ -102,12 +123,13 @@ export default function SwipeScreen() {
   const exitingX = useSharedValue(0);
 
   // ============================================================================
-  // REWIND FEATURE STATE
+  // REWIND FEATURE STATE (synced with Zustand store)
   // ============================================================================
-  // Last passed profile - only ONE rewind allowed (to previous user only)
-  const [lastPassedProfile, setLastPassedProfile] = useState<RewindHistoryItem | null>(null);
-  // Track if rewind is in progress
-  const [isRewinding, setIsRewinding] = useState(false);
+  // Use store state directly (via selectors above)
+  const lastPassedProfile = storeLastPassed;
+  const setLastPassedProfile = storeSetLastPassed;
+  const isRewinding = storeIsRewinding;
+  const setIsRewinding = storeSetIsRewinding;
   // Track the card being rewound (for animation)
   const [rewindingCard, setRewindingCard] = useState<any | null>(null);
   // Rewind animation shared values
@@ -969,10 +991,11 @@ export default function SwipeScreen() {
       Alert.alert("Error", "Failed to undo swipe. Please try again.");
       setIsRewinding(false);
     }
-  }, [isRewinding, isSwiping, lastPassedProfile, rewindX, rewindScale, rewindOpacity, rewindRotation]);
+  }, [isRewinding, isSwiping, lastPassedProfile, rewindX, rewindScale, rewindOpacity, rewindRotation, setIndex, setIsRewinding, setLastPassedProfile]);
 
   // Check if rewind is available (only after ONE left swipe, can't chain rewinds)
-  const canRewind = lastPassedProfile !== null && !isRewinding && !isSwiping;
+  // Uses store state + local isSwiping for comprehensive check
+  const canRewindNow = lastPassedProfile !== null && !isRewinding && !isSwiping;
 
   const current = profiles[index];
 
@@ -1251,7 +1274,7 @@ export default function SwipeScreen() {
               </View>
             </Pressable>
 
-            {canRewind && (
+            {canRewindNow && (
               <Pressable
                 className="w-12 h-12 rounded-full items-center justify-center bg-[#B8860B]"
                 onPress={handleRewind}
