@@ -8,6 +8,7 @@ import { BlurView } from "expo-blur";
 import { useActiveStatus } from "../../lib/useActiveStatus";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { subscribeMainPhoto, setMainPhoto as setStoreMainPhoto } from "../../lib/profilePhotoStore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -33,7 +34,7 @@ export default function MainLayout() {
   // Hide tab bar on chat detail or filters screen
   const hideTabBar = isChatDetail || isFiltersScreen;
 
-  // Function to load profile photo
+  // Function to load profile photo (also syncs to in-memory store)
   const loadProfilePhoto = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -46,30 +47,26 @@ export default function MainLayout() {
 
     if (data?.photos && data.photos.length > 0) {
       setProfilePhoto(data.photos[0]);
+      setStoreMainPhoto(data.photos[0]); // Sync to store
     } else {
       setProfilePhoto(null);
+      setStoreMainPhoto(null);
     }
   };
 
-  // Load profile photo on mount and subscribe to photo updates via broadcast
+  // Load profile photo on mount and subscribe to in-memory store for instant updates
   useEffect(() => {
     loadProfilePhoto();
 
-    // Subscribe to broadcast channel for instant photo updates
-    const channel = supabase
-      .channel("profile-photo-updates")
-      .on("broadcast", { event: "photo-reordered" }, (payload) => {
-        console.log("📸 Photo reorder broadcast received:", payload);
-        if (payload.payload?.newMainPhoto) {
-          setProfilePhoto(payload.payload.newMainPhoto);
-        } else {
-          loadProfilePhoto();
-        }
-      })
-      .subscribe();
+    // Subscribe to in-memory store for instant photo updates (no network latency)
+    const unsubscribe = subscribeMainPhoto((newPhoto) => {
+      if (newPhoto !== null) {
+        setProfilePhoto(newPhoto);
+      }
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, []);
 

@@ -13,6 +13,7 @@ import Animated, {
   withSpring,
   runOnJS,
 } from "react-native-reanimated";
+import { setMainPhoto } from "../../../lib/profilePhotoStore";
 
 async function uploadPhoto(uri: string, userId: string) {
   const ext = uri.split(".").pop() || "jpg";
@@ -664,12 +665,8 @@ export default function ProfileScreen() {
         
         console.log("Photos reordered successfully");
         
-        // Broadcast the photo reorder to update tab bar icon instantly
-        await supabase.channel("profile-photo-updates").send({
-          type: "broadcast",
-          event: "photo-reordered",
-          payload: { newMainPhoto: newPhotos[0] },
-        });
+        // Update in-memory store to instantly sync tab bar icon (no network latency)
+        setMainPhoto(newPhotos[0]);
       }
     } catch (e: any) {
       console.error("Error reordering photos:", e);
