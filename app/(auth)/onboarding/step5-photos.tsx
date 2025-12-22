@@ -66,6 +66,9 @@ export default function Step5Photos() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsMultipleSelection: false,
+        // Let user crop/adjust before saving (matches typical profile-photo UX)
+        allowsEditing: true,
+        aspect: [4, 5],
         quality: 0.8,
       });
 

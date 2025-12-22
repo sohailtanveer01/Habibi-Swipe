@@ -51,6 +51,15 @@ export default function Step1Basic() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+   // If user switches to male, "widowed" should not be selectable.
+  // Also clear it if it was previously selected.
+  useEffect(() => {
+    if (gender === "male" && maritalStatus === "widowed") {
+      setMaritalStatus("");
+      setShowMaritalStatusDropdown(false);
+    }
+  }, [gender, maritalStatus]);
+
   // Update height string when values change
   useEffect(() => {
     if (feet && inches) {
@@ -280,7 +289,7 @@ export default function Step1Basic() {
               <View className="flex-1">
                 <TextInput
                   className="bg-white/5 text-white p-4 rounded-2xl border border-[#eebd2b]/40 text-center"
-                  placeholder="5"
+                  // placeholder="5"
                   placeholderTextColor="#999"
                   value={feet}
                   onChangeText={setFeet}
@@ -293,7 +302,7 @@ export default function Step1Basic() {
               <View className="flex-1">
                 <TextInput
                   className="bg-white/5 text-white p-4 rounded-2xl border border-[#eebd2b]/40 text-center"
-                  placeholder="10"
+                  // placeholder="10"
                   placeholderTextColor="#999"
                   value={inches}
                   onChangeText={setInches}
@@ -321,7 +330,10 @@ export default function Step1Basic() {
             </Pressable>
             {showMaritalStatusDropdown && (
               <View className="bg-white/5 rounded-2xl border border-[#eebd2b]/30 mt-2 overflow-hidden">
-                {["single", "divorced", "widowed", "separated"].map((status) => (
+                {(gender === "male"
+                  ? ["single", "divorced", "separated"]
+                  : ["single", "divorced", "widowed", "separated"]
+                ).map((status) => (
                   <Pressable
                     key={status}
                     onPress={() => {

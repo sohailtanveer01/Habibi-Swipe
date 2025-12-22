@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import { View, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import Logo from "./Logo";
 
 interface OnboardingBackgroundProps {
   children: ReactNode;
@@ -25,9 +24,9 @@ export default function OnboardingBackground({ children }: OnboardingBackgroundP
         pointerEvents="none"
       />
       {/* Logo at top */}
-      <View style={styles.logoContainer}>
+      {/* <View style={styles.logoContainer}>
         <Logo variant="colored" width={120} />
-      </View>
+      </View> */}
       {children}
     </View>
   );
@@ -55,13 +54,13 @@ const styles = StyleSheet.create({
     bottom: -260,
     right: -220,
   },
-  logoContainer: {
-    position: "absolute",
-    top: 60,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    zIndex: 10,
-  },
+  // logoContainer: {
+  //   position: "absolute",
+  //   top: 60,
+  //   left: 0,
+  //   right: 0,
+  //   alignItems: "center",
+  //   zIndex: 10,
+  // },
 });
 

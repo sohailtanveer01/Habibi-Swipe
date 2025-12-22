@@ -5,12 +5,12 @@ import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import OnboardingBackground from "@/components/OnboardingBackground";
 
-const SECT_OPTIONS = ["sunni", "shia", "sufi", "other", "prefer not to say"];
+const SECT_OPTIONS = ["sunni", "shia", "sufi", "other"];
 const RELIGIOUS_PRACTICE_OPTIONS = [
+  "Prays 5 times a day",
   "actively practicing",
   "moderately practicing",
   "not practicing",
-  "Prays 5 times a day",
 ];
 const ALCOHOL_OPTIONS = ["never", "socially", "often"];
 const SMOKING_OPTIONS = ["never", "socially", "often"];
