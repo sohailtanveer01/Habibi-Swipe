@@ -1,5 +1,5 @@
 import { Tabs, usePathname, useGlobalSearchParams } from "expo-router";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { View, Text, Platform, StyleSheet, Dimensions } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,15 +8,21 @@ import { BlurView } from "expo-blur";
 import { useActiveStatus } from "../../lib/useActiveStatus";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { subscribeMainPhoto, setMainPhoto as setStoreMainPhoto } from "../../lib/profilePhotoStore";
+import { useUserStore, useMainPhoto } from "../../lib/stores/userStore";
+import { useBadgeStore, useUnreadMessages, useNewLikes } from "../../lib/stores/badgeStore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 
 export default function MainLayout() {
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [newLikesCount, setNewLikesCount] = useState(0); // Use local state like unreadCount
+  // Zustand stores
+  const profilePhoto = useMainPhoto();
+  const unreadCount = useUnreadMessages();
+  const newLikesCount = useNewLikes();
+  const loadProfile = useUserStore((s) => s.loadProfile);
+  const loadAllCounts = useBadgeStore((s) => s.loadAllCounts);
+  const setNewLikes = useBadgeStore((s) => s.setNewLikes);
+  
   const pathname = usePathname();
   const searchParams = useGlobalSearchParams();
   const insets = useSafeAreaInsets();
@@ -34,86 +40,20 @@ export default function MainLayout() {
   // Hide tab bar on chat detail or filters screen
   const hideTabBar = isChatDetail || isFiltersScreen;
 
-  // Function to load profile photo (also syncs to in-memory store)
-  const loadProfilePhoto = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("users")
-      .select("photos")
-      .eq("id", user.id)
-      .single();
-
-    if (data?.photos && data.photos.length > 0) {
-      setProfilePhoto(data.photos[0]);
-      setStoreMainPhoto(data.photos[0]); // Sync to store
-    } else {
-      setProfilePhoto(null);
-      setStoreMainPhoto(null);
-    }
-  };
-
-  // Load profile photo on mount and subscribe to in-memory store for instant updates
+  // Load profile on mount (uses Zustand store)
   useEffect(() => {
-    loadProfilePhoto();
+    loadProfile();
+  }, [loadProfile]);
 
-    // Subscribe to in-memory store for instant photo updates (no network latency)
-    const unsubscribe = subscribeMainPhoto((newPhoto) => {
-      if (newPhoto !== null) {
-        setProfilePhoto(newPhoto);
-      }
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  // Refresh profile photo when navigating (backup for catching updates)
+  // Refresh profile when navigating (backup for catching updates)
   useEffect(() => {
-    loadProfilePhoto();
+    loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // Check for unread messages and pending compliments
+  // Check for unread messages and pending compliments (uses Zustand store)
   useEffect(() => {
-    const checkUnreadMessages = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      let totalUnread = 0;
-
-      // Get all matches for the user
-      const { data: matches } = await supabase
-        .from("matches")
-        .select("id")
-        .or(`user1.eq.${user.id},user2.eq.${user.id}`);
-
-      if (matches && matches.length > 0) {
-        // Count unread messages (messages not sent by current user AND read = false)
-        const { count } = await supabase
-          .from("messages")
-          .select("*", { count: "exact", head: true })
-          .in("match_id", matches.map(m => m.id))
-          .neq("sender_id", user.id)
-          .eq("read", false);
-
-        totalUnread += count || 0;
-      }
-
-      // Count pending compliments where current user is the recipient
-      const { count: complimentCount } = await supabase
-        .from("compliments")
-        .select("*", { count: "exact", head: true })
-        .eq("recipient_id", user.id)
-        .eq("status", "pending");
-
-      totalUnread += complimentCount || 0;
-
-      setUnreadCount(totalUnread);
-    };
-
-    checkUnreadMessages();
+    loadAllCounts();
 
     // Subscribe to new messages, message updates, and compliments
     const channel = supabase
@@ -122,28 +62,28 @@ export default function MainLayout() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         () => {
-          checkUnreadMessages();
+          useBadgeStore.getState().loadUnreadMessages();
         }
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "messages" },
         () => {
-          checkUnreadMessages();
+          useBadgeStore.getState().loadUnreadMessages();
         }
       )
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "compliments" },
         () => {
-          checkUnreadMessages();
+          useBadgeStore.getState().loadUnreadMessages();
         }
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "compliments" },
         () => {
-          checkUnreadMessages();
+          useBadgeStore.getState().loadUnreadMessages();
         }
       )
       .subscribe();
@@ -151,7 +91,7 @@ export default function MainLayout() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [loadAllCounts]);
 
   // Check for new likes (people who liked the current user)
   const checkNewLikesRef = useRef<(() => Promise<void>) | null>(null);
@@ -183,7 +123,7 @@ export default function MainLayout() {
 
       if (!swipes || swipes.length === 0) {
         console.log("💔 No swipes found, setting count to 0");
-        setNewLikesCount(0);
+        setNewLikes(0);
         return;
       }
 
@@ -235,8 +175,8 @@ export default function MainLayout() {
         (id) => !matchedUserIds.has(id) && !blockedUserIds.has(id)
       );
 
-      console.log("💖 New likes count:", newLikes.length, "from likers:", newLikes);
-      setNewLikesCount(newLikes.length);
+        console.log("💖 New likes count:", newLikes.length, "from likers:", newLikes);
+      setNewLikes(newLikes.length);
     };
 
     // Store the function in a ref so subscription callbacks can access the latest version
@@ -334,7 +274,7 @@ export default function MainLayout() {
         supabase.removeChannel(channel);
       }
     };
-  }, [setNewLikesCount]);
+  }, [setNewLikes]);
 
   return (
     <Tabs

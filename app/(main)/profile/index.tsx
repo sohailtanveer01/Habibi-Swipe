@@ -13,7 +13,7 @@ import Animated, {
   withSpring,
   runOnJS,
 } from "react-native-reanimated";
-import { setMainPhoto } from "../../../lib/profilePhotoStore";
+import { useUserStore } from "../../../lib/stores/userStore";
 
 async function uploadPhoto(uri: string, userId: string) {
   const ext = uri.split(".").pop() || "jpg";
@@ -665,8 +665,8 @@ export default function ProfileScreen() {
         
         console.log("Photos reordered successfully");
         
-        // Update in-memory store to instantly sync tab bar icon (no network latency)
-        setMainPhoto(newPhotos[0]);
+        // Update Zustand store to instantly sync tab bar icon (no network latency)
+        useUserStore.getState().setMainPhoto(newPhotos[0]);
       }
     } catch (e: any) {
       console.error("Error reordering photos:", e);
