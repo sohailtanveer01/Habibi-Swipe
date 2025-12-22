@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -353,6 +354,7 @@ function DraggablePhotoCard({
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
@@ -708,7 +710,12 @@ export default function ProfileScreen() {
   const fullName = firstName && lastName ? `${firstName} ${lastName}` : profile?.name || "Profile";
 
   return (
-    <ScrollView className="flex-1 bg-black" showsVerticalScrollIndicator={false}>
+    <ScrollView
+      className="flex-1 bg-black"
+      showsVerticalScrollIndicator={false}
+      // Allows scrolling past the last item (and above the tab bar)
+      contentContainerStyle={{ paddingBottom: insets.bottom + 60 }}
+    >
       <View className="px-6 pt-16 pb-8">
         {/* Header with Profile Picture and Settings */}
         <View className="items-center mb-8">
