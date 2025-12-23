@@ -599,8 +599,15 @@ export default function ChatScreen() {
             return;
           }
           
-          // SIMPLE STRATEGY: Always refetch to get complete data with reply_to
-          console.log("📨 New message received - refetching");
+          // If screen is focused, mark messages as read (receiver is actively viewing)
+          if (isScreenFocusedRef.current) {
+            console.log("📨 New message received while screen focused - marking as read");
+            shouldMarkAsReadRef.current = true;
+          } else {
+            console.log("📨 New message received while screen not focused - keeping unread");
+          }
+          
+          // Refetch to get complete data with reply_to
           queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
           queryClient.invalidateQueries({ queryKey: ["chat-list"] });
           
