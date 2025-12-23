@@ -1,15 +1,15 @@
-import { Tabs, usePathname, useGlobalSearchParams } from "expo-router";
-import { useEffect, useRef } from "react";
-import { View, Text, Platform, StyleSheet, Dimensions } from "react-native";
-import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../../lib/supabase";
-import { BlurView } from "expo-blur";
-import { useActiveStatus } from "../../lib/useActiveStatus";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { BlurView } from "expo-blur";
+import { Image } from "expo-image";
+import { Tabs, useGlobalSearchParams, usePathname } from "expo-router";
+import { useEffect, useRef } from "react";
+import { Dimensions, Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useUserStore, useMainPhoto } from "../../lib/stores/userStore";
-import { useBadgeStore, useUnreadMessages, useNewLikes } from "../../lib/stores/badgeStore";
+import { useBadgeStore, useNewLikes, useUnreadMessages } from "../../lib/stores/badgeStore";
+import { useMainPhoto, useUserStore } from "../../lib/stores/userStore";
+import { supabase } from "../../lib/supabase";
+import { useActiveStatus } from "../../lib/useActiveStatus";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -204,14 +204,17 @@ export default function MainLayout() {
             event: "INSERT",
             schema: "public",
             table: "swipes",
-            filter: `swiped_id=eq.${user.id}`,
           },
           (payload) => {
             console.log("📨 Swipe INSERT event received:", payload.new);
             console.log("📨 Action:", payload.new.action);
-            // Use the ref to get the latest function
-            if (checkNewLikesRef.current) {
-              checkNewLikesRef.current();
+            console.log("📨 Swiped ID:", payload.new.swiped_id, "Current user:", user.id);
+            // Check if this swipe is for the current user
+            if (payload.new.swiped_id === user.id && payload.new.action === "like") {
+              console.log("💖 New like received! Refreshing count...");
+              if (checkNewLikesRef.current) {
+                checkNewLikesRef.current();
+              }
             }
           }
         )
@@ -236,27 +239,30 @@ export default function MainLayout() {
             event: "UPDATE",
             schema: "public",
             table: "swipes",
-            filter: `swiped_id=eq.${user.id}`,
           },
           (payload) => {
             console.log("📨 Swipe UPDATE event received:", payload.new);
             console.log("📨 Action:", payload.new.action);
-            // Use the ref to get the latest function
-            if (checkNewLikesRef.current) {
-              checkNewLikesRef.current();
+            // Check if this swipe is for the current user
+            if (payload.new.swiped_id === user.id) {
+              console.log("🔄 Swipe updated for current user, refreshing count...");
+              if (checkNewLikesRef.current) {
+                checkNewLikesRef.current();
+              }
             }
           }
         )
-        .subscribe((status) => {
+        .subscribe((status, err) => {
           console.log("📡 Likes subscription status:", status);
           if (status === "SUBSCRIBED") {
             console.log("✅ Successfully subscribed to likes real-time");
-            console.log("⚠️ IMPORTANT: If you don't see events, verify real-time is enabled:");
-            console.log("⚠️ Run: ALTER PUBLICATION supabase_realtime ADD TABLE public.swipes;");
           } else if (status === "CHANNEL_ERROR") {
-            console.error("❌ Error subscribing to likes real-time");
+            console.error("❌ Error subscribing to likes real-time:", err);
+            console.error("💡 FIX: Run in Supabase SQL Editor:");
+            console.error("   ALTER PUBLICATION supabase_realtime ADD TABLE public.swipes;");
+            console.error("   ALTER PUBLICATION supabase_realtime ADD TABLE public.matches;");
           } else if (status === "TIMED_OUT") {
-            console.error("⏱️ Likes subscription timed out");
+            console.error("⏱️ Likes subscription timed out - check network connection");
           } else if (status === "CLOSED") {
             console.log("🔒 Subscription closed");
           }
