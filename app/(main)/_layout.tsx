@@ -367,8 +367,10 @@ export default function MainLayout() {
                   color={isActive ? "#B8860B" : "#9CA3AF"} 
                 />
                 {newLikesCount > 0 && (
-                  <View style={styles.notificationBadge}>
-                    <View style={styles.notificationDot} />
+                  <View style={styles.likesCountBadge}>
+                    <Text style={styles.likesCountText}>
+                      {newLikesCount > 99 ? "99+" : newLikesCount}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -492,5 +494,22 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: "#EF4444", // Red dot for notifications
+  },
+  likesCountBadge: {
+    position: "absolute",
+    top: -8,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  likesCountText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "bold",
   },
 });
