@@ -1,15 +1,15 @@
-import { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { View, TextInput, FlatList, Text, Pressable, Image, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal, Dimensions } from "react-native";
-import { supabase } from "../../../lib/supabase";
-import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
-import { Image as ExpoImage } from "expo-image";
-import { isUserActive } from "../../../lib/useActiveStatus";
-import { GestureDetector, Gesture } from "react-native-gesture-handler";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS, withRepeat, withTiming, Easing } from "react-native-reanimated";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Audio } from "expo-av";
+import { Image as ExpoImage } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from "react-native-reanimated";
+import { supabase } from "../../../lib/supabase";
+import { isUserActive } from "../../../lib/useActiveStatus";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -515,9 +515,11 @@ export default function ChatScreen() {
       setHalalWarning(null);
       setText("");
       setSelectedImage(null);
-      setReplyingTo(null); // Clear reply after sending
-      // Invalidate and refetch chat data to get updated messages
+      setReplyingTo(null);
+      
+      // SIMPLE STRATEGY: Always refetch to get complete data
       queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+      
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 200);
@@ -564,111 +566,36 @@ export default function ChatScreen() {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
           
-          // DO NOT mark messages as read automatically when they arrive via real-time
-          // Messages should only be marked as read when:
-          // 1. User opens the chat (get-chat Edge Function)
-          // 2. Chat screen comes into focus (useFocusEffect)
-          // This ensures read receipts are accurate - only mark as read when user actually views the chat
-          
-          // If this message is from the OTHER user (not current user) and chat screen is currently focused,
-          // mark it as read immediately since the user is actively viewing the chat
-          if (newMessage.sender_id !== user.id && !newMessage.read && isScreenFocusedRef.current) {
-            // Mark message as read immediately via Edge Function
-            // This ensures read receipts are updated in real-time for the sender
-            // Only do this if the screen is actually focused (user is viewing the chat)
-            try {
-              await supabase.functions.invoke("get-chat", {
-                body: { matchId: chatId },
-              });
-              // The UPDATE event will be triggered, which will update the cache
-            } catch (error) {
-              console.error("Error marking message as read:", error);
-              // Continue anyway - message will be marked as read on next refetch
-            }
+          // For sender's own messages, skip - onSuccess will handle it
+          if (newMessage.sender_id === user.id) {
+            console.log("📨 Skipping real-time handler for own message");
+            return;
           }
           
-          // Ensure image_url, voice_url and media_type are included in the message
-          // TRUST the database values - use the actual read status from database
-          const messageWithMedia = {
-            ...newMessage,
-            image_url: newMessage.image_url || null,
-            voice_url: newMessage.voice_url || null,
-            media_type: newMessage.media_type || null,
-            // Use the actual read status from database (don't override)
-            read: newMessage.read || false,
-          };
-          
-          // Update React Query cache with new message
-          queryClient.setQueryData(["chat", chatId], (oldData: any) => {
-            if (!oldData) return oldData;
-            
-            // Check if message already exists
-            const exists = oldData.messages?.some((msg: any) => msg.id === messageWithMedia.id);
-            if (exists) return oldData;
-
-            return {
-              ...oldData,
-              messages: [...(oldData.messages || []), messageWithMedia],
-            };
-          });
-          
-          // Invalidate chat list to update unread counts
+          // SIMPLE STRATEGY: Always refetch to get complete data with reply_to
+          console.log("📨 New message received - refetching");
+          queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
           queryClient.invalidateQueries({ queryKey: ["chat-list"] });
           
-          // Scroll to bottom when new message arrives
+          // Scroll to bottom after refetch
           setTimeout(() => {
             flatListRef.current?.scrollToEnd({ animated: true });
-          }, 100);
+          }, 300);
         }
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "messages", filter: `match_id=eq.${chatId}` },
         async (payload) => {
-          // Get current user ID to check if this is our message being marked as read
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-          
-          const isOurMessage = payload.new.sender_id === user.id;
           const wasMarkedAsRead = payload.new.read === true && payload.old?.read === false;
           
-          // Log when our messages are marked as read
-          if (isOurMessage && wasMarkedAsRead) {
-            console.log("✅ Message marked as read (UPDATE):", {
-              messageId: payload.new.id,
-              read: payload.new.read,
-              read_at: payload.new.read_at,
-            });
-          }
-          
-          // Update message in cache - TRUST the database values completely
-          // Don't do any optimistic updates, just use what the database says
-          const updatedMessage = {
-            ...payload.new,
-            image_url: payload.new.image_url || null,
-            voice_url: payload.new.voice_url || null,
-            // Use the exact read status from database
-            read: payload.new.read || false,
-            read_at: payload.new.read_at || null,
-          };
-          
-          queryClient.setQueryData(["chat", chatId], (oldData: any) => {
-            if (!oldData) return oldData;
-            
-            const updatedMessages = oldData.messages?.map((msg: any) =>
-              msg.id === updatedMessage.id ? updatedMessage : msg
-            ) || [];
-            
-            return {
-              ...oldData,
-              messages: updatedMessages,
-            };
-          });
-          
-          // Invalidate chat list when messages are marked as read
           if (wasMarkedAsRead) {
-            queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+            console.log("✅ Message marked as read:", payload.new.id);
           }
+          
+          // SIMPLE STRATEGY: Always refetch to get updated data
+          queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
         }
       )
       .on(

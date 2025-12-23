@@ -280,7 +280,16 @@ serve(async (req) => {
     const { data: message, error: messageError } = await supabaseClient
       .from("messages")
       .insert(messageData)
-      .select()
+      .select(`
+        *,
+        reply_to:reply_to_id (
+          id,
+          sender_id,
+          content,
+          image_url,
+          voice_url
+        )
+      `)
       .single();
 
     if (messageError) {
