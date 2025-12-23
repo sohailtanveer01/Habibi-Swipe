@@ -33,6 +33,7 @@ function MessageItem({
   onReply, 
   onImagePress,
   onToggleVoice,
+  onScrollToMessage,
   isVoicePlaying,
   voiceProgress,
   voiceDurationLabel
@@ -45,6 +46,7 @@ function MessageItem({
   onReply: (message: any) => void;
   onImagePress: (imageUrl: string) => void;
   onToggleVoice: (message: any) => void;
+  onScrollToMessage: (messageId: string) => void;
   isVoicePlaying: boolean;
   voiceProgress: number; // 0..1
   voiceDurationLabel: string;
@@ -129,13 +131,29 @@ function MessageItem({
               {item.reply_to.sender_id === currentUser?.id ? "You" : (otherUser?.first_name || "User")}
             </Text>
             {item.reply_to.image_url ? (
-              <Text className="text-white/50 text-xs italic">📷 Photo</Text>
+              <View className="flex-row items-center">
+                <Image
+                  source={{ uri: cleanPhotoUrl(item.reply_to.image_url) || item.reply_to.image_url }}
+                  className="w-20 h-20 rounded-md mr-2"
+                  resizeMode="cover"
+                />
+              </View>
             ) : item.reply_to.voice_url ? (
-              <Text className="text-white/50 text-xs italic">🎤 Voice note</Text>
+              <Pressable 
+                onPress={() => onScrollToMessage(item.reply_to.id)}
+                className="flex-row items-center"
+              >
+                <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center mr-2">
+                  <Ionicons name="mic" size={14} color="#FFFFFF" />
+                </View>
+                <Text className="text-white/50 text-xs italic">Voice note</Text>
+              </Pressable>
             ) : (
-              <Text className="text-white/50 text-xs" numberOfLines={1}>
-                {item.reply_to.content || "Message"}
-              </Text>
+              <Pressable onPress={() => onScrollToMessage(item.reply_to.id)}>
+                <Text className="text-white/50 text-xs" numberOfLines={1}>
+                  {item.reply_to.content || "Message"}
+                </Text>
+              </Pressable>
             )}
           </View>
         )}
@@ -1065,6 +1083,21 @@ export default function ChatScreen() {
     }, []);
   }, [messages]);
 
+  // Scroll to a specific message when tapping on reply preview
+  const scrollToMessage = useCallback((messageId: string) => {
+    if (!flatListRef.current || !groupedMessages.length) return;
+    
+    // Find the index of the message in groupedMessages
+    const index = groupedMessages.findIndex((item: any) => item.id === messageId);
+    if (index !== -1) {
+      flatListRef.current.scrollToIndex({ 
+        index, 
+        animated: true,
+        viewPosition: 0.5 // Center the message on screen
+      });
+    }
+  }, [groupedMessages]);
+
   // Show loading state
   if (isLoading) {
     return (
@@ -1234,6 +1267,7 @@ export default function ChatScreen() {
               onReply={setReplyingTo}
               onImagePress={setFullScreenImage}
               onToggleVoice={toggleVoicePlayback}
+              onScrollToMessage={scrollToMessage}
               isVoicePlaying={playingMessageId === item.id}
               voiceProgress={progress}
               voiceDurationLabel={durationLabel}
