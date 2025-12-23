@@ -1,3 +1,4 @@
+/// <reference types="https://deno.land/x/deno/cli/types/deno.d.ts" />
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -410,6 +411,13 @@ serve(async (req) => {
         complimentId: m.complimentId,
       })));
     }
+
+    // Sort all matches by the most recent message time
+    validMatches.sort((a, b) => {
+      const timeA = new Date(a.lastMessageTime).getTime();
+      const timeB = new Date(b.lastMessageTime).getTime();
+      return timeB - timeA; // Sort descending (newest first)
+    });
 
     return new Response(
       JSON.stringify({

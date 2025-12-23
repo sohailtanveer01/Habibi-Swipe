@@ -1,10 +1,43 @@
+/// <reference types="https://deno.land/x/deno/cli/types/deno.d.ts" />
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ===========================================================================
+// CORS and Supabase client setup
+// ===========================================================================
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// ===========================================================================
+// Expo Push Notifications Helper
+// ===========================================================================
+async function sendExpoPush(
+  tokens: string[],
+  payload: { title: string; body: string; data?: Record<string, unknown> }
+) {
+  if (!tokens || tokens.length === 0) return;
+  const messages = tokens.map((to) => ({
+    to,
+    sound: "default",
+    title: payload.title,
+    body: payload.body,
+    data: payload.data ?? {},
+  }));
+
+  try {
+    const res = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(messages),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) console.error("Expo push error:", res.status, json);
+  } catch (e) {
+    console.error("Expo push exception:", e);
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -138,6 +171,55 @@ serve(async (req) => {
         JSON.stringify({ error: "Failed to send compliment", details: complimentError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // ===========================================================================
+    // PUSH NOTIFICATION: Notify recipient about the new compliment
+    // ===========================================================================
+    if (compliment) {
+      try {
+        // Get sender's first name for the notification
+        const { data: senderProfile } = await supabaseClient
+          .from("profiles")
+          .select("first_name")
+          .eq("id", user.id)
+          .single();
+
+        const senderName = senderProfile?.first_name || "Someone";
+
+        // Now, send a push notification to the recipient
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (!serviceKey) {
+          console.error("Missing SUPABASE_SERVICE_ROLE_KEY; skipping push notification.");
+        } else {
+          const tokenClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey, {
+            auth: { persistSession: false },
+          });
+
+          const { data: rows, error: tokenErr } = await tokenClient
+            .from("user_push_tokens")
+            .select("token")
+            .eq("user_id", recipientId)
+            .eq("revoked", false)
+            .order("last_seen_at", { ascending: false })
+            .limit(5);
+
+          if (tokenErr) {
+            console.error("Error fetching push tokens for compliment recipient:", tokenErr);
+          } else {
+            const tokens = (rows ?? []).map((r: any) => r.token).filter(Boolean);
+            if (tokens.length > 0) {
+              await sendExpoPush(tokens, {
+                title: `You received a new compliment! ✨`,
+                body: `${senderName} sent you a message: "${message.trim().slice(0, 100)}..."`,
+                data: { type: "new_compliment", complimentId: compliment.id },
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error sending compliment push notification:", e);
+      }
     }
 
     // Also record this as a "like" swipe (so it counts as a super like)
