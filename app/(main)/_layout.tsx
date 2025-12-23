@@ -391,8 +391,10 @@ export default function MainLayout() {
                 color={focused ? "#B8860B" : "#9CA3AF"} 
               />
               {unreadCount > 0 && (
-                <View style={styles.notificationBadge}>
-                  <View style={styles.notificationDot} />
+                <View style={styles.likesCountBadge}>
+                  <Text style={styles.likesCountText}>
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Text>
                 </View>
               )}
             </View>
