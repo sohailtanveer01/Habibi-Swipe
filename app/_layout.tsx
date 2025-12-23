@@ -1,16 +1,16 @@
 import "../global.css";
 // eslint-disable-next-line import/no-duplicates
-import "react-native-gesture-handler";
-import { Stack, useRouter } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Stack, useRouter } from "expo-router";
+import "react-native-gesture-handler";
 // eslint-disable-next-line import/no-duplicates
+import * as Notifications from "expo-notifications";
+import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
 import { LikesNotificationProvider } from "../lib/likesNotificationContext";
-import { useEffect } from "react";
 import { registerAndSyncPushToken } from "../lib/pushNotifications";
-import * as Notifications from "expo-notifications";
 import { supabase } from "../lib/supabase";
 
 // Configure QueryClient with optimized cache settings
@@ -37,11 +37,14 @@ export default function RootLayout() {
       if (session?.user) registerAndSyncPushToken();
     });
 
-    // Navigate on notification tap (to chat)
+    // Navigate on notification tap
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data: any = response?.notification?.request?.content?.data;
       if (data?.type === "chat_message" && data?.chatId) {
         router.push(`/(main)/chat/${data.chatId}`);
+      } else if (data?.type === "new_like") {
+        // Navigate to likes screen when tapping on a like notification
+        router.push("/(main)/likes");
       }
     });
 
