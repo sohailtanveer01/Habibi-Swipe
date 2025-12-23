@@ -371,6 +371,9 @@ export default function ChatScreen() {
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [playbackProgress, setPlaybackProgress] = useState<Record<string, { pos: number; dur: number }>>({});
 
+  // Track whether we should mark messages as read on next fetch
+  const shouldMarkAsReadRef = useRef(true);
+
   // Fetch chat data with React Query (cached)
   // Always refetch on mount to ensure messages are marked as read
   const { data: chatData, isLoading, error } = useQuery({
@@ -379,8 +382,12 @@ export default function ChatScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Only mark as read if the ref says so (true on focus, false on real-time updates)
+      const markAsRead = shouldMarkAsReadRef.current;
+      shouldMarkAsReadRef.current = false; // Reset after use - next refetch won't mark as read
+
       const { data, error } = await supabase.functions.invoke("get-chat", {
-        body: { matchId: chatId },
+        body: { matchId: chatId, markAsRead },
       });
 
       if (error) throw error;
@@ -552,6 +559,8 @@ export default function ChatScreen() {
   useFocusEffect(
     useCallback(() => {
       isScreenFocusedRef.current = true;
+      // Set flag to mark messages as read on next fetch
+      shouldMarkAsReadRef.current = true;
       // Refetch chat data to trigger marking messages as read
       queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
       // Also invalidate chat list to update unread counts

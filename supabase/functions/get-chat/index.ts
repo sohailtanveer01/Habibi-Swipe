@@ -37,8 +37,8 @@ serve(async (req) => {
       );
     }
 
-    // Get matchId from request
-    const { matchId } = await req.json();
+    // Get matchId and markAsRead flag from request
+    const { matchId, markAsRead = true } = await req.json();
     if (!matchId) {
       return new Response(
         JSON.stringify({ error: "Missing matchId" }),
@@ -46,7 +46,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("📍 Loading chat for match:", matchId, "user:", user.id);
+    console.log("📍 Loading chat for match:", matchId, "user:", user.id, "markAsRead:", markAsRead);
 
     // Check if this is a compliment conversation (matchId starts with "compliment-")
     if (matchId.startsWith("compliment-")) {
@@ -239,9 +239,9 @@ serve(async (req) => {
       .eq("sender_id", otherUserId)
       .eq("read", false);
 
-    // Mark all unread messages from other user as read FIRST (only if match exists)
+    // Mark all unread messages from other user as read FIRST (only if match exists and markAsRead is true)
     // RLS policy allows users to update read status of messages they receive
-    if (!isUnmatched) {
+    if (!isUnmatched && markAsRead) {
       console.log("🔄 Attempting to mark messages as read for match:", matchId, "otherUserId:", otherUserId);
       
       const { data: markedAsRead, error: readError } = await supabaseClient
