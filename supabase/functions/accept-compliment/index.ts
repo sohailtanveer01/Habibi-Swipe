@@ -6,6 +6,33 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Expo push helper
+async function sendExpoPush(
+  tokens: string[],
+  payload: { title: string; body: string; data?: Record<string, unknown> }
+) {
+  if (!tokens || tokens.length === 0) return;
+  const messages = tokens.map((to) => ({
+    to,
+    sound: "default",
+    title: payload.title,
+    body: payload.body,
+    data: payload.data ?? {},
+  }));
+
+  try {
+    const res = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(messages),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) console.error("Expo push error:", res.status, json);
+  } catch (e) {
+    console.error("Expo push exception:", e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -20,15 +47,13 @@ serve(async (req) => {
       );
     }
 
-    const supabaseClient = createClient(
+    // Use the service role key to have admin access
+    const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: { headers: { Authorization: authHeader } },
-      }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(authHeader.replace("Bearer ", ""));
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
@@ -46,7 +71,7 @@ serve(async (req) => {
     }
 
     // Get the compliment
-    const { data: compliment, error: complimentError } = await supabaseClient
+    const { data: compliment, error: complimentError } = await supabaseAdmin
       .from("compliments")
       .select("*")
       .eq("id", complimentId)
@@ -59,7 +84,6 @@ serve(async (req) => {
       );
     }
 
-    // Verify the current user is the recipient
     if (compliment.recipient_id !== user.id) {
       return new Response(
         JSON.stringify({ error: "You can only accept compliments sent to you" }),
@@ -67,7 +91,6 @@ serve(async (req) => {
       );
     }
 
-    // Check if compliment is already accepted or declined
     if (compliment.status !== "pending") {
       return new Response(
         JSON.stringify({ error: `Compliment has already been ${compliment.status}` }),
@@ -75,86 +98,81 @@ serve(async (req) => {
       );
     }
 
-    // Check if they're already matched
-    const { data: existingMatch } = await supabaseClient
+    // Create match
+    const user1 = user.id < compliment.sender_id ? user.id : compliment.sender_id;
+    const user2 = user.id > compliment.sender_id ? user.id : compliment.sender_id;
+
+    const { data: newMatch, error: matchError } = await supabaseAdmin
       .from("matches")
-      .select("id")
-      .or(`and(user1.eq.${user.id},user2.eq.${compliment.sender_id}),and(user1.eq.${compliment.sender_id},user2.eq.${user.id})`)
-      .maybeSingle();
+      .insert({ user1, user2 })
+      .select()
+      .single();
 
-    let matchId = existingMatch?.id;
-
-    if (!matchId) {
-      // Create a new match
-      const user1 = user.id < compliment.sender_id ? user.id : compliment.sender_id;
-      const user2 = user.id > compliment.sender_id ? user.id : compliment.sender_id;
-
-      const { data: newMatch, error: matchError } = await supabaseClient
-        .from("matches")
-        .insert({
-          user1,
-          user2,
-        })
-        .select()
-        .single();
-
-      if (matchError) {
-        console.error("❌ Error creating match:", matchError);
+    if (matchError) {
+      console.error("❌ Error creating match:", matchError);
+      // Check if it's a unique constraint violation (match already exists)
+      if (matchError.code === '23505') {
+         // Match already exists, proceed without error
+      } else {
         return new Response(
           JSON.stringify({ error: "Failed to create match", details: matchError.message }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
-      matchId = newMatch.id;
     }
+    
+    const matchId = newMatch.id;
 
-    // Update compliment status to accepted
-    const { error: updateError } = await supabaseClient
+    // Update compliment status
+    await supabaseAdmin
       .from("compliments")
-      .update({
-        status: "accepted",
-        accepted_at: new Date().toISOString(),
-      })
+      .update({ status: "accepted", accepted_at: new Date().toISOString() })
       .eq("id", complimentId);
 
-    if (updateError) {
-      console.error("⚠️ Error updating compliment status:", updateError);
-      // Don't fail if update fails, match is already created
+    // Send push notification to the compliment sender
+    try {
+      const { data: senderProfile } = await supabaseAdmin
+        .from("users")
+        .select("first_name, name")
+        .eq("id", user.id) // The user accepting is the one whose name should appear
+        .single();
+      const accepterName = senderProfile?.first_name || senderProfile?.name || "Someone";
+
+      const { data: tokenRows } = await supabaseAdmin
+        .from("user_push_tokens")
+        .select("token")
+        .eq("user_id", compliment.sender_id)
+        .eq("revoked", false)
+        .order("last_seen_at", { ascending: false })
+        .limit(5);
+
+      const tokens = (tokenRows ?? []).map((r: any) => r.token).filter(Boolean);
+      if (tokens.length > 0) {
+        await sendExpoPush(tokens, {
+          title: "Compliment Accepted! 💖",
+          body: `${accepterName} accepted your compliment. It's a match!`,
+          data: { type: "match", matchId: matchId },
+        });
+        console.log("📱 Sent compliment acceptance notification to user:", compliment.sender_id);
+      }
+    } catch (e) {
+      console.error("Push notification failed:", e);
     }
 
-    // Create the first message in the chat with the compliment text
-    // We need to get the match to find the correct match_id for messages
-    const { data: match } = await supabaseClient
-      .from("matches")
-      .select("id")
-      .eq("id", matchId)
-      .single();
-
-    if (match) {
-      const { error: messageError } = await supabaseClient
-        .from("messages")
-        .insert({
-          match_id: match.id,
-          sender_id: compliment.sender_id,
-          message: compliment.message,
-          message_type: "text",
-        });
-
-      if (messageError) {
-        console.error("⚠️ Error creating initial message from compliment:", messageError);
-        // Don't fail if message creation fails
-      }
+    // Create the initial message in the chat
+    if (matchId) {
+      await supabaseAdmin.from("messages").insert({
+        match_id: matchId,
+        sender_id: compliment.sender_id,
+        message: compliment.message,
+        message_type: "text",
+      });
     }
 
     console.log("✅ Compliment accepted, match created:", { matchId, complimentId });
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        matchId,
-        message: "Compliment accepted and match created"
-      }),
+      JSON.stringify({ success: true, matchId, message: "Compliment accepted and match created" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
