@@ -12,6 +12,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { LikesNotificationProvider } from "../lib/likesNotificationContext";
 import { registerAndSyncPushToken } from "../lib/pushNotifications";
 import { supabase } from "../lib/supabase";
+import * as ScreenOrientation from "expo-screen-orientation";
 
 // Configure QueryClient with optimized cache settings
 const qc = new QueryClient({
@@ -32,6 +33,7 @@ export default function RootLayout() {
     // Register push token after app mounts AND after login.
     // (This can run before auth is ready, so also listen for auth changes.)
     registerAndSyncPushToken();
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
 
     const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) registerAndSyncPushToken();
