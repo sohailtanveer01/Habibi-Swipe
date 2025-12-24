@@ -5,44 +5,65 @@ import { Image as ExpoImage } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from "react-native-reanimated";
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { supabase } from "../../../lib/supabase";
 import { isUserActive } from "../../../lib/useActiveStatus";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
-  if (!url || typeof url !== 'string') return null;
-  if (url.includes('localhost')) {
-    const supabasePart = url.split(':http://localhost')[0];
-    if (supabasePart && supabasePart.startsWith('http')) return supabasePart;
+  if (!url || typeof url !== "string") return null;
+  if (url.includes("localhost")) {
+    const supabasePart = url.split(":http://localhost")[0];
+    if (supabasePart && supabasePart.startsWith("http")) return supabasePart;
     return null;
   }
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
   return null;
 }
 
 // Message Item Component with drag-to-reply
-function MessageItem({ 
-  item, 
-  isMe, 
-  mainPhoto, 
-  otherUser, 
-  currentUser, 
-  onReply, 
+function MessageItem({
+  item,
+  isMe,
+  mainPhoto,
+  otherUser,
+  currentUser,
+  onReply,
   onImagePress,
   onToggleVoice,
   onScrollToMessage,
   isVoicePlaying,
   voiceProgress,
-  voiceDurationLabel
-}: { 
-  item: any; 
-  isMe: boolean; 
-  mainPhoto: string | null; 
-  otherUser: any; 
-  currentUser: any; 
+  voiceDurationLabel,
+}: {
+  item: any;
+  isMe: boolean;
+  mainPhoto: string | null;
+  otherUser: any;
+  currentUser: any;
   onReply: (message: any) => void;
   onImagePress: (imageUrl: string) => void;
   onToggleVoice: (message: any) => void;
@@ -52,14 +73,14 @@ function MessageItem({
   voiceDurationLabel: string;
 }) {
   // Get screen width for drag limit
-  const screenWidth = Dimensions.get('window').width;
+  const screenWidth = Dimensions.get("window").width;
   const maxDragDistance = screenWidth / 3; // 1/3 of screen width
   const replyThreshold = screenWidth / 4; // Trigger reply at 1/4 of screen
-  
+
   // Drag gesture to reply
   const translateX = useSharedValue(0);
   const isDragging = useSharedValue(false);
-  
+
   const panGesture = Gesture.Pan()
     .onStart(() => {
       isDragging.value = true;
@@ -81,19 +102,19 @@ function MessageItem({
       }
     })
     .onEnd((e) => {
-      const shouldReply = isMe 
-        ? e.translationX < -replyThreshold 
+      const shouldReply = isMe
+        ? e.translationX < -replyThreshold
         : e.translationX > replyThreshold;
-      
+
       if (shouldReply) {
         runOnJS(onReply)(item);
       }
-      
+
       // Reset position
       translateX.value = withSpring(0);
       isDragging.value = false;
     });
-  
+
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{ translateX: translateX.value }],
@@ -104,7 +125,11 @@ function MessageItem({
   const showProfilePic = !isMe && mainPhoto;
 
   return (
-    <View className={`mb-2 flex-row ${isMe ? "justify-end" : "justify-start"} items-end`}>
+    <View
+      className={`mb-2 flex-row ${
+        isMe ? "justify-end" : "justify-start"
+      } items-end`}
+    >
       {!isMe && (
         <View className="mr-2 mb-1">
           {showProfilePic ? (
@@ -120,26 +145,36 @@ function MessageItem({
           )}
         </View>
       )}
-      
+
       <View className={`max-w-[75%] ${isMe ? "items-end" : "items-start"}`}>
         {/* Show replied-to message preview */}
         {item.reply_to && (
-          <View className={`mb-1 px-3 py-1.5 rounded-lg border-l-2 ${
-            isMe ? "bg-white/10 border-[#B8860B]" : "bg-white/5 border-white/30"
-          }`}>
+          <View
+            className={`mb-1 px-3 py-1.5 rounded-lg border-l-2 ${
+              isMe
+                ? "bg-white/10 border-[#B8860B]"
+                : "bg-white/5 border-white/30"
+            }`}
+          >
             <Text className="text-white/60 text-xs mb-0.5">
-              {item.reply_to.sender_id === currentUser?.id ? "You" : (otherUser?.first_name || "User")}
+              {item.reply_to.sender_id === currentUser?.id
+                ? "You"
+                : otherUser?.first_name || "User"}
             </Text>
             {item.reply_to.image_url ? (
               <View className="flex-row items-center">
                 <Image
-                  source={{ uri: cleanPhotoUrl(item.reply_to.image_url) || item.reply_to.image_url }}
+                  source={{
+                    uri:
+                      cleanPhotoUrl(item.reply_to.image_url) ||
+                      item.reply_to.image_url,
+                  }}
                   className="w-20 h-20 rounded-md mr-2"
                   resizeMode="cover"
                 />
               </View>
             ) : item.reply_to.voice_url ? (
-              <Pressable 
+              <Pressable
                 onPress={() => onScrollToMessage(item.reply_to.id)}
                 className="flex-row items-center"
               >
@@ -161,9 +196,7 @@ function MessageItem({
           <Animated.View
             style={animatedStyle}
             className={`rounded-2xl ${
-              isMe
-                ? "bg-[#B8860B] rounded-br-sm"
-                : "bg-white/10 rounded-bl-sm"
+              isMe ? "bg-[#B8860B] rounded-br-sm" : "bg-white/10 rounded-bl-sm"
             }`}
           >
             {/* Show image if image_url exists */}
@@ -171,19 +204,24 @@ function MessageItem({
               <Pressable
                 onPress={(e) => {
                   e.stopPropagation();
-                  const imageUrl = cleanPhotoUrl(item.image_url) || item.image_url;
+                  const imageUrl =
+                    cleanPhotoUrl(item.image_url) || item.image_url;
                   onImagePress(imageUrl);
                 }}
               >
                 <ExpoImage
-                  source={{ uri: cleanPhotoUrl(item.image_url) || item.image_url }}
-                  style={{ 
-                    width: 250, 
-                    height: 250, 
+                  source={{
+                    uri: cleanPhotoUrl(item.image_url) || item.image_url,
+                  }}
+                  style={{
+                    width: 250,
+                    height: 250,
                     borderTopLeftRadius: 16,
                     borderTopRightRadius: 16,
-                    borderBottomLeftRadius: (item.content && item.content.trim()) ? 0 : 16,
-                    borderBottomRightRadius: (item.content && item.content.trim()) ? 0 : 16,
+                    borderBottomLeftRadius:
+                      item.content && item.content.trim() ? 0 : 16,
+                    borderBottomRightRadius:
+                      item.content && item.content.trim() ? 0 : 16,
                   }}
                   contentFit="cover"
                   transition={200}
@@ -193,12 +231,15 @@ function MessageItem({
                     console.error("❌ Image URL:", item.image_url);
                   }}
                   onLoad={() => {
-                    console.log("✅ Image loaded successfully:", item.image_url);
+                    console.log(
+                      "✅ Image loaded successfully:",
+                      item.image_url
+                    );
                   }}
                 />
               </Pressable>
             )}
-            
+
             {/* Voice note bubble */}
             {item.voice_url && (
               <View className="px-4 py-3">
@@ -221,7 +262,10 @@ function MessageItem({
                     <View className="h-1.5 rounded-full bg-white/20 overflow-hidden">
                       <View
                         style={{
-                          width: `${Math.min(100, Math.max(0, voiceProgress * 100))}%`,
+                          width: `${Math.min(
+                            100,
+                            Math.max(0, voiceProgress * 100)
+                          )}%`,
                           height: "100%",
                           backgroundColor: "#B8860B",
                         }}
@@ -234,7 +278,7 @@ function MessageItem({
                 </View>
               </View>
             )}
-            
+
             {/* Show text content if exists */}
             {item.content && item.content.trim() && (
               <Text
@@ -247,7 +291,7 @@ function MessageItem({
             )}
           </Animated.View>
         </GestureDetector>
-        
+
         {/* Read receipt checkmarks (only for sent messages) */}
         {isMe && (
           <View className="flex-row items-center mt-1 mr-1">
@@ -265,14 +309,18 @@ function MessageItem({
 }
 
 // Upload image to Supabase Storage
-async function uploadChatMedia(uri: string, matchId: string, userId: string): Promise<string> {
+async function uploadChatMedia(
+  uri: string,
+  matchId: string,
+  userId: string
+): Promise<string> {
   const ext = uri.split(".").pop() || "jpg";
   const timestamp = Date.now();
   const filePath = `${matchId}/${userId}/${timestamp}.${ext}`;
 
   const response = await fetch(uri);
   const blob = await response.arrayBuffer();
-  
+
   const { error } = await supabase.storage
     .from("chat-media")
     .upload(filePath, blob, {
@@ -292,7 +340,11 @@ async function uploadChatMedia(uri: string, matchId: string, userId: string): Pr
 }
 
 // Upload voice note (m4a) to Supabase Storage
-async function uploadChatVoice(uri: string, matchId: string, userId: string): Promise<string> {
+async function uploadChatVoice(
+  uri: string,
+  matchId: string,
+  userId: string
+): Promise<string> {
   const timestamp = Date.now();
   const filePath = `${matchId}/${userId}/${timestamp}.m4a`;
 
@@ -318,23 +370,23 @@ async function uploadChatVoice(uri: string, matchId: string, userId: string): Pr
 // Get signed URL for chat media (fallback if bucket is not public)
 async function getChatMediaUrl(mediaUrl: string): Promise<string> {
   // If it's already a full URL, return it
-  if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+  if (mediaUrl.startsWith("http://") || mediaUrl.startsWith("https://")) {
     // Extract file path from public URL
-    const urlParts = mediaUrl.split('/storage/v1/object/public/chat-media/');
+    const urlParts = mediaUrl.split("/storage/v1/object/public/chat-media/");
     if (urlParts.length === 2) {
       const filePath = urlParts[1];
-      
+
       // Try to get a signed URL (valid for 1 hour)
       const { data: signedData, error } = await supabase.storage
         .from("chat-media")
         .createSignedUrl(filePath, 3600); // 1 hour expiry
-      
+
       if (!error && signedData?.signedUrl) {
         return signedData.signedUrl;
       }
     }
   }
-  
+
   // Fallback to original URL
   return mediaUrl;
 }
@@ -348,7 +400,10 @@ export default function ChatScreen() {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
-  const [pendingVoice, setPendingVoice] = useState<{ uri: string; durationMs: number } | null>(null);
+  const [pendingVoice, setPendingVoice] = useState<{
+    uri: string;
+    durationMs: number;
+  } | null>(null);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<any | null>(null); // Message being replied to
@@ -369,17 +424,25 @@ export default function ChatScreen() {
   // Voice playback (only one at a time)
   const playingSoundRef = useRef<Audio.Sound | null>(null);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
-  const [playbackProgress, setPlaybackProgress] = useState<Record<string, { pos: number; dur: number }>>({});
+  const [playbackProgress, setPlaybackProgress] = useState<
+    Record<string, { pos: number; dur: number }>
+  >({});
 
   // Track whether we should mark messages as read on next fetch
   const shouldMarkAsReadRef = useRef(true);
 
   // Fetch chat data with React Query (cached)
   // Always refetch on mount to ensure messages are marked as read
-  const { data: chatData, isLoading, error } = useQuery({
+  const {
+    data: chatData,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["chat", chatId],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
       // Only mark as read if the ref says so (true on focus, false on real-time updates)
@@ -391,7 +454,7 @@ export default function ChatScreen() {
       });
 
       if (error) throw error;
-      
+
       // TRUST the database values - don't do any optimistic updates
       // The Edge Function now fetches messages AFTER marking as read
       return data;
@@ -403,7 +466,9 @@ export default function ChatScreen() {
   });
 
   const otherUser = chatData?.otherUser || null;
-  const currentUser = chatData?.currentUserId ? { id: chatData.currentUserId } : null;
+  const currentUser = chatData?.currentUserId
+    ? { id: chatData.currentUserId }
+    : null;
   const messages = chatData?.messages || [];
   const isBlocked = chatData?.isBlocked || false;
   const iAmBlocked = chatData?.iAmBlocked || false;
@@ -414,10 +479,10 @@ export default function ChatScreen() {
   const complimentStatus = chatData?.complimentStatus || null;
   const isComplimentSender = chatData?.isComplimentSender || false;
   const isComplimentRecipient = chatData?.isComplimentRecipient || false;
-  
+
   // Track OTHER USER's active status with real-time updates
   const [otherUserActive, setOtherUserActive] = useState<boolean>(false);
-  
+
   // Check initial active status of OTHER USER
   useEffect(() => {
     if (otherUser?.last_active_at) {
@@ -432,36 +497,32 @@ export default function ChatScreen() {
       setOtherUserActive(false);
     }
   }, [otherUser?.last_active_at, otherUser?.id]);
-  
+
   // Subscribe to OTHER USER's active status broadcasts (ephemeral events)
   useEffect(() => {
     if (!otherUser?.id) return;
-    
+
     // Subscribe to the other user's active status channel
     const activeStatusChannel = supabase
       .channel(`active-status:${otherUser.id}`)
-      .on(
-        "broadcast",
-        { event: "active_status" },
-        (payload) => {
-          // Only update if it's from the OTHER user
-          if (payload.payload.userId === otherUser.id) {
-            setOtherUserActive(payload.payload.isActive);
-            console.log("🔄 Active status broadcast received:", {
-              userId: payload.payload.userId,
-              isActive: payload.payload.isActive,
-            });
-          }
+      .on("broadcast", { event: "active_status" }, (payload) => {
+        // Only update if it's from the OTHER user
+        if (payload.payload.userId === otherUser.id) {
+          setOtherUserActive(payload.payload.isActive);
+          console.log("🔄 Active status broadcast received:", {
+            userId: payload.payload.userId,
+            isActive: payload.payload.isActive,
+          });
         }
-      )
+      })
       .subscribe();
-    
+
     // Also check initial status from database as fallback
     if (otherUser?.last_active_at) {
       const active = isUserActive(otherUser.last_active_at);
       setOtherUserActive(active);
     }
-    
+
     return () => {
       supabase.removeChannel(activeStatusChannel);
     };
@@ -470,14 +531,25 @@ export default function ChatScreen() {
   // Debug: Log messages to see if media is present
   useEffect(() => {
     if (messages.length > 0) {
-      const messagesWithMedia = messages.filter((msg: any) => msg.image_url || msg.voice_url);
+      const messagesWithMedia = messages.filter(
+        (msg: any) => msg.image_url || msg.voice_url
+      );
       if (messagesWithMedia.length > 0) {
         console.log("📸 Messages with media:", messagesWithMedia.length);
-        console.log("📸 Sample message with media:", JSON.stringify(messagesWithMedia[0], null, 2));
+        console.log(
+          "📸 Sample message with media:",
+          JSON.stringify(messagesWithMedia[0], null, 2)
+        );
       } else {
-        console.log("⚠️ No messages with media found. Total messages:", messages.length);
+        console.log(
+          "⚠️ No messages with media found. Total messages:",
+          messages.length
+        );
         if (messages.length > 0) {
-          console.log("📝 Sample message structure:", JSON.stringify(messages[0], null, 2));
+          console.log(
+            "📝 Sample message structure:",
+            JSON.stringify(messages[0], null, 2)
+          );
         }
       }
     }
@@ -485,55 +557,71 @@ export default function ChatScreen() {
 
   // Mutation for sending messages with optimistic updates
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ content, mediaUrl, mediaType, replyToId }: { content?: string; mediaUrl?: string; mediaType?: string; replyToId?: string }) => {
+    mutationFn: async ({
+      content,
+      mediaUrl,
+      mediaType,
+      replyToId,
+    }: {
+      content?: string;
+      mediaUrl?: string;
+      mediaType?: string;
+      replyToId?: string;
+    }) => {
       // Build request body - only include fields that have values
-      const requestBody: any = { 
+      const requestBody: any = {
         matchId: chatId,
       };
-      
+
       if (content && content.trim()) {
         requestBody.content = content.trim();
       }
-      
+
       if (mediaUrl) {
         requestBody.mediaUrl = mediaUrl;
         requestBody.mediaType = mediaType || "image";
       }
-      
+
       if (replyToId) {
         requestBody.replyToId = replyToId;
       }
-      
-      console.log("📤 Request body to Edge Function:", JSON.stringify(requestBody, null, 2));
-      
+
+      console.log(
+        "📤 Request body to Edge Function:",
+        JSON.stringify(requestBody, null, 2)
+      );
+
       const { data, error } = await supabase.functions.invoke("send-message", {
         body: requestBody,
       });
-      
+
       if (error) {
         console.error("❌ Send message error:", error);
         throw error;
       }
-      
+
       console.log("✅ Send message response:", JSON.stringify(data, null, 2));
 
       // If strict halal filter blocked the message, return it (no optimistic clear)
       if (data?.blocked) {
         return data;
       }
-      
+
       // Check if the response includes media
       if (data?.message) {
         console.log("📸 Response message image_url:", data.message.image_url);
         console.log("🎤 Response message voice_url:", data.message.voice_url);
         console.log("📸 Response message media_type:", data.message.media_type);
       }
-      
+
       return data;
     },
     onSuccess: (data: any) => {
       if (data?.blocked) {
-        setHalalWarning(data.warning || "Please rephrase to keep the conversation halal and respectful.");
+        setHalalWarning(
+          data.warning ||
+            "Please rephrase to keep the conversation halal and respectful."
+        );
         return;
       }
 
@@ -541,10 +629,10 @@ export default function ChatScreen() {
       setText("");
       setSelectedImage(null);
       setReplyingTo(null);
-      
+
       // SIMPLE STRATEGY: Always refetch to get complete data
       queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
-      
+
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 200);
@@ -554,7 +642,7 @@ export default function ChatScreen() {
   // Track if screen is focused using a ref to avoid stale closures
   // Start as false - will be set to true when screen is focused
   const isScreenFocusedRef = useRef(false);
-  
+
   // Mark messages as read when screen comes into focus
   useFocusEffect(
     useCallback(() => {
@@ -565,7 +653,7 @@ export default function ChatScreen() {
       queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
       // Also invalidate chat list to update unread counts
       queryClient.invalidateQueries({ queryKey: ["chat-list"] });
-      
+
       return () => {
         isScreenFocusedRef.current = false;
       };
@@ -576,41 +664,51 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!chatId) return;
 
-    const channel = supabase
-      .channel(`messages:${chatId}`);
-    
+    const channel = supabase.channel(`messages:${chatId}`);
+
     // Store channel reference for broadcasting
     channelRef.current = channel;
-    
+
     channel
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `match_id=eq.${chatId}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `match_id=eq.${chatId}`,
+        },
         async (payload) => {
           const newMessage = payload.new;
-          
+
           // Get current user ID
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (!user) return;
-          
+
           // For sender's own messages, skip - onSuccess will handle it
           if (newMessage.sender_id === user.id) {
             console.log("📨 Skipping real-time handler for own message");
             return;
           }
-          
+
           // If screen is focused, mark messages as read (receiver is actively viewing)
           if (isScreenFocusedRef.current) {
-            console.log("📨 New message received while screen focused - marking as read");
+            console.log(
+              "📨 New message received while screen focused - marking as read"
+            );
             shouldMarkAsReadRef.current = true;
           } else {
-            console.log("📨 New message received while screen not focused - keeping unread");
+            console.log(
+              "📨 New message received while screen not focused - keeping unread"
+            );
           }
-          
+
           // Refetch to get complete data with reply_to
           queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
           queryClient.invalidateQueries({ queryKey: ["chat-list"] });
-          
+
           // Scroll to bottom after refetch
           setTimeout(() => {
             flatListRef.current?.scrollToEnd({ animated: true });
@@ -619,55 +717,59 @@ export default function ChatScreen() {
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "messages", filter: `match_id=eq.${chatId}` },
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `match_id=eq.${chatId}`,
+        },
         async (payload) => {
-          const wasMarkedAsRead = payload.new.read === true && payload.old?.read === false;
-          
+          const wasMarkedAsRead =
+            payload.new.read === true && payload.old?.read === false;
+
           if (wasMarkedAsRead) {
             console.log("✅ Message marked as read:", payload.new.id);
           }
-          
+
           // SIMPLE STRATEGY: Always refetch to get updated data
           queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
           queryClient.invalidateQueries({ queryKey: ["chat-list"] });
         }
       )
-      .on(
-        "broadcast",
-        { event: "typing" },
-        async (payload) => {
-          // Get current user ID
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-          
-          // Only show typing indicator if it's from the OTHER user (not current user)
-          if (payload.payload.userId !== user.id) {
-            if (payload.payload.type === "typing_started") {
-              setIsOtherUserTyping(true);
-              
-              // Clear any existing timeout
-              if (typingIndicatorTimeoutRef.current) {
-                clearTimeout(typingIndicatorTimeoutRef.current);
-              }
-              
-              // Auto-hide typing indicator after 3 seconds if no update
-              typingIndicatorTimeoutRef.current = setTimeout(() => {
-                setIsOtherUserTyping(false);
-              }, 3000);
-            } else if (payload.payload.type === "typing_stopped") {
+      .on("broadcast", { event: "typing" }, async (payload) => {
+        // Get current user ID
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Only show typing indicator if it's from the OTHER user (not current user)
+        if (payload.payload.userId !== user.id) {
+          if (payload.payload.type === "typing_started") {
+            setIsOtherUserTyping(true);
+
+            // Clear any existing timeout
+            if (typingIndicatorTimeoutRef.current) {
+              clearTimeout(typingIndicatorTimeoutRef.current);
+            }
+
+            // Auto-hide typing indicator after 3 seconds if no update
+            typingIndicatorTimeoutRef.current = setTimeout(() => {
               setIsOtherUserTyping(false);
-              
-              // Clear timeout
-              if (typingIndicatorTimeoutRef.current) {
-                clearTimeout(typingIndicatorTimeoutRef.current);
-              }
+            }, 3000);
+          } else if (payload.payload.type === "typing_stopped") {
+            setIsOtherUserTyping(false);
+
+            // Clear timeout
+            if (typingIndicatorTimeoutRef.current) {
+              clearTimeout(typingIndicatorTimeoutRef.current);
             }
           }
         }
-      )
+      })
       .subscribe();
 
-    return () => { 
+    return () => {
       supabase.removeChannel(channel);
       channelRef.current = null;
       // Clean up timeouts
@@ -683,7 +785,9 @@ export default function ChatScreen() {
   // Function to broadcast typing events
   const broadcastTyping = async (type: "typing_started" | "typing_stopped") => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || !chatId || !channelRef.current) return;
 
       // Use the existing subscribed channel to send broadcast
@@ -704,18 +808,18 @@ export default function ChatScreen() {
   const handleTextChange = (newText: string) => {
     setText(newText);
     if (halalWarning) setHalalWarning(null);
-    
+
     // If user starts typing and we haven't sent typing_started yet
     if (newText.length > 0 && !hasSentTypingStartedRef.current) {
       hasSentTypingStartedRef.current = true;
       broadcastTyping("typing_started");
     }
-    
+
     // Clear existing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
-    
+
     // If text is empty, send typing_stopped immediately
     if (newText.length === 0) {
       if (hasSentTypingStartedRef.current) {
@@ -724,7 +828,7 @@ export default function ChatScreen() {
       }
       return;
     }
-    
+
     // Set timeout to send typing_stopped after 1 second of no typing
     typingTimeoutRef.current = setTimeout(() => {
       if (hasSentTypingStartedRef.current) {
@@ -764,20 +868,34 @@ export default function ChatScreen() {
   }, []);
 
   const startRecording = useCallback(async () => {
-    if (isRecording || pendingVoice || selectedImage || uploadingMedia || sendMessageMutation.isPending) return;
+    if (
+      isRecording ||
+      pendingVoice ||
+      selectedImage ||
+      uploadingMedia ||
+      sendMessageMutation.isPending
+    )
+      return;
     setHalalWarning(null);
 
     try {
       const granted = await ensureMicPermission();
       if (!granted) {
-        Alert.alert("Microphone Permission", "Please allow microphone access to send voice messages.");
+        Alert.alert(
+          "Microphone Permission",
+          "Please allow microphone access to send voice messages."
+        );
         return;
       }
 
       // Stop any existing playback before recording
       if (playingSoundRef.current) {
-        try { await playingSoundRef.current.stopAsync(); } catch {}
-        try { await playingSoundRef.current.unloadAsync(); } catch {}
+        try {
+          await playingSoundRef.current.stopAsync();
+        } catch {}
+        try {
+          await playingSoundRef.current.unloadAsync();
+        } catch {}
         playingSoundRef.current = null;
         setPlayingMessageId(null);
       }
@@ -796,15 +914,23 @@ export default function ChatScreen() {
       setIsRecording(true);
 
       // Pulse animation while recording
-      micPulse.value = withRepeat(withTiming(1.25, { duration: 500, easing: Easing.inOut(Easing.ease) }), -1, true);
+      micPulse.value = withRepeat(
+        withTiming(1.25, { duration: 500, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true
+      );
 
-      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await recording.prepareToRecordAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
       await recording.startAsync();
 
       // Timer UI
       if (recordTimerRef.current) clearInterval(recordTimerRef.current);
       recordTimerRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - recordStartRef.current) / 1000);
+        const elapsed = Math.floor(
+          (Date.now() - recordStartRef.current) / 1000
+        );
         setRecordSeconds(elapsed);
       }, 250);
     } catch (e: any) {
@@ -813,7 +939,15 @@ export default function ChatScreen() {
       setIsRecording(false);
       micPulse.value = 1;
     }
-  }, [isRecording, pendingVoice, selectedImage, uploadingMedia, sendMessageMutation.isPending, micPulse, ensureMicPermission]);
+  }, [
+    isRecording,
+    pendingVoice,
+    selectedImage,
+    uploadingMedia,
+    sendMessageMutation.isPending,
+    micPulse,
+    ensureMicPermission,
+  ]);
 
   const stopRecordingToPreview = useCallback(async () => {
     if (!isRecording) return;
@@ -857,18 +991,28 @@ export default function ChatScreen() {
     if (pendingVoice || selectedImage) return; // keep UX simple: one media type at a time
     if (isRecording) stopRecordingToPreview();
     else startRecording();
-  }, [uploadingMedia, sendMessageMutation.isPending, pendingVoice, selectedImage, isRecording, startRecording, stopRecordingToPreview]);
+  }, [
+    uploadingMedia,
+    sendMessageMutation.isPending,
+    pendingVoice,
+    selectedImage,
+    isRecording,
+    startRecording,
+    stopRecordingToPreview,
+  ]);
 
   const pickImage = async () => {
     try {
       if (isRecording || pendingVoice) return;
       // Check & request permission
-      const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
-      let hasPermission = existingStatus === 'granted';
-      
+      const { status: existingStatus } =
+        await ImagePicker.getMediaLibraryPermissionsAsync();
+      let hasPermission = existingStatus === "granted";
+
       if (!hasPermission) {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        hasPermission = status === 'granted';
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        hasPermission = status === "granted";
       }
 
       if (!hasPermission) {
@@ -881,7 +1025,7 @@ export default function ChatScreen() {
 
       // Open gallery
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         allowsMultipleSelection: false,
         quality: 0.8,
       });
@@ -905,9 +1049,14 @@ export default function ChatScreen() {
     const hasText = text && text.trim().length > 0;
     const hasImage = !!selectedImage;
     const hasVoice = !!pendingVoice;
-    
-    if ((!hasText && !hasImage && !hasVoice) || sendMessageMutation.isPending || uploadingMedia) return;
-    
+
+    if (
+      (!hasText && !hasImage && !hasVoice) ||
+      sendMessageMutation.isPending ||
+      uploadingMedia
+    )
+      return;
+
     let mediaUrl: string | undefined;
     let mediaType: string | undefined;
 
@@ -915,14 +1064,20 @@ export default function ChatScreen() {
     if (pendingVoice) {
       try {
         setUploadingMedia(true);
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           Alert.alert("Error", "Please log in to send messages.");
           setUploadingMedia(false);
           return;
         }
 
-        mediaUrl = await uploadChatVoice(pendingVoice.uri, chatId as string, user.id);
+        mediaUrl = await uploadChatVoice(
+          pendingVoice.uri,
+          chatId as string,
+          user.id
+        );
         mediaType = "audio";
       } catch (error: any) {
         console.error("Error uploading voice:", error);
@@ -936,14 +1091,20 @@ export default function ChatScreen() {
     if (selectedImage && !mediaUrl) {
       try {
         setUploadingMedia(true);
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           Alert.alert("Error", "Please log in to send messages.");
           setUploadingMedia(false);
           return;
         }
-        
-        mediaUrl = await uploadChatMedia(selectedImage, chatId as string, user.id);
+
+        mediaUrl = await uploadChatMedia(
+          selectedImage,
+          chatId as string,
+          user.id
+        );
         mediaType = "image";
       } catch (error: any) {
         console.error("Error uploading media:", error);
@@ -960,16 +1121,25 @@ export default function ChatScreen() {
       mediaUrl,
       mediaType,
     });
-    
-      sendMessageMutation.mutate({
-        content: hasText ? text.trim() : undefined,
-        mediaUrl,
-        mediaType,
-        replyToId: replyingTo?.id,
-      });
+
+    sendMessageMutation.mutate({
+      content: hasText ? text.trim() : undefined,
+      mediaUrl,
+      mediaType,
+      replyToId: replyingTo?.id,
+    });
     setPendingVoice(null);
     setUploadingMedia(false);
-  }, [text, selectedImage, pendingVoice, sendMessageMutation, uploadingMedia, chatId, isRecording, replyingTo]);
+  }, [
+    text,
+    selectedImage,
+    pendingVoice,
+    sendMessageMutation,
+    uploadingMedia,
+    chatId,
+    isRecording,
+    replyingTo,
+  ]);
 
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -978,64 +1148,74 @@ export default function ChatScreen() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  const toggleVoicePlayback = useCallback(async (message: any) => {
-    try {
-      if (!message?.voice_url) return;
-
-      // If tapping currently playing -> pause and clear
-      if (playingMessageId === message.id && playingSoundRef.current) {
-        const status: any = await playingSoundRef.current.getStatusAsync();
-        if (status?.isLoaded && status?.isPlaying) {
-          await playingSoundRef.current.pauseAsync();
-          setPlayingMessageId(null);
-          return;
-        }
-      }
-
-      // Stop any existing sound (only one playing at a time)
-      if (playingSoundRef.current) {
-        try { await playingSoundRef.current.stopAsync(); } catch {}
-        try { await playingSoundRef.current.unloadAsync(); } catch {}
-        playingSoundRef.current = null;
-      }
-
-      setPlayingMessageId(message.id);
-      const playableUrl = await getChatMediaUrl(message.voice_url);
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: playableUrl },
-        // Ensure frequent progress callbacks so the progress bar visibly moves.
-        { shouldPlay: true, progressUpdateIntervalMillis: 250 },
-        (status) => {
-          if (!status.isLoaded) return;
-          const pos = status.positionMillis ?? 0;
-          const dur = status.durationMillis ?? 0;
-          setPlaybackProgress((prev) => ({ ...prev, [message.id]: { pos, dur } }));
-          if (status.didJustFinish) setPlayingMessageId(null);
-        }
-      );
-
-      // Immediately capture initial duration/position so the label shows right away
-      // (some devices delay the first status callback).
+  const toggleVoicePlayback = useCallback(
+    async (message: any) => {
       try {
-        const initial: any = await sound.getStatusAsync();
-        if (initial?.isLoaded) {
-          setPlaybackProgress((prev) => ({
-            ...prev,
-            [message.id]: {
-              pos: initial.positionMillis ?? 0,
-              dur: initial.durationMillis ?? 0,
-            },
-          }));
-        }
-      } catch {}
+        if (!message?.voice_url) return;
 
-      playingSoundRef.current = sound;
-    } catch (e) {
-      console.error("Voice playback error:", e);
-      setPlayingMessageId(null);
-    }
-  }, [playingMessageId]);
+        // If tapping currently playing -> pause and clear
+        if (playingMessageId === message.id && playingSoundRef.current) {
+          const status: any = await playingSoundRef.current.getStatusAsync();
+          if (status?.isLoaded && status?.isPlaying) {
+            await playingSoundRef.current.pauseAsync();
+            setPlayingMessageId(null);
+            return;
+          }
+        }
+
+        // Stop any existing sound (only one playing at a time)
+        if (playingSoundRef.current) {
+          try {
+            await playingSoundRef.current.stopAsync();
+          } catch {}
+          try {
+            await playingSoundRef.current.unloadAsync();
+          } catch {}
+          playingSoundRef.current = null;
+        }
+
+        setPlayingMessageId(message.id);
+        const playableUrl = await getChatMediaUrl(message.voice_url);
+
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: playableUrl },
+          // Ensure frequent progress callbacks so the progress bar visibly moves.
+          { shouldPlay: true, progressUpdateIntervalMillis: 250 },
+          (status) => {
+            if (!status.isLoaded) return;
+            const pos = status.positionMillis ?? 0;
+            const dur = status.durationMillis ?? 0;
+            setPlaybackProgress((prev) => ({
+              ...prev,
+              [message.id]: { pos, dur },
+            }));
+            if (status.didJustFinish) setPlayingMessageId(null);
+          }
+        );
+
+        // Immediately capture initial duration/position so the label shows right away
+        // (some devices delay the first status callback).
+        try {
+          const initial: any = await sound.getStatusAsync();
+          if (initial?.isLoaded) {
+            setPlaybackProgress((prev) => ({
+              ...prev,
+              [message.id]: {
+                pos: initial.positionMillis ?? 0,
+                dur: initial.durationMillis ?? 0,
+              },
+            }));
+          }
+        } catch {}
+
+        playingSoundRef.current = sound;
+      } catch (e) {
+        console.error("Voice playback error:", e);
+        setPlayingMessageId(null);
+      }
+    },
+    [playingMessageId]
+  );
 
   // Cleanup voice playback on unmount
   useEffect(() => {
@@ -1047,9 +1227,10 @@ export default function ChatScreen() {
     };
   }, []);
 
-  const fullName = otherUser?.first_name && otherUser?.last_name
-    ? `${otherUser.first_name} ${otherUser.last_name}`
-    : otherUser?.name || "Unknown";
+  const fullName =
+    otherUser?.first_name && otherUser?.last_name
+      ? `${otherUser.first_name} ${otherUser.last_name}`
+      : otherUser?.name || "Unknown";
 
   const mainPhoto = useMemo(() => {
     // Hide photo if blocked (scenario 3 & 4)
@@ -1071,12 +1252,13 @@ export default function ChatScreen() {
         messageMap.set(msg.id, msg);
       }
     });
-    
+
     const uniqueMessages = Array.from(messageMap.values());
-    
+
     // Sort by created_at
-    uniqueMessages.sort((a, b) => 
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    uniqueMessages.sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
 
     // Group messages by date for timestamps
@@ -1084,14 +1266,14 @@ export default function ChatScreen() {
       const prevMsg = index > 0 ? uniqueMessages[index - 1] : null;
       const msgDate = new Date(msg.created_at);
       const prevDate = prevMsg ? new Date(prevMsg.created_at) : null;
-      
+
       // Add timestamp if it's a new day or first message
       if (!prevDate || msgDate.toDateString() !== prevDate.toDateString()) {
-        acc.push({ 
-          type: 'timestamp', 
-          date: msgDate, 
-          id: `timestamp-${msgDate.toISOString().split('T')[0]}-${acc.length}`,
-          _index: acc.length
+        acc.push({
+          type: "timestamp",
+          date: msgDate,
+          id: `timestamp-${msgDate.toISOString().split("T")[0]}-${acc.length}`,
+          _index: acc.length,
         });
       }
       acc.push({ ...msg, _index: acc.length });
@@ -1100,19 +1282,24 @@ export default function ChatScreen() {
   }, [messages]);
 
   // Scroll to a specific message when tapping on reply preview
-  const scrollToMessage = useCallback((messageId: string) => {
-    if (!flatListRef.current || !groupedMessages.length) return;
-    
-    // Find the index of the message in groupedMessages
-    const index = groupedMessages.findIndex((item: any) => item.id === messageId);
-    if (index !== -1) {
-      flatListRef.current.scrollToIndex({ 
-        index, 
-        animated: true,
-        viewPosition: 0.5 // Center the message on screen
-      });
-    }
-  }, [groupedMessages]);
+  const scrollToMessage = useCallback(
+    (messageId: string) => {
+      if (!flatListRef.current || !groupedMessages.length) return;
+
+      // Find the index of the message in groupedMessages
+      const index = groupedMessages.findIndex(
+        (item: any) => item.id === messageId
+      );
+      if (index !== -1) {
+        flatListRef.current.scrollToIndex({
+          index,
+          animated: true,
+          viewPosition: 0.5, // Center the message on screen
+        });
+      }
+    },
+    [groupedMessages]
+  );
 
   // Show loading state
   if (isLoading) {
@@ -1130,9 +1317,11 @@ export default function ChatScreen() {
         <Text className="text-red-500 text-center mb-4">
           Error loading chat: {error.message}
         </Text>
-        <Pressable 
+        <Pressable
           className="bg-[#B8860B] px-6 py-3 rounded-full"
-          onPress={() => queryClient.invalidateQueries({ queryKey: ["chat", chatId] })}
+          onPress={() =>
+            queryClient.invalidateQueries({ queryKey: ["chat", chatId] })
+          }
         >
           <Text className="text-white font-semibold">Retry</Text>
         </Pressable>
@@ -1148,18 +1337,18 @@ export default function ChatScreen() {
     >
       {/* Header */}
       <View className="bg-black px-4 pt-12 pb-4 flex-row items-start border-b border-white/10">
-        <Pressable 
+        <Pressable
           onPress={() => {
             // Invalidate chat list cache to refresh unread counts
             queryClient.invalidateQueries({ queryKey: ["chat-list"] });
             router.back();
-          }} 
+          }}
           className="mr-3 mt-1"
         >
           <Text className="text-white text-2xl font-semibold">←</Text>
         </Pressable>
-        
-        <Pressable 
+
+        <Pressable
           className="flex-1 flex-row items-center"
           onPress={() => {
             // Scenario 3 & 4: Show alert when name is tapped if blocked
@@ -1199,109 +1388,28 @@ export default function ChatScreen() {
               <Text className="text-green-500 text-xs mt-0.5">Active now</Text>
             )}
             {isBlocked && (
-              <Text className="text-white/60 text-xs mt-0.5">Tap name for info</Text>
+              <Text className="text-white/60 text-xs mt-0.5">
+                Tap name for info
+              </Text>
             )}
           </View>
         </Pressable>
-        
+
         {/* Three dots menu */}
-        <Pressable 
+        <Pressable
           onPress={() => setShowOptionsModal(true)}
           className="ml-2 mt-1 p-2"
         >
           <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
         </Pressable>
       </View>
-
-      {/* Messages */}
-      {isBlocked ? (
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-white/60 text-center text-base mb-2">
-            {iAmBlocked 
-              ? "This user has blocked you. You cannot see their profile or messages."
-              : "You have blocked this user. Messages are hidden but preserved for safety."}
-          </Text>
-          {iAmBlocked && (
-            <Text className="text-white/40 text-center text-sm mt-2">
-              Chat history is preserved for abuse reporting purposes.
-            </Text>
-          )}
-        </View>
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={groupedMessages}
-        keyExtractor={(item, index) => {
-          if (item.type === 'timestamp') {
-            return `timestamp-${item._index !== undefined ? item._index : index}`;
-          }
-          // Combine ID and index to ensure absolute uniqueness
-          return `msg-${item.id}-${item._index !== undefined ? item._index : index}`;
-        }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        // Performance optimizations
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        updateCellsBatchingPeriod={50}
-        initialNumToRender={20}
-        windowSize={10}
-        // Optimize scroll events
-        onScrollToIndexFailed={() => {}}
-        renderItem={({ item }) => {
-          if (item.type === 'timestamp') {
-            return (
-              <View className="items-center my-4">
-                <Text className="text-white/50 text-xs">
-                  {item.date.toLocaleDateString([], { 
-                    month: 'short', 
-                    day: 'numeric',
-                    year: item.date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-                  })}
-                </Text>
-              </View>
-            );
-          }
-
-          const isMe = item.sender_id === currentUser?.id;
-          const prog = playbackProgress[item.id] ?? { pos: 0, dur: 0 };
-          const progress = prog.dur > 0 ? prog.pos / prog.dur : 0;
-          const durationLabel =
-            prog.dur > 0
-              ? (playingMessageId === item.id
-                  ? `${formatTime(prog.pos)} / ${formatTime(prog.dur)}`
-                  : `${formatTime(prog.dur)}`)
-              : "…";
-          
-          return (
-            <MessageItem
-              item={item}
-              isMe={isMe}
-              mainPhoto={mainPhoto}
-              otherUser={otherUser}
-              currentUser={currentUser}
-              onReply={setReplyingTo}
-              onImagePress={setFullScreenImage}
-              onToggleVoice={toggleVoicePlayback}
-              onScrollToMessage={scrollToMessage}
-              isVoicePlaying={playingMessageId === item.id}
-              voiceProgress={progress}
-              voiceDurationLabel={durationLabel}
-            />
-          );
-        }}
-        ListEmptyComponent={
-          <View className="items-center justify-center py-20">
-            <View className="bg-white/10 px-4 py-3 rounded-2xl mb-4">
-              <Text className="text-white/70 text-sm text-center">
-                Start the chat with {fullName}
-              </Text>
-            </View>
-          </View>
-        }
-        ListFooterComponent={
-          isOtherUserTyping ? (
+      {/* Compliment Message Display - shown like a normal incoming message */}
+      {isCompliment &&
+        complimentStatus === "pending" &&
+        chatData?.complimentMessage && (
+          <View className="px-4 pt-6">
             <View className="mb-2 flex-row justify-start items-end">
+              {/* Sender Avatar */}
               <View className="mr-2 mb-1">
                 {mainPhoto ? (
                   <Image
@@ -1315,15 +1423,155 @@ export default function ChatScreen() {
                   </View>
                 )}
               </View>
+
+              {/* Message Bubble */}
               <View className="max-w-[75%] items-start">
-                <View className="bg-white/10 rounded-2xl rounded-bl-sm px-4 py-2.5">
-                  <Text className="text-white/70 text-sm italic">typing...</Text>
+                <View className="bg-white/10 rounded-2xl rounded-bl-sm px-4 py-3 border border-[#B8860B]/20">
+                  <Text className="text-white text-base leading-6">
+                    {chatData.complimentMessage}
+                  </Text>
                 </View>
+
+                {/* Timestamp */}
+                <Text className="text-white/40 text-xs mt-1 ml-1">
+                  {new Date(
+                    chatData.complimentCreatedAt || Date.now()
+                  ).toLocaleDateString([], {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Text>
               </View>
             </View>
-          ) : null
-        }
-      />
+          </View>
+        )}
+
+      {/* Messages */}
+      {isBlocked ? (
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-white/60 text-center text-base mb-2">
+            {iAmBlocked
+              ? "This user has blocked you. You cannot see their profile or messages."
+              : "You have blocked this user. Messages are hidden but preserved for safety."}
+          </Text>
+          {iAmBlocked && (
+            <Text className="text-white/40 text-center text-sm mt-2">
+              Chat history is preserved for abuse reporting purposes.
+            </Text>
+          )}
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={groupedMessages}
+          keyExtractor={(item, index) => {
+            if (item.type === "timestamp") {
+              return `timestamp-${
+                item._index !== undefined ? item._index : index
+              }`;
+            }
+            // Combine ID and index to ensure absolute uniqueness
+            return `msg-${item.id}-${
+              item._index !== undefined ? item._index : index
+            }`;
+          }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+          onContentSizeChange={() =>
+            flatListRef.current?.scrollToEnd({ animated: true })
+          }
+          // Performance optimizations
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={20}
+          windowSize={10}
+          // Optimize scroll events
+          onScrollToIndexFailed={() => {}}
+          renderItem={({ item }) => {
+            if (item.type === "timestamp") {
+              return (
+                <View className="items-center my-4">
+                  <Text className="text-white/50 text-xs">
+                    {item.date.toLocaleDateString([], {
+                      month: "short",
+                      day: "numeric",
+                      year:
+                        item.date.getFullYear() !== new Date().getFullYear()
+                          ? "numeric"
+                          : undefined,
+                    })}
+                  </Text>
+                </View>
+              );
+            }
+
+            const isMe = item.sender_id === currentUser?.id;
+            const prog = playbackProgress[item.id] ?? { pos: 0, dur: 0 };
+            const progress = prog.dur > 0 ? prog.pos / prog.dur : 0;
+            const durationLabel =
+              prog.dur > 0
+                ? playingMessageId === item.id
+                  ? `${formatTime(prog.pos)} / ${formatTime(prog.dur)}`
+                  : `${formatTime(prog.dur)}`
+                : "…";
+
+            return (
+              <MessageItem
+                item={item}
+                isMe={isMe}
+                mainPhoto={mainPhoto}
+                otherUser={otherUser}
+                currentUser={currentUser}
+                onReply={setReplyingTo}
+                onImagePress={setFullScreenImage}
+                onToggleVoice={toggleVoicePlayback}
+                onScrollToMessage={scrollToMessage}
+                isVoicePlaying={playingMessageId === item.id}
+                voiceProgress={progress}
+                voiceDurationLabel={durationLabel}
+              />
+            );
+          }}
+          ListEmptyComponent={
+            !isCompliment ? (
+              <View className="items-center justify-center py-20">
+                <View className="bg-white/10 px-4 py-3 rounded-2xl mb-4">
+                  <Text className="text-white/70 text-sm text-center">
+                    Start the chat with {fullName}
+                  </Text>
+                </View>
+              </View>
+            ) : null
+          }
+          ListFooterComponent={
+            isOtherUserTyping ? (
+              <View className="mb-2 flex-row justify-start items-end">
+                <View className="mr-2 mb-1">
+                  {mainPhoto ? (
+                    <Image
+                      source={{ uri: mainPhoto }}
+                      className="w-8 h-8 rounded-full"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
+                      <Text className="text-white/60 text-xs">👤</Text>
+                    </View>
+                  )}
+                </View>
+                <View className="max-w-[75%] items-start">
+                  <View className="bg-white/10 rounded-2xl rounded-bl-sm px-4 py-2.5">
+                    <Text className="text-white/70 text-sm italic">
+                      typing...
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ) : null
+          }
+        />
       )}
 
       {/* Rematch Request UI - Show for unmatched scenarios (1 & 2) */}
@@ -1339,55 +1587,85 @@ export default function ChatScreen() {
                 <Pressable
                   onPress={async () => {
                     try {
-                      const { error } = await supabase.functions.invoke("reject-rematch", {
-                        body: { matchId: chatId },
-                      });
-                      
+                      const { error } = await supabase.functions.invoke(
+                        "reject-rematch",
+                        {
+                          body: { matchId: chatId },
+                        }
+                      );
+
                       if (error) {
-                        Alert.alert("Error", "Failed to reject rematch. Please try again.");
+                        Alert.alert(
+                          "Error",
+                          "Failed to reject rematch. Please try again."
+                        );
                         return;
                       }
-                      
+
                       // Navigate back to chat list (chat will be removed from list)
-                      queryClient.invalidateQueries({ queryKey: ["chat-list"] });
-                      queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+                      queryClient.invalidateQueries({
+                        queryKey: ["chat-list"],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["chat", chatId],
+                      });
                       router.back();
                     } catch (error) {
                       console.error("Error rejecting rematch:", error);
-                      Alert.alert("Error", "Failed to reject rematch. Please try again.");
+                      Alert.alert(
+                        "Error",
+                        "Failed to reject rematch. Please try again."
+                      );
                     }
                   }}
                   className="flex-1 bg-white/10 px-6 py-4 rounded-2xl items-center border border-white/20"
                 >
-                  <Text className="text-white text-base font-semibold">Reject</Text>
+                  <Text className="text-white text-base font-semibold">
+                    Reject
+                  </Text>
                 </Pressable>
                 <Pressable
                   onPress={async () => {
                     try {
-                      const { error, data } = await supabase.functions.invoke("accept-rematch", {
-                        body: { matchId: chatId },
-                      });
-                      
+                      const { error, data } = await supabase.functions.invoke(
+                        "accept-rematch",
+                        {
+                          body: { matchId: chatId },
+                        }
+                      );
+
                       if (error) {
-                        Alert.alert("Error", "Failed to accept rematch. Please try again.");
+                        Alert.alert(
+                          "Error",
+                          "Failed to accept rematch. Please try again."
+                        );
                         return;
                       }
-                      
+
                       // Refresh chat data and navigate to new match
-                      queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+                      queryClient.invalidateQueries({
+                        queryKey: ["chat-list"],
+                      });
                       if (data?.matchId) {
                         router.replace(`/(main)/chat/${data.matchId}`);
                       } else {
-                        queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+                        queryClient.invalidateQueries({
+                          queryKey: ["chat", chatId],
+                        });
                       }
                     } catch (error) {
                       console.error("Error accepting rematch:", error);
-                      Alert.alert("Error", "Failed to accept rematch. Please try again.");
+                      Alert.alert(
+                        "Error",
+                        "Failed to accept rematch. Please try again."
+                      );
                     }
                   }}
                   className="flex-1 bg-[#B8860B] px-6 py-4 rounded-2xl items-center"
                 >
-                  <Text className="text-white text-base font-semibold">Accept Rematch</Text>
+                  <Text className="text-white text-base font-semibold">
+                    Accept Rematch
+                  </Text>
                 </Pressable>
               </View>
             </View>
@@ -1414,22 +1692,38 @@ export default function ChatScreen() {
                       text: "Request Rematch",
                       onPress: async () => {
                         try {
-                          const { error } = await supabase.functions.invoke("request-rematch", {
-                            body: { matchId: chatId, otherUserId: otherUser?.id },
-                          });
-                          
+                          const { error } = await supabase.functions.invoke(
+                            "request-rematch",
+                            {
+                              body: {
+                                matchId: chatId,
+                                otherUserId: otherUser?.id,
+                              },
+                            }
+                          );
+
                           if (error) {
-                            Alert.alert("Error", "Failed to request rematch. Please try again.");
+                            Alert.alert(
+                              "Error",
+                              "Failed to request rematch. Please try again."
+                            );
                             return;
                           }
-                          
+
                           Alert.alert("Success", "Rematch request sent!");
                           // Refresh chat data
-                          queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
-                          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+                          queryClient.invalidateQueries({
+                            queryKey: ["chat", chatId],
+                          });
+                          queryClient.invalidateQueries({
+                            queryKey: ["chat-list"],
+                          });
                         } catch (error) {
                           console.error("Error requesting rematch:", error);
-                          Alert.alert("Error", "Failed to request rematch. Please try again.");
+                          Alert.alert(
+                            "Error",
+                            "Failed to request rematch. Please try again."
+                          );
                         }
                       },
                     },
@@ -1438,104 +1732,137 @@ export default function ChatScreen() {
               }}
               className="bg-[#B8860B] px-6 py-4 rounded-2xl items-center"
             >
-              <Text className="text-white text-base font-semibold">Request Rematch?</Text>
+              <Text className="text-white text-base font-semibold">
+                Request Rematch?
+              </Text>
             </Pressable>
           )}
         </View>
       )}
 
       {/* Compliment Accept/Decline Section */}
-      {isCompliment && isComplimentRecipient && complimentStatus === "pending" && (
-        <View className="px-4 py-4 bg-purple-500/20 border-t border-purple-500/30">
-          <View className="items-center mb-4">
-            <Text className="text-white text-lg font-bold mb-1">
-              {fullName} sent you a compliment! 💬
-            </Text>
-            <Text className="text-white/80 text-sm text-center">
-              View their profile and decide if you&apos;d like to match
-            </Text>
-          </View>
-          <View className="flex-row gap-3">
-            <Pressable
-              onPress={async () => {
-                Alert.alert(
-                  "Decline Compliment",
-                  `Are you sure you want to decline ${fullName}'s compliment?`,
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Decline",
-                      style: "destructive",
-                      onPress: async () => {
-                        try {
-                          const { error } = await supabase.functions.invoke("decline-compliment", {
-                            body: { complimentId },
-                          });
-                          
-                          if (error) {
-                            Alert.alert("Error", "Failed to decline compliment. Please try again.");
-                            return;
+      {isCompliment &&
+        isComplimentRecipient &&
+        complimentStatus === "pending" && (
+          <View className="px-4 py-4 bg-purple-500/20 border-t border-purple-500/30">
+            <View className="items-center mb-4">
+              <Text className="text-white text-lg font-bold mb-1">
+                {fullName} sent you a compliment! 💬
+              </Text>
+              <Text className="text-white/80 text-sm text-center">
+                View their profile and decide if you&apos;d like to match
+              </Text>
+            </View>
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={async () => {
+                  Alert.alert(
+                    "Decline Compliment",
+                    `Are you sure you want to decline ${fullName}'s compliment?`,
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Decline",
+                        style: "destructive",
+                        onPress: async () => {
+                          try {
+                            const { error } = await supabase.functions.invoke(
+                              "decline-compliment",
+                              {
+                                body: { complimentId },
+                              }
+                            );
+
+                            if (error) {
+                              Alert.alert(
+                                "Error",
+                                "Failed to decline compliment. Please try again."
+                              );
+                              return;
+                            }
+
+                            // Navigate back to chat list (compliment will be removed)
+                            queryClient.invalidateQueries({
+                              queryKey: ["chat-list"],
+                            });
+                            router.back();
+                          } catch (error) {
+                            console.error("Error declining compliment:", error);
+                            Alert.alert(
+                              "Error",
+                              "Failed to decline compliment. Please try again."
+                            );
                           }
-                          
-                          // Navigate back to chat list (compliment will be removed)
-                          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
-                          router.back();
-                        } catch (error) {
-                          console.error("Error declining compliment:", error);
-                          Alert.alert("Error", "Failed to decline compliment. Please try again.");
-                        }
+                        },
                       },
-                    },
-                  ]
-                );
-              }}
-              className="flex-1 bg-white/10 px-6 py-4 rounded-2xl items-center border border-white/20"
-            >
-              <Text className="text-white text-base font-semibold">Decline</Text>
-            </Pressable>
-            <Pressable
-              onPress={async () => {
-                Alert.alert(
-                  "Accept Compliment",
-                  `Accept ${fullName}'s compliment and start chatting?`,
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Accept & Match",
-                      onPress: async () => {
-                        try {
-                          const { error, data } = await supabase.functions.invoke("accept-compliment", {
-                            body: { complimentId },
-                          });
-                          
-                          if (error) {
-                            Alert.alert("Error", "Failed to accept compliment. Please try again.");
-                            return;
+                    ]
+                  );
+                }}
+                className="flex-1 bg-white/10 px-6 py-4 rounded-2xl items-center border border-white/20"
+              >
+                <Text className="text-white text-base font-semibold">
+                  Decline
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={async () => {
+                  Alert.alert(
+                    "Accept Compliment",
+                    `Accept ${fullName}'s compliment and start chatting?`,
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Accept & Match",
+                        onPress: async () => {
+                          try {
+                            const { error, data } =
+                              await supabase.functions.invoke(
+                                "accept-compliment",
+                                {
+                                  body: { complimentId },
+                                }
+                              );
+
+                            if (error) {
+                              Alert.alert(
+                                "Error",
+                                "Failed to accept compliment. Please try again."
+                              );
+                              return;
+                            }
+
+                            // Navigate to the new match chat
+                            queryClient.invalidateQueries({
+                              queryKey: ["chat-list"],
+                            });
+                            if (data?.matchId) {
+                              router.replace(`/(main)/chat/${data.matchId}`);
+                            } else {
+                              queryClient.invalidateQueries({
+                                queryKey: ["chat", chatId],
+                              });
+                            }
+                          } catch (error) {
+                            console.error("Error accepting compliment:", error);
+                            Alert.alert(
+                              "Error",
+                              "Failed to accept compliment. Please try again."
+                            );
                           }
-                          
-                          // Navigate to the new match chat
-                          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
-                          if (data?.matchId) {
-                            router.replace(`/(main)/chat/${data.matchId}`);
-                          } else {
-                            queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
-                          }
-                        } catch (error) {
-                          console.error("Error accepting compliment:", error);
-                          Alert.alert("Error", "Failed to accept compliment. Please try again.");
-                        }
+                        },
                       },
-                    },
-                  ]
-                );
-              }}
-              className="flex-1 bg-[#B8860B] px-6 py-4 rounded-2xl items-center"
-            >
-              <Text className="text-white text-base font-semibold">Accept & Match</Text>
-            </Pressable>
+                    ]
+                  );
+                }}
+                className="flex-1 bg-[#B8860B] px-6 py-4 rounded-2xl items-center"
+              >
+                <Text className="text-white text-base font-semibold">
+                  Accept & Match
+                </Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      )}
+        )}
 
       {/* Compliment Sender Status */}
       {isCompliment && isComplimentSender && (
@@ -1570,14 +1897,19 @@ export default function ChatScreen() {
               <View className="flex-row items-center mb-1">
                 <Ionicons name="arrow-undo" size={16} color="#B8860B" />
                 <Text className="text-[#B8860B] text-xs font-semibold ml-1">
-                  Replying to {replyingTo.sender_id === currentUser?.id ? "yourself" : (otherUser?.first_name || "User")}
+                  Replying to{" "}
+                  {replyingTo.sender_id === currentUser?.id
+                    ? "yourself"
+                    : otherUser?.first_name || "User"}
                 </Text>
               </View>
               <View className="pl-5 border-l-2 border-[#B8860B]/50">
                 {replyingTo.image_url ? (
                   <Text className="text-white/60 text-xs italic">📷 Photo</Text>
                 ) : replyingTo.voice_url ? (
-                  <Text className="text-white/60 text-xs italic">🎤 Voice note</Text>
+                  <Text className="text-white/60 text-xs italic">
+                    🎤 Voice note
+                  </Text>
                 ) : (
                   <Text className="text-white/60 text-xs" numberOfLines={1}>
                     {replyingTo.content || "Message"}
@@ -1623,7 +1955,9 @@ export default function ChatScreen() {
                 <Ionicons name="mic" size={18} color="#B8860B" />
               </View>
               <View className="ml-3">
-                <Text className="text-white text-sm font-semibold">Voice note ready</Text>
+                <Text className="text-white text-sm font-semibold">
+                  Voice note ready
+                </Text>
                 <Text className="text-white/60 text-xs">
                   {formatTime(pendingVoice.durationMs)}
                 </Text>
@@ -1656,75 +1990,95 @@ export default function ChatScreen() {
 
       {/* Input - Hide if blocked, unmatched, or compliment (until accepted) */}
       {!isBlocked && !isUnmatched && !isCompliment && (
-        <View className="bg-black px-4 py-3" style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}>
+        <View
+          className="bg-black px-4 py-3"
+          style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}
+        >
           {/* Strict halal warning (only visible to sender) */}
           {halalWarning && (
             <View className="mb-2 px-3 py-2 rounded-xl border border-red-500/40 bg-red-500/10">
-              <Text className="text-red-200 text-xs">
-                {halalWarning}
-              </Text>
+              <Text className="text-red-200 text-xs">{halalWarning}</Text>
             </View>
           )}
 
           <View className="flex-row items-center gap-3">
-        {/* Add/Attachment Button */}
-        <Pressable 
-          className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-[#B8860B]/30"
-          onPress={pickImage}
-          disabled={uploadingMedia || isRecording || !!pendingVoice}
-        >
-          <Ionicons name="add" size={24} color="#B8860B" />
-        </Pressable>
+            {/* Add/Attachment Button */}
+            <Pressable
+              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-[#B8860B]/30"
+              onPress={pickImage}
+              disabled={uploadingMedia || isRecording || !!pendingVoice}
+            >
+              <Ionicons name="add" size={24} color="#B8860B" />
+            </Pressable>
 
-        {/* Mic Button (tap to start, tap again to stop; then send/cancel) */}
-        <Pressable
-          onPress={onPressMic}
-          disabled={uploadingMedia || sendMessageMutation.isPending || !!pendingVoice || !!selectedImage}
-        >
-          <Animated.View style={micPulseStyle}>
-            <View
-              className={`w-10 h-10 rounded-full items-center justify-center border ${
-                isRecording ? "bg-red-500/20 border-red-500/50" : "bg-white/10 border-[#B8860B]/30"
+            {/* Mic Button (tap to start, tap again to stop; then send/cancel) */}
+            <Pressable
+              onPress={onPressMic}
+              disabled={
+                uploadingMedia ||
+                sendMessageMutation.isPending ||
+                !!pendingVoice ||
+                !!selectedImage
+              }
+            >
+              <Animated.View style={micPulseStyle}>
+                <View
+                  className={`w-10 h-10 rounded-full items-center justify-center border ${
+                    isRecording
+                      ? "bg-red-500/20 border-red-500/50"
+                      : "bg-white/10 border-[#B8860B]/30"
+                  }`}
+                >
+                  <Ionicons
+                    name={isRecording ? "stop" : "mic"}
+                    size={20}
+                    color={isRecording ? "#EF4444" : "#B8860B"}
+                  />
+                </View>
+              </Animated.View>
+            </Pressable>
+
+            {/* Message Input Field */}
+            <TextInput
+              className="flex-1 bg-white/10 text-white px-4 py-3 rounded-2xl border border-[#B8860B]/30"
+              placeholder={isRecording ? "Recording..." : "Type a message..."}
+              placeholderTextColor="#9CA3AF"
+              value={text}
+              onChangeText={handleTextChange}
+              multiline
+              maxLength={500}
+              editable={!isRecording}
+              style={{
+                maxHeight: 100,
+                fontSize: 16,
+                opacity: isRecording ? 0.5 : 1,
+              }}
+              returnKeyType="send"
+              onSubmitEditing={send}
+            />
+
+            {/* Send Button */}
+            <Pressable
+              onPress={send}
+              disabled={
+                isRecording ||
+                ((!text || !text.trim()) && !selectedImage && !pendingVoice) ||
+                sendMessageMutation.isPending ||
+                uploadingMedia
+              }
+              className={`w-10 h-10 rounded-full bg-[#B8860B] items-center justify-center ${
+                isRecording ||
+                ((!text || !text.trim()) && !selectedImage && !pendingVoice)
+                  ? "opacity-50"
+                  : ""
               }`}
             >
-              <Ionicons name={isRecording ? "stop" : "mic"} size={20} color={isRecording ? "#EF4444" : "#B8860B"} />
-            </View>
-          </Animated.View>
-        </Pressable>
-
-        {/* Message Input Field */}
-        <TextInput
-          className="flex-1 bg-white/10 text-white px-4 py-3 rounded-2xl border border-[#B8860B]/30"
-          placeholder={isRecording ? "Recording..." : "Type a message..."}
-          placeholderTextColor="#9CA3AF"
-          value={text}
-          onChangeText={handleTextChange}
-          multiline
-          maxLength={500}
-          editable={!isRecording}
-          style={{ maxHeight: 100, fontSize: 16, opacity: isRecording ? 0.5 : 1 }}
-          returnKeyType="send"
-          onSubmitEditing={send}
-        />
-
-        {/* Send Button */}
-        <Pressable 
-          onPress={send} 
-          disabled={isRecording || ((!text || !text.trim()) && !selectedImage && !pendingVoice) || sendMessageMutation.isPending || uploadingMedia}
-          className={`w-10 h-10 rounded-full bg-[#B8860B] items-center justify-center ${
-            (isRecording || ((!text || !text.trim()) && !selectedImage && !pendingVoice)) ? 'opacity-50' : ''
-          }`}
-        >
-          {uploadingMedia ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Ionicons 
-              name="send" 
-              size={18} 
-              color="#FFFFFF" 
-            />
-          )}
-        </Pressable>
+              {uploadingMedia ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="send" size={18} color="#FFFFFF" />
+              )}
+            </Pressable>
           </View>
 
           {/* Recording feedback */}
@@ -1736,12 +2090,10 @@ export default function ChatScreen() {
                   {`Recording • ${recordSeconds}s`}
                 </Text>
               </View>
-              <Text className="text-white/40 text-xs">
-                Tap mic to stop
-              </Text>
+              <Text className="text-white/40 text-xs">Tap mic to stop</Text>
             </View>
           )}
-      </View>
+        </View>
       )}
 
       {/* Full Screen Image Viewer */}
@@ -1761,7 +2113,7 @@ export default function ChatScreen() {
           </Pressable>
 
           {/* Image Container */}
-          <Pressable 
+          <Pressable
             className="flex-1 items-center justify-center"
             onPress={() => setFullScreenImage(null)}
           >
@@ -1769,8 +2121,8 @@ export default function ChatScreen() {
               <ExpoImage
                 source={{ uri: fullScreenImage }}
                 style={{
-                  width: Dimensions.get('window').width,
-                  height: Dimensions.get('window').height,
+                  width: Dimensions.get("window").width,
+                  height: Dimensions.get("window").height,
                 }}
                 contentFit="contain"
                 transition={200}
@@ -1788,18 +2140,18 @@ export default function ChatScreen() {
         animationType="fade"
         onRequestClose={() => setShowOptionsModal(false)}
       >
-        <Pressable 
+        <Pressable
           className="flex-1 bg-black/50 items-center justify-center"
           onPress={() => setShowOptionsModal(false)}
         >
-          <Pressable 
+          <Pressable
             className="bg-black rounded-2xl p-6 w-[85%] border border-white/10"
             onPress={(e) => e.stopPropagation()}
           >
             <Text className="text-white text-xl font-semibold mb-6 text-center">
               Chat Options
             </Text>
-            
+
             {/* Unmatch Option */}
             <Pressable
               onPress={async () => {
@@ -1814,21 +2166,32 @@ export default function ChatScreen() {
                       style: "destructive",
                       onPress: async () => {
                         try {
-                          const { error } = await supabase.functions.invoke("unmatch", {
-                            body: { matchId: chatId },
-                          });
-                          
+                          const { error } = await supabase.functions.invoke(
+                            "unmatch",
+                            {
+                              body: { matchId: chatId },
+                            }
+                          );
+
                           if (error) {
-                            Alert.alert("Error", "Failed to unmatch. Please try again.");
+                            Alert.alert(
+                              "Error",
+                              "Failed to unmatch. Please try again."
+                            );
                             return;
                           }
-                          
+
                           // Navigate back to chat list
-                          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+                          queryClient.invalidateQueries({
+                            queryKey: ["chat-list"],
+                          });
                           router.replace("/(main)/chat");
                         } catch (error) {
                           console.error("Error unmatching:", error);
-                          Alert.alert("Error", "Failed to unmatch. Please try again.");
+                          Alert.alert(
+                            "Error",
+                            "Failed to unmatch. Please try again."
+                          );
                         }
                       },
                     },
@@ -1842,7 +2205,7 @@ export default function ChatScreen() {
                 Remove this match and chat history
               </Text>
             </Pressable>
-            
+
             {/* Block Option */}
             <Pressable
               onPress={async () => {
@@ -1857,21 +2220,32 @@ export default function ChatScreen() {
                       style: "destructive",
                       onPress: async () => {
                         try {
-                          const { error } = await supabase.functions.invoke("block-user", {
-                            body: { userId: otherUser?.id, matchId: chatId },
-                          });
-                          
+                          const { error } = await supabase.functions.invoke(
+                            "block-user",
+                            {
+                              body: { userId: otherUser?.id, matchId: chatId },
+                            }
+                          );
+
                           if (error) {
-                            Alert.alert("Error", "Failed to block user. Please try again.");
+                            Alert.alert(
+                              "Error",
+                              "Failed to block user. Please try again."
+                            );
                             return;
                           }
-                          
+
                           // Navigate back to chat list
-                          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+                          queryClient.invalidateQueries({
+                            queryKey: ["chat-list"],
+                          });
                           router.replace("/(main)/chat");
                         } catch (error) {
                           console.error("Error blocking user:", error);
-                          Alert.alert("Error", "Failed to block user. Please try again.");
+                          Alert.alert(
+                            "Error",
+                            "Failed to block user. Please try again."
+                          );
                         }
                       },
                     },
@@ -1885,13 +2259,15 @@ export default function ChatScreen() {
                 Block this user and remove the match
               </Text>
             </Pressable>
-            
+
             {/* Cancel Button */}
             <Pressable
               onPress={() => setShowOptionsModal(false)}
               className="mt-4 pt-4 border-t border-white/10"
             >
-              <Text className="text-white/70 text-center text-base">Cancel</Text>
+              <Text className="text-white/70 text-center text-base">
+                Cancel
+              </Text>
             </Pressable>
           </Pressable>
         </Pressable>

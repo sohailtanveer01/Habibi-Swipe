@@ -458,7 +458,6 @@ export default function MainLayout() {
       <Tabs.Screen name="swipe/filters/children" options={{ href: null }} />
       <Tabs.Screen name="swipe/filters/religiosity" options={{ href: null }} />
       <Tabs.Screen name="profile/subscription" options={{ href: null }} />
-
       <Tabs.Screen name="chat/unmatches" options={{ href: null }} />
       <Tabs.Screen name="profile/settings" options={{ href: null }} />
     </Tabs>

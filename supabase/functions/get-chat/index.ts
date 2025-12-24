@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
@@ -16,7 +17,10 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
@@ -29,29 +33,39 @@ serve(async (req) => {
       }
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseClient.auth.getUser();
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Get matchId and markAsRead flag from request
     const { matchId, markAsRead = true } = await req.json();
     if (!matchId) {
-      return new Response(
-        JSON.stringify({ error: "Missing matchId" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing matchId" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    console.log("📍 Loading chat for match:", matchId, "user:", user.id, "markAsRead:", markAsRead);
+    console.log(
+      "📍 Loading chat for match:",
+      matchId,
+      "user:",
+      user.id,
+      "markAsRead:",
+      markAsRead
+    );
 
     // Check if this is a compliment conversation (matchId starts with "compliment-")
     if (matchId.startsWith("compliment-")) {
       const complimentId = matchId.replace("compliment-", "");
-      
+
       // Get the compliment
       const { data: compliment, error: complimentError } = await supabaseClient
         .from("compliments")
@@ -60,16 +74,17 @@ serve(async (req) => {
         .single();
 
       if (complimentError || !compliment) {
-        return new Response(
-          JSON.stringify({ error: "Compliment not found" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Compliment not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Determine other user ID
-      const otherUserId = user.id === compliment.sender_id 
-        ? compliment.recipient_id 
-        : compliment.sender_id;
+      const otherUserId =
+        user.id === compliment.sender_id
+          ? compliment.recipient_id
+          : compliment.sender_id;
       const isComplimentSender = user.id === compliment.sender_id;
 
       // Fetch other user's profile
@@ -82,31 +97,30 @@ serve(async (req) => {
       if (userProfileError || !otherUser) {
         return new Response(
           JSON.stringify({ error: "Other user profile not found" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
         );
       }
 
-      // Create a fake message from the compliment
-      const complimentMessage = {
-        id: `compliment-msg-${compliment.id}`,
-        match_id: null,
-        sender_id: compliment.sender_id,
-        message: compliment.message,
-        message_type: "text",
-        created_at: compliment.created_at,
-        read: isComplimentSender || compliment.status !== "pending",
-      };
-
+      // Return compliment data with message and timestamp as separate fields
       return new Response(
         JSON.stringify({
           match: null,
           otherUser,
-          messages: [complimentMessage],
+          messages: [], // Empty messages array - we'll show compliment separately
           currentUserId: user.id,
-          unreadCount: isComplimentSender ? 0 : (compliment.status === "pending" ? 1 : 0),
+          unreadCount: isComplimentSender
+            ? 0
+            : compliment.status === "pending"
+            ? 1
+            : 0,
           isCompliment: true,
           complimentId: compliment.id,
           complimentStatus: compliment.status,
+          complimentMessage: compliment.message, // Add this
+          complimentCreatedAt: compliment.created_at, // Add this
           isComplimentSender: isComplimentSender,
           isComplimentRecipient: !isComplimentSender,
         }),
@@ -130,17 +144,24 @@ serve(async (req) => {
 
     if (!unmatchError && unmatchRecord) {
       // Match is unmatched - verify user is part of it
-      if (unmatchRecord.user1_id !== user.id && unmatchRecord.user2_id !== user.id) {
+      if (
+        unmatchRecord.user1_id !== user.id &&
+        unmatchRecord.user2_id !== user.id
+      ) {
         return new Response(
           JSON.stringify({ error: "Unauthorized access to this chat" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
         );
       }
 
       // Determine other user ID
-      otherUserId = unmatchRecord.user1_id === user.id 
-        ? unmatchRecord.user2_id 
-        : unmatchRecord.user1_id;
+      otherUserId =
+        unmatchRecord.user1_id === user.id
+          ? unmatchRecord.user2_id
+          : unmatchRecord.user1_id;
       isUnmatched = true;
     } else {
       // Match exists - fetch and verify
@@ -151,10 +172,10 @@ serve(async (req) => {
         .single();
 
       if (matchError || !matchData) {
-        return new Response(
-          JSON.stringify({ error: "Match not found" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Match not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       match = matchData;
@@ -163,7 +184,10 @@ serve(async (req) => {
       if (match.user1 !== user.id && match.user2 !== user.id) {
         return new Response(
           JSON.stringify({ error: "Unauthorized access to this chat" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
         );
       }
 
@@ -172,10 +196,10 @@ serve(async (req) => {
     }
 
     if (!otherUserId) {
-      return new Response(
-        JSON.stringify({ error: "Other user not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Other user not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Check if user is blocked (either way)
@@ -185,7 +209,7 @@ serve(async (req) => {
       .eq("blocker_id", user.id)
       .eq("blocked_id", otherUserId)
       .single();
-    
+
     const { data: theyBlockedMe } = await supabaseClient
       .from("blocks")
       .select("id")
@@ -207,7 +231,10 @@ serve(async (req) => {
       console.error("❌ User profile error:", userProfileError);
       return new Response(
         JSON.stringify({ error: "Other user profile not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
@@ -242,8 +269,13 @@ serve(async (req) => {
     // Mark all unread messages from other user as read FIRST (only if match exists and markAsRead is true)
     // RLS policy allows users to update read status of messages they receive
     if (!isUnmatched && markAsRead) {
-      console.log("🔄 Attempting to mark messages as read for match:", matchId, "otherUserId:", otherUserId);
-      
+      console.log(
+        "🔄 Attempting to mark messages as read for match:",
+        matchId,
+        "otherUserId:",
+        otherUserId
+      );
+
       const { data: markedAsRead, error: readError } = await supabaseClient
         .from("messages")
         .update({ read: true })
@@ -253,12 +285,28 @@ serve(async (req) => {
         .select();
 
       if (readError) {
-        console.error("⚠️ Error marking messages as read:", JSON.stringify(readError, null, 2));
-        console.error("⚠️ Error details:", readError.message, readError.details, readError.hint);
+        console.error(
+          "⚠️ Error marking messages as read:",
+          JSON.stringify(readError, null, 2)
+        );
+        console.error(
+          "⚠️ Error details:",
+          readError.message,
+          readError.details,
+          readError.hint
+        );
         // Don't fail the request if marking as read fails, just log it
       } else if (markedAsRead && markedAsRead.length > 0) {
-        console.log("✅ Successfully marked", markedAsRead.length, "messages as read for match", matchId);
-        console.log("✅ Message IDs marked:", markedAsRead.map(m => m.id));
+        console.log(
+          "✅ Successfully marked",
+          markedAsRead.length,
+          "messages as read for match",
+          matchId
+        );
+        console.log(
+          "✅ Message IDs marked:",
+          markedAsRead.map((m) => m.id)
+        );
       } else {
         console.log("ℹ️ No unread messages to mark as read for match", matchId);
       }
@@ -271,7 +319,8 @@ serve(async (req) => {
     // Also fetch replied-to messages for reply previews
     const { data: messages, error: messagesError } = await supabaseClient
       .from("messages")
-      .select(`
+      .select(
+        `
         *,
         reply_to:reply_to_id (
           id,
@@ -280,16 +329,17 @@ serve(async (req) => {
           image_url,
           voice_url
         )
-      `)
+      `
+      )
       .eq("match_id", matchId)
       .order("created_at", { ascending: true });
 
     if (messagesError) {
       console.error("❌ Messages error:", messagesError);
-      return new Response(
-        JSON.stringify({ error: messagesError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: messagesError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Use the actual read status from the database (don't override)
@@ -299,9 +349,11 @@ serve(async (req) => {
     // Get rematch request info if unmatched
     let rematchRequestInfo = null;
     if (isUnmatched && unmatchRecord) {
-      const hasPendingRequest = unmatchRecord.rematch_status === 'pending';
-      const isRequestRecipient = hasPendingRequest && unmatchRecord.rematch_requested_by !== user.id;
-      const isRequestRequester = hasPendingRequest && unmatchRecord.rematch_requested_by === user.id;
+      const hasPendingRequest = unmatchRecord.rematch_status === "pending";
+      const isRequestRecipient =
+        hasPendingRequest && unmatchRecord.rematch_requested_by !== user.id;
+      const isRequestRequester =
+        hasPendingRequest && unmatchRecord.rematch_requested_by === user.id;
 
       rematchRequestInfo = {
         status: unmatchRecord.rematch_status,
@@ -317,10 +369,12 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        match: match ? {
-          id: match.id,
-          created_at: match.created_at,
-        } : null,
+        match: match
+          ? {
+              id: match.id,
+              created_at: match.created_at,
+            }
+          : null,
         otherUser,
         messages: updatedMessages,
         currentUserId: user.id,
@@ -335,10 +389,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("❌ Error in get-chat:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
-

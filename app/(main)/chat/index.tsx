@@ -5,6 +5,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isUserActive } from "../../../lib/useActiveStatus";
 import Logo from "../../../components/Logo";
+import DiamondIcon from "../../../components/DiamondIcon";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -300,7 +301,7 @@ export default function ChatListScreen() {
                     </Text>
                     {item.isCompliment && (
                       <View className="bg-purple-500 rounded-full px-2 py-0.5">
-                        <Text className="text-white text-xs font-bold">💬</Text>
+                        <DiamondIcon size={16} color="#FF0000" />
                       </View>
                     )}
                     {hasUnread && (
