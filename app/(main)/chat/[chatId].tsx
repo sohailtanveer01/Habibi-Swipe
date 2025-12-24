@@ -58,6 +58,10 @@ function MessageItem({
   isVoicePlaying,
   voiceProgress,
   voiceDurationLabel,
+  onLongPress,
+  showDeleteLabel,
+  onDeletePress,
+  onTap,
 }: {
   item: any;
   isMe: boolean;
@@ -71,6 +75,10 @@ function MessageItem({
   isVoicePlaying: boolean;
   voiceProgress: number; // 0..1
   voiceDurationLabel: string;
+  onLongPress?: (message: any) => void;
+  showDeleteLabel?: boolean;
+  onDeletePress?: () => void;
+  onTap?: () => void;
 }) {
   // Get screen width for drag limit
   const screenWidth = Dimensions.get("window").width;
@@ -123,6 +131,7 @@ function MessageItem({
   });
 
   const showProfilePic = !isMe && mainPhoto;
+  const isDeleted = item.media_type === "deleted";
 
   return (
     <View
@@ -192,105 +201,123 @@ function MessageItem({
             )}
           </View>
         )}
-        <GestureDetector gesture={panGesture}>
-          <Animated.View
-            style={animatedStyle}
-            className={`rounded-2xl ${
-              isMe ? "bg-[#B8860B] rounded-br-sm" : "bg-white/10 rounded-bl-sm"
-            }`}
-          >
-            {/* Show image if image_url exists */}
-            {item.image_url && (
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  const imageUrl =
-                    cleanPhotoUrl(item.image_url) || item.image_url;
-                  onImagePress(imageUrl);
-                }}
-              >
-                <ExpoImage
-                  source={{
-                    uri: cleanPhotoUrl(item.image_url) || item.image_url,
+        <Pressable
+          onLongPress={() => {
+            if (onLongPress) onLongPress(item);
+          }}
+          onPress={() => {
+            if (onTap) onTap();
+          }}
+        >
+          <GestureDetector gesture={panGesture}>
+            <Animated.View
+              style={animatedStyle}
+              className={`rounded-2xl ${
+                isMe
+                  ? "bg-[#B8860B] rounded-br-sm"
+                  : "bg-white/10 rounded-bl-sm"
+              }`}
+            >
+              {item.image_url && (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    const imageUrl =
+                      cleanPhotoUrl(item.image_url) || item.image_url;
+                    onImagePress(imageUrl);
                   }}
-                  style={{
-                    width: 250,
-                    height: 250,
-                    borderTopLeftRadius: 16,
-                    borderTopRightRadius: 16,
-                    borderBottomLeftRadius:
-                      item.content && item.content.trim() ? 0 : 16,
-                    borderBottomRightRadius:
-                      item.content && item.content.trim() ? 0 : 16,
-                  }}
-                  contentFit="cover"
-                  transition={200}
-                  cachePolicy="memory-disk"
-                  onError={(error) => {
-                    console.error("❌ Image load error:", error);
-                    console.error("❌ Image URL:", item.image_url);
-                  }}
-                  onLoad={() => {
-                    console.log(
-                      "✅ Image loaded successfully:",
-                      item.image_url
-                    );
-                  }}
-                />
-              </Pressable>
-            )}
+                >
+                  <ExpoImage
+                    source={{
+                      uri: cleanPhotoUrl(item.image_url) || item.image_url,
+                    }}
+                    style={{
+                      width: 250,
+                      height: 250,
+                      borderTopLeftRadius: 16,
+                      borderTopRightRadius: 16,
+                      borderBottomLeftRadius:
+                        item.content && item.content.trim() ? 0 : 16,
+                      borderBottomRightRadius:
+                        item.content && item.content.trim() ? 0 : 16,
+                    }}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                    onError={(error) => {
+                      console.error("❌ Image load error:", error);
+                      console.error("❌ Image URL:", item.image_url);
+                    }}
+                    onLoad={() => {
+                      console.log(
+                        "✅ Image loaded successfully:",
+                        item.image_url
+                      );
+                    }}
+                  />
+                </Pressable>
+              )}
 
-            {/* Voice note bubble */}
-            {item.voice_url && (
-              <View className="px-4 py-3">
-                <View className="flex-row items-center">
-                  <Pressable
-                    onPress={() => onToggleVoice(item)}
-                    className={`w-10 h-10 rounded-full items-center justify-center ${
-                      isMe ? "bg-[#B8860B]" : "bg-white/15"
-                    }`}
-                  >
-                    <Ionicons
-                      name={isVoicePlaying ? "pause" : "play"}
-                      size={18}
-                      color={isMe ? "#000000" : "#FFFFFF"}
-                    />
-                  </Pressable>
-
-                  <View className="flex-1 ml-3">
-                    {/* Progress bar */}
-                    <View className="h-1.5 rounded-full bg-white/20 overflow-hidden">
-                      <View
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            Math.max(0, voiceProgress * 100)
-                          )}%`,
-                          height: "100%",
-                          backgroundColor: "#B8860B",
-                        }}
+              {item.voice_url && (
+                <View className="px-4 py-3">
+                  <View className="flex-row items-center">
+                    <Pressable
+                      onPress={() => onToggleVoice(item)}
+                      className={`w-10 h-10 rounded-full items-center justify-center ${
+                        isMe ? "bg-[#B8860B]" : "bg-white/15"
+                      }`}
+                    >
+                      <Ionicons
+                        name={isVoicePlaying ? "pause" : "play"}
+                        size={18}
+                        color={isMe ? "#000000" : "#FFFFFF"}
                       />
+                    </Pressable>
+
+                    <View className="flex-1 ml-3">
+                      <View className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+                        <View
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.max(0, voiceProgress * 100)
+                            )}%`,
+                            height: "100%",
+                            backgroundColor: "#B8860B",
+                          }}
+                        />
+                      </View>
+                      <Text className="text-white/60 text-xs mt-1">
+                        {voiceDurationLabel}
+                      </Text>
                     </View>
-                    <Text className="text-white/60 text-xs mt-1">
-                      {voiceDurationLabel}
-                    </Text>
                   </View>
                 </View>
-              </View>
-            )}
+              )}
 
-            {/* Show text content if exists */}
-            {item.content && item.content.trim() && (
-              <Text
-                className={`text-base px-4 py-2.5 ${
-                  isMe ? "text-white" : "text-white"
-                }`}
-              >
-                {item.content}
-              </Text>
-            )}
-          </Animated.View>
-        </GestureDetector>
+              {item.content && item.content.trim() && (
+                <Text
+                  className={`text-base px-4 py-2.5 ${
+                    isDeleted ? "text-white/50 italic" : "text-white"
+                  }`}
+                >
+                  {item.content}
+                </Text>
+              )}
+            </Animated.View>
+          </GestureDetector>
+        </Pressable>
+
+        {showDeleteLabel && !isDeleted && (
+          <Pressable
+            onPress={onDeletePress}
+            className={`mt-1 ${
+              isMe ? "self-end" : "self-start"
+            } bg-red-500/15 border border-red-400/60 px-3 py-1.5 rounded-full`}
+          >
+            <Text className="text-xs font-semibold text-red-400">Delete this message ?</Text>
+          </Pressable>
+        )}
 
         {/* Read receipt checkmarks (only for sent messages) */}
         {isMe && (
@@ -1279,7 +1306,43 @@ export default function ChatScreen() {
       acc.push({ ...msg, _index: acc.length });
       return acc;
     }, []);
-  }, [messages]);
+    }, [messages]);
+
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const handleMessageLongPress = useCallback(
+    (message: any) => {
+      if (!currentUser || message.sender_id !== currentUser.id) return;
+      setPendingDeleteId((prev) =>
+        prev === message.id ? null : message.id
+      );
+    },
+    [currentUser]
+  );
+
+  const handleConfirmDelete = useCallback(
+    async (messageId: string) => {
+      try {
+        const { error } = await supabase.functions.invoke("delete-message", {
+          body: { messageId },
+        });
+
+        if (error) {
+          console.error("Error deleting message:", error);
+          Alert.alert("Error", "Failed to delete message. Please try again.");
+          return;
+        }
+
+        setPendingDeleteId(null);
+        queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+        queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+      } catch (e) {
+        console.error("Error deleting message:", e);
+        Alert.alert("Error", "Failed to delete message. Please try again.");
+      }
+    },
+    [chatId, queryClient]
+  );
 
   // Scroll to a specific message when tapping on reply preview
   const scrollToMessage = useCallback(
@@ -1334,6 +1397,9 @@ export default function ChatScreen() {
       className="flex-1 bg-black"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
+      onTouchStart={() => {
+        if (pendingDeleteId) setPendingDeleteId(null);
+      }}
     >
       {/* Header */}
       <View className="bg-black px-4 pt-12 pb-4 flex-row items-start border-b border-white/10">
@@ -1531,6 +1597,16 @@ export default function ChatScreen() {
                 isVoicePlaying={playingMessageId === item.id}
                 voiceProgress={progress}
                 voiceDurationLabel={durationLabel}
+                onLongPress={handleMessageLongPress}
+                showDeleteLabel={
+                  isMe &&
+                  pendingDeleteId === item.id &&
+                  item.media_type !== "deleted"
+                }
+                onDeletePress={() => handleConfirmDelete(item.id)}
+                onTap={() => {
+                  if (pendingDeleteId) setPendingDeleteId(null);
+                }}
               />
             );
           }}
