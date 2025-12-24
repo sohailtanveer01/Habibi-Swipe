@@ -6,7 +6,7 @@ import { Tabs, useGlobalSearchParams, usePathname } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Dimensions, Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBadgeStore, useNewLikes, useUnreadMessages } from "../../lib/stores/badgeStore";
+import { useBadgeStore, useNewLikes, useTotalBadgeCount } from "../../lib/stores/badgeStore";
 import { useMainPhoto, useUserStore } from "../../lib/stores/userStore";
 import { supabase } from "../../lib/supabase";
 import { useActiveStatus } from "../../lib/useActiveStatus";
@@ -17,7 +17,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export default function MainLayout() {
   // Zustand stores
   const profilePhoto = useMainPhoto();
-  const unreadCount = useUnreadMessages();
+  const totalUnreadCount = useTotalBadgeCount();
   const newLikesCount = useNewLikes();
   const loadProfile = useUserStore((s) => s.loadProfile);
   const loadAllCounts = useBadgeStore((s) => s.loadAllCounts);
@@ -390,10 +390,10 @@ export default function MainLayout() {
                 size={36} 
                 color={focused ? "#B8860B" : "#9CA3AF"} 
               />
-              {unreadCount > 0 && (
+              {totalUnreadCount > 0 && (
                 <View style={styles.likesCountBadge}>
                   <Text style={styles.likesCountText}>
-                    {unreadCount > 99 ? "99+" : unreadCount}
+                    {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
                   </Text>
                 </View>
               )}

@@ -85,8 +85,8 @@ export const useBadgeStore = create<BadgeState>((set, get) => ({
       const { count: complimentCount } = await supabase
         .from("compliments")
         .select("*", { count: "exact", head: true })
-        .eq("receiver_id", user.id)
-        .is("accepted", null);
+        .eq("recipient_id", user.id)
+        .eq("status", "pending");
 
       set({
         unreadMessages: totalUnread,
