@@ -96,18 +96,50 @@ serve(async (req)=>{
       });
     }
 
-    // Send push notification to the liked user (for like/superlike)
+    // Check reverse swipe first to determine if it's a match
+    const { data: reverseSwipe } = await supabase.from("swipes").select("id").eq("swiper_id", swiped_id).eq("swiped_id", user.id).in("action", [
+      "like",
+      "superlike"
+    ]).maybeSingle();
+
+    let matchId = null;
+    let otherUser = null;
+
+    // If it's a match, create/get the match record immediately
+    if (reverseSwipe) {
+      const user1 = user.id < swiped_id ? user.id : swiped_id;
+      const user2 = user.id > swiped_id ? user.id : swiped_id;
+      
+      const { data: existingMatch } = await supabase
+        .from("matches")
+        .select("id")
+        .eq("user1", user1)
+        .eq("user2", user2)
+        .maybeSingle();
+      
+      if (!existingMatch) {
+        const { data: newMatch, error: matchError } = await supabase
+          .from("matches")
+          .insert({ user1, user2 })
+          .select("id")
+          .single();
+        
+        if (matchError) console.error("Error creating match:", matchError);
+        else matchId = newMatch.id;
+      } else {
+        matchId = existingMatch.id;
+      }
+    }
+
+    // Send push notification (Match or Like)
     try {
-      // Get the liker's name for the notification
       const { data: likerProfile } = await supabase
         .from("users")
         .select("first_name, name")
         .eq("id", user.id)
         .single();
-
       const likerName = likerProfile?.first_name || likerProfile?.name || "Someone";
 
-      // Get push tokens for the liked user
       const { data: tokenRows, error: tokenErr } = await supabase
         .from("user_push_tokens")
         .select("token")
@@ -116,33 +148,31 @@ serve(async (req)=>{
         .order("last_seen_at", { ascending: false })
         .limit(5);
 
-      if (tokenErr) {
-        console.error("Error fetching push tokens:", tokenErr);
-      } else {
+      if (!tokenErr) {
         const tokens = (tokenRows ?? []).map((r: any) => r.token).filter(Boolean);
         if (tokens.length > 0) {
-          const notificationBody = action === "superlike" 
-            ? `${likerName} super liked you! 💫`
-            : `${likerName} liked you! 💖`;
+          let title, body, data;
           
-          await sendExpoPush(tokens, {
-            title: "New Like!",
-            body: notificationBody,
-            data: { type: "new_like", swiperId: user.id },
-          });
-          console.log("📱 Sent like notification to user:", swiped_id);
+          if (reverseSwipe) {
+            // Match Notification
+            title = "It's a Match! 🎉";
+            body = `You and ${likerName} have matched! Tap to chat.`;
+            data = { type: "match", matchId: matchId, swiperId: user.id };
+          } else {
+            // Like Notification
+            title = "New Like!";
+            body = action === "superlike" ? `${likerName} super liked you! 💫` : `${likerName} liked you! 💖`;
+            data = { type: "new_like", swiperId: user.id };
+          }
+          
+          await sendExpoPush(tokens, { title, body, data });
+          console.log(`📱 Sent ${reverseSwipe ? "match" : "like"} notification to user:`, swiped_id);
         }
       }
     } catch (e) {
       console.error("Push notification failed:", e);
-      // Don't fail the request if push fails
     }
 
-    // Check reverse swipe
-    const { data: reverseSwipe } = await supabase.from("swipes").select("id").eq("swiper_id", swiped_id).eq("swiped_id", user.id).in("action", [
-      "like",
-      "superlike"
-    ]).maybeSingle();
     if (!reverseSwipe) {
       return new Response(JSON.stringify({
         matched: false
@@ -150,40 +180,6 @@ serve(async (req)=>{
         status: 200,
         headers: corsHeaders
       });
-    }
-    // Compute unique match pair (ensure user1 < user2 for consistency)
-    const user1 = user.id < swiped_id ? user.id : swiped_id;
-    const user2 = user.id > swiped_id ? user.id : swiped_id;
-    
-    // Check if match already exists
-    const { data: existingMatch } = await supabase
-      .from("matches")
-      .select("id")
-      .eq("user1", user1)
-      .eq("user2", user2)
-      .maybeSingle();
-    
-    let matchId = null;
-    let otherUser = null;
-    
-    if (!existingMatch) {
-      // Create new match
-      const { data: newMatch, error: matchError } = await supabase
-        .from("matches")
-        .insert({
-          user1: user1,
-          user2: user2
-        })
-        .select("id")
-        .single();
-      
-      if (matchError) {
-        console.error("Error creating match:", matchError);
-      } else {
-        matchId = newMatch.id;
-      }
-    } else {
-      matchId = existingMatch.id;
     }
     
     // Get the other user's profile for the match celebration screen
