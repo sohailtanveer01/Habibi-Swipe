@@ -1,26 +1,26 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { View, Text, Dimensions, Pressable, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, FlatList, ScrollView, StyleSheet } from "react-native";
-import { Image } from "expo-image";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  withSequence,
-  Easing,
-  runOnJS,
-} from "react-native-reanimated";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import SwipeCard from "../../../components/SwipeCard";
-import LikesProfileView from "../../../components/LikesProfileView";
-import { supabase } from "../../../lib/supabase";
-import Logo from "../../../components/Logo";
-import DiamondIcon from "../../../components/DiamondIcon";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+    Easing,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring,
+    withTiming,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import DiamondIcon from "../../../components/DiamondIcon";
+import LikesProfileView from "../../../components/LikesProfileView";
+import Logo from "../../../components/Logo";
+import SwipeCard from "../../../components/SwipeCard";
 import { useSwipeStore } from "../../../lib/stores/swipeStore";
+import { supabase } from "../../../lib/supabase";
 
 // RewindHistoryItem type imported from swipeStore
 
@@ -810,24 +810,29 @@ export default function SwipeScreen() {
   }, [detailsMainPhotoTapGesture, sheetGesture]);
 
   const cardAnimatedStyle = useAnimatedStyle(() => {
+    const absX = Math.abs(x.value);
+    const swipeProgress = Math.min(absX / SWIPE_THRESHOLD, 1);
+    const scale = cardScale.value * (1 - swipeProgress * 0.04);
+    const opacity = cardOpacity.value * (1 - swipeProgress * 0.2);
+
     return {
       transform: [
         { translateX: x.value },
         { translateY: y.value + cardTranslateY.value },
         { rotateZ: `${x.value / 20}deg` },
-        { scale: cardScale.value },
+        { scale },
       ],
-      opacity: cardOpacity.value,
+      opacity,
     };
   });
 
   const nextCardAnimatedStyle = useAnimatedStyle(() => {
     const absX = Math.abs(x.value);
     const dragProgress = Math.min(absX / (width * 0.4), 1);
-    
-    const scale = 0.95 + (dragProgress * 0.05);
-    const opacity = 0.8 + (dragProgress * 0.2);
-    
+
+    const scale = 0.95 + dragProgress * 0.05;
+    const opacity = 0.8 + dragProgress * 0.2;
+
     return {
       transform: [{ scale }],
       opacity,
@@ -1288,10 +1293,6 @@ export default function SwipeScreen() {
 
       {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) ? (
         <>
-          {/* ================================================================ */}
-          {/* REWINDING CARD - Animates in from left during rewind */}
-          {/* Renders above everything with highest z-index */}
-          {/* ================================================================ */}
           {rewindingCard && (
             <Animated.View
               key={`rewinding-${rewindingCard.id}`}
@@ -1386,8 +1387,7 @@ export default function SwipeScreen() {
               </Animated.View>
             );
           })}
-          
-          <View 
+          <View
             className="absolute left-0 right-0 flex-row items-center justify-center gap-12 z-50"
             style={{ bottom: Math.max(insets.bottom, 10) + 100 }}
           >
@@ -1397,6 +1397,7 @@ export default function SwipeScreen() {
                 onPress={() => {
                   // Always capture taps so they don't fall through to the card (which can open details/gallery).
                   if (isSwiping) return;
+                  x.value = withSpring(-width * 1.5, SPRING_CONFIG);
                   sendSwipe("pass");
                 }}
               >
@@ -1421,6 +1422,7 @@ export default function SwipeScreen() {
                 className="bg-[#B8860B] w-20 h-20 rounded-full items-center justify-center"
                 onPress={() => {
                   if (isSwiping) return;
+                  x.value = withSpring(width * 1.5, SPRING_CONFIG);
                   sendSwipe("like");
                 }}
               >

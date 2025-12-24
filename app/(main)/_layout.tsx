@@ -386,8 +386,8 @@ export default function MainLayout() {
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.activeIconContainer, { position: "relative" }]}>
               <Ionicons 
-                name={focused ? "chatbubble" : "chatbubble-outline"} 
-                size={36} 
+                name={focused ? "paper-plane" : "paper-plane-outline"} 
+                size={32} 
                 color={focused ? "#B8860B" : "#9CA3AF"} 
               />
               {totalUnreadCount > 0 && (
