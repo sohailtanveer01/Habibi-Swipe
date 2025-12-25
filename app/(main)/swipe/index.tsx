@@ -3,16 +3,29 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-    Easing,
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withSequence,
-    withSpring,
-    withTiming,
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DiamondIcon from "../../../components/DiamondIcon";
@@ -43,8 +56,11 @@ const TRANSITION_SPRING = {
 export default function SwipeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { userId, source } = useLocalSearchParams<{ userId?: string; source?: string }>();
-  
+  const { userId, source } = useLocalSearchParams<{
+    userId?: string;
+    source?: string;
+  }>();
+
   // Zustand store for swipe state (allows other components to access feed state)
   const storeSetProfiles = useSwipeStore((s) => s.setProfiles);
   const storeSetIndex = useSwipeStore((s) => s.setCurrentIndex);
@@ -53,35 +69,46 @@ export default function SwipeScreen() {
   const storeLastPassed = useSwipeStore((s) => s.lastPassedProfile);
   const storeSetIsRewinding = useSwipeStore((s) => s.setIsRewinding);
   const storeIsRewinding = useSwipeStore((s) => s.isRewinding);
-  
+
   // Local state (synced with store via useEffect) - keeps animations working
   const [profiles, setProfilesLocal] = useState<any[]>([]);
   const [index, setIndex] = useState(0);
   const [isSwiping, setIsSwipingLocal] = useState(false);
   const viewedProfileIds = useRef<Set<string>>(new Set());
-  
+
   // Sync local profiles to store
-  const setProfiles = useCallback((newProfiles: any[]) => {
-    setProfilesLocal(newProfiles);
-    storeSetProfiles(newProfiles);
-  }, [storeSetProfiles]);
-  
+  const setProfiles = useCallback(
+    (newProfiles: any[]) => {
+      setProfilesLocal(newProfiles);
+      storeSetProfiles(newProfiles);
+    },
+    [storeSetProfiles]
+  );
+
   // Sync local index to store via useEffect (avoids setState during render)
   useEffect(() => {
     storeSetIndex(index);
   }, [index, storeSetIndex]);
-  
-  const setIsSwiping = useCallback((val: boolean) => {
-    setIsSwipingLocal(val);
-    storeSetIsSwiping(val);
-  }, [storeSetIsSwiping]);
+
+  const setIsSwiping = useCallback(
+    (val: boolean) => {
+      setIsSwipingLocal(val);
+      storeSetIsSwiping(val);
+    },
+    [storeSetIsSwiping]
+  );
   const [matchData, setMatchData] = useState<{
     matchId: string;
     otherUser: any;
   } | null>(null);
   const [loadingSpecificProfile, setLoadingSpecificProfile] = useState(false);
-  const [existingSwipe, setExistingSwipe] = useState<{ action: "like" | "pass" | "superlike" } | null>(null);
-  const [availableActions, setAvailableActions] = useState<{ showLike: boolean; showPass: boolean }>({ showLike: true, showPass: true });
+  const [existingSwipe, setExistingSwipe] = useState<{
+    action: "like" | "pass" | "superlike";
+  } | null>(null);
+  const [availableActions, setAvailableActions] = useState<{
+    showLike: boolean;
+    showPass: boolean;
+  }>({ showLike: true, showPass: true });
   const [complimentModalVisible, setComplimentModalVisible] = useState(false);
   const [complimentMessage, setComplimentMessage] = useState("");
   const [sendingCompliment, setSendingCompliment] = useState(false);
@@ -107,7 +134,10 @@ export default function SwipeScreen() {
   // When user taps an image inside the details sheet, we close the sheet first,
   // then open the full-screen gallery AFTER the sheet is dismissed.
   // This avoids nested-modal presentation quirks (esp. iOS) where the gallery may not appear.
-  const [pendingGallery, setPendingGallery] = useState<{ photos: string[]; startIndex: number } | null>(null);
+  const [pendingGallery, setPendingGallery] = useState<{
+    photos: string[];
+    startIndex: number;
+  } | null>(null);
   const SHEET_HEIGHT = Math.min(SCREEN_HEIGHT * 0.92, SCREEN_HEIGHT - 40);
   const sheetY = useSharedValue(SHEET_HEIGHT);
   const backdrop = useSharedValue(0);
@@ -117,9 +147,12 @@ export default function SwipeScreen() {
   const cardScale = useSharedValue(1);
   const cardOpacity = useSharedValue(1);
   const cardTranslateY = useSharedValue(0);
-  
+
   // Track the exiting card to prevent blink during transitions
-  const [exitingCard, setExitingCard] = useState<{ profile: any; exitX: number } | null>(null);
+  const [exitingCard, setExitingCard] = useState<{
+    profile: any;
+    exitX: number;
+  } | null>(null);
   const exitingX = useSharedValue(0);
 
   // ============================================================================
@@ -168,7 +201,9 @@ export default function SwipeScreen() {
   const fetchSpecificProfile = async (targetUserId: string) => {
     setLoadingSpecificProfile(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: profile, error } = await supabase
@@ -197,7 +232,7 @@ export default function SwipeScreen() {
           .eq("swiper_id", user.id)
           .eq("swiped_id", targetUserId)
           .maybeSingle();
-        
+
         setExistingSwipe(existingSwipeData);
 
         const { data: existingCompliment } = await supabase
@@ -206,12 +241,12 @@ export default function SwipeScreen() {
           .eq("sender_id", user.id)
           .eq("recipient_id", targetUserId)
           .maybeSingle();
-        
+
         setHasCompliment(!!existingCompliment);
 
         const profileWithPrompts = {
           ...profile,
-          prompts: promptsData || []
+          prompts: promptsData || [],
         };
 
         setProfiles([profileWithPrompts]);
@@ -245,7 +280,10 @@ export default function SwipeScreen() {
 
     setTimeout(() => {
       try {
-        galleryListRef.current?.scrollToIndex({ index: startIndex, animated: false });
+        galleryListRef.current?.scrollToIndex({
+          index: startIndex,
+          animated: false,
+        });
       } catch {}
     }, 0);
   }, []);
@@ -268,7 +306,9 @@ export default function SwipeScreen() {
 
   const refreshActiveBoost = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: activeBoost, error } = await supabase
@@ -303,15 +343,23 @@ export default function SwipeScreen() {
 
     // If already active, show remaining time
     if (boostExpiresAt) {
-      Alert.alert("Boost Active", boostRemaining ? `Time left: ${boostRemaining}` : "Your boost is currently active.");
+      Alert.alert(
+        "Boost Active",
+        boostRemaining
+          ? `Time left: ${boostRemaining}`
+          : "Your boost is currently active."
+      );
       return;
     }
 
     setBoostActivating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("activate_profile_boost", {
-        body: { minutes: 30 },
-      });
+      const { data, error } = await supabase.functions.invoke(
+        "activate_profile_boost",
+        {
+          body: { minutes: 30 },
+        }
+      );
       if (error) throw error;
 
       const expiresAt = data?.boost?.expires_at ?? null;
@@ -346,28 +394,37 @@ export default function SwipeScreen() {
   }, [handleBoost, closeBoostModal]);
 
   // Open profile details bottom sheet
-  const openDetails = useCallback(async (profile: any) => {
-    if (!profile) return;
-    setDetailsProfile(profile);
-    setDetailsPrompts([]);
-    setDetailsVisible(true);
-    sheetY.value = SHEET_HEIGHT;
-    backdrop.value = 0;
-    // Animate in
-    sheetY.value = withTiming(0, { duration: 280, easing: Easing.out(Easing.cubic) });
-    backdrop.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) });
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  const openDetails = useCallback(
+    async (profile: any) => {
+      if (!profile) return;
+      setDetailsProfile(profile);
+      setDetailsPrompts([]);
+      setDetailsVisible(true);
+      sheetY.value = SHEET_HEIGHT;
+      backdrop.value = 0;
+      // Animate in
+      sheetY.value = withTiming(0, {
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+      });
+      backdrop.value = withTiming(1, {
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
+      });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
-    // Fetch prompts for this profile
-    if (profile.id) {
-      const { data } = await supabase
-        .from("user_prompts")
-        .select("question, answer, display_order")
-        .eq("user_id", profile.id)
-        .order("display_order", { ascending: true });
-      if (data) setDetailsPrompts(data);
-    }
-  }, [SHEET_HEIGHT, backdrop, sheetY]);
+      // Fetch prompts for this profile
+      if (profile.id) {
+        const { data } = await supabase
+          .from("user_prompts")
+          .select("question, answer, display_order")
+          .eq("user_id", profile.id)
+          .order("display_order", { ascending: true });
+        if (data) setDetailsPrompts(data);
+      }
+    },
+    [SHEET_HEIGHT, backdrop, sheetY]
+  );
 
   // Close profile details bottom sheet
   const closeDetails = useCallback(() => {
@@ -382,7 +439,10 @@ export default function SwipeScreen() {
         }
       }
     );
-    backdrop.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.cubic) });
+    backdrop.value = withTiming(0, {
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+    });
   }, [SHEET_HEIGHT, backdrop, sheetY]);
 
   const fetchFeed = async () => {
@@ -411,14 +471,20 @@ export default function SwipeScreen() {
     }
   };
 
-  const determineAvailableActions = (source: string | undefined, existingSwipe: { action: string } | null) => {
+  const determineAvailableActions = (
+    source: string | undefined,
+    existingSwipe: { action: string } | null
+  ) => {
     if (source === "myLikes") return { showLike: false, showPass: true };
     if (source === "likedMe") return { showLike: true, showPass: true };
     if (source === "passedOn") return { showLike: true, showPass: false };
     if (source === "chat") return { showLike: false, showPass: false };
-    
+
     if (source === "viewers") {
-      if (existingSwipe?.action === "like" || existingSwipe?.action === "superlike") {
+      if (
+        existingSwipe?.action === "like" ||
+        existingSwipe?.action === "superlike"
+      ) {
         return { showLike: false, showPass: false };
       } else if (existingSwipe?.action === "pass") {
         return { showLike: true, showPass: true };
@@ -426,7 +492,7 @@ export default function SwipeScreen() {
         return { showLike: true, showPass: true };
       }
     }
-    
+
     return { showLike: true, showPass: true };
   };
 
@@ -468,7 +534,9 @@ export default function SwipeScreen() {
 
       if (viewedProfileIds.current.has(currentProfile.id)) return;
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || user.id === currentProfile.id) return;
 
       viewedProfileIds.current.add(currentProfile.id);
@@ -477,7 +545,10 @@ export default function SwipeScreen() {
         await supabase.functions.invoke("create-profile-view", {
           body: { viewed_id: currentProfile.id },
         });
-        console.log("✅ Profile view recorded for swipe feed:", currentProfile.id);
+        console.log(
+          "✅ Profile view recorded for swipe feed:",
+          currentProfile.id
+        );
       } catch (error) {
         console.error("Error recording profile view from swipe feed:", error);
         viewedProfileIds.current.delete(currentProfile.id);
@@ -492,7 +563,9 @@ export default function SwipeScreen() {
       if (profiles.length > 0 && index < profiles.length) {
         const currentProfile = profiles[index];
         if (currentProfile) {
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (user) {
             const { data: existingCompliment } = await supabase
               .from("compliments")
@@ -500,7 +573,7 @@ export default function SwipeScreen() {
               .eq("sender_id", user.id)
               .eq("recipient_id", currentProfile.id)
               .maybeSingle();
-            
+
             setHasCompliment(!!existingCompliment);
           }
         }
@@ -519,8 +592,8 @@ export default function SwipeScreen() {
   const isSwipeTransition = useRef(false);
 
   const moveToNextCard = useCallback(() => {
-    isSwipeTransition.current = true;  // Mark as swipe transition
-    
+    isSwipeTransition.current = true; // Mark as swipe transition
+
     // Capture exiting card with its current x position
     const currentProfile = profiles[index];
     if (currentProfile) {
@@ -532,13 +605,13 @@ export default function SwipeScreen() {
         easing: Easing.out(Easing.ease),
       });
       setExitingCard({ profile: currentProfile, exitX: x.value });
-      
+
       // Clear exiting card after animation completes
       setTimeout(() => {
         setExitingCard(null);
       }, 180);
     }
-    
+
     setIndex((i) => i + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profiles, index]);
@@ -547,7 +620,7 @@ export default function SwipeScreen() {
     // Reset position
     x.value = 0;
     y.value = 0;
-    
+
     if (isSwipeTransition.current) {
       // Coming from swipe - card was already visible, just reset position
       // NO entry animation needed - prevents blink!
@@ -560,7 +633,7 @@ export default function SwipeScreen() {
       cardScale.value = 0.95;
       cardOpacity.value = 0.7;
       cardTranslateY.value = 20;
-      
+
       cardScale.value = withSpring(1, TRANSITION_SPRING);
       cardOpacity.value = withSpring(1, TRANSITION_SPRING);
       cardTranslateY.value = withSpring(0, TRANSITION_SPRING);
@@ -584,7 +657,7 @@ export default function SwipeScreen() {
         }
       }
     };
-    
+
     if (profiles.length > 0) {
       prefetchUpcomingImages();
     }
@@ -605,30 +678,40 @@ export default function SwipeScreen() {
       });
 
       if (error) {
-        Alert.alert("Error", error.message || "Failed to send compliment. Please try again.");
+        Alert.alert(
+          "Error",
+          error.message || "Failed to send compliment. Please try again."
+        );
         setSendingCompliment(false);
         return;
       }
 
-      Alert.alert("Success", "Compliment sent! They'll see it in their chat list.", [
-        {
-          text: "OK",
-          onPress: () => {
-            setComplimentModalVisible(false);
-            setComplimentMessage("");
-            setHasCompliment(true);
-            setSendingCompliment(false);
-            if (index < profiles.length - 1) {
-              moveToNextCard();
-            } else {
-              fetchFeed();
-            }
+      Alert.alert(
+        "Success",
+        "Compliment sent! They'll see it in their chat list.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setComplimentModalVisible(false);
+              setComplimentMessage("");
+              setHasCompliment(true);
+              setSendingCompliment(false);
+              if (index < profiles.length - 1) {
+                moveToNextCard();
+              } else {
+                fetchFeed();
+              }
+            },
           },
-        },
-      ]);
+        ]
+      );
     } catch (error: any) {
       console.error("Error sending compliment:", error);
-      Alert.alert("Error", error.message || "Failed to send compliment. Please try again.");
+      Alert.alert(
+        "Error",
+        error.message || "Failed to send compliment. Please try again."
+      );
       setSendingCompliment(false);
     }
   };
@@ -658,7 +741,7 @@ export default function SwipeScreen() {
       }
 
       let responseData = data;
-      if (typeof data === 'string') {
+      if (typeof data === "string") {
         try {
           responseData = JSON.parse(data);
         } catch (e) {
@@ -685,7 +768,10 @@ export default function SwipeScreen() {
       }
 
       if (responseData?.matched && responseData?.matchId) {
-        console.log("🎉 MATCHED with", currentProfile.name || currentProfile.first_name);
+        console.log(
+          "🎉 MATCHED with",
+          currentProfile.name || currentProfile.first_name
+        );
         console.log("Match data:", responseData);
         setMatchData({
           matchId: responseData.matchId,
@@ -735,8 +821,10 @@ export default function SwipeScreen() {
 
       if (isHorizontal && absX > 50) {
         // Horizontal swipe - check for like/pass
-        const shouldLike = e.translationX > SWIPE_THRESHOLD && availableActions.showLike;
-        const shouldPass = e.translationX < -SWIPE_THRESHOLD && availableActions.showPass;
+        const shouldLike =
+          e.translationX > SWIPE_THRESHOLD && availableActions.showLike;
+        const shouldPass =
+          e.translationX < -SWIPE_THRESHOLD && availableActions.showPass;
 
         if (shouldLike) {
           x.value = withSpring(width * 1.5, SPRING_CONFIG);
@@ -765,24 +853,27 @@ export default function SwipeScreen() {
 
   // Sheet drag-to-dismiss gesture
   const sheetGesture = useMemo(() => {
-    return Gesture.Pan()
-      // Important: allow taps inside the sheet (photo tap, buttons, etc).
-      // Without this, micro-movements during a tap can activate the pan and cancel Pressable onPress.
-      .minDistance(12)
-      .onUpdate((e) => {
-        const nextY = Math.max(0, e.translationY);
-        sheetY.value = nextY;
-        backdrop.value = 1 - Math.min(1, nextY / SHEET_HEIGHT);
-      })
-      .onEnd((e) => {
-        const shouldClose = e.translationY > SHEET_HEIGHT * 0.25 || e.velocityY > 800;
-        if (shouldClose) {
-          runOnJS(closeDetails)();
-        } else {
-          sheetY.value = withSpring(0, TRANSITION_SPRING);
-          backdrop.value = withTiming(1, { duration: 120 });
-        }
-      });
+    return (
+      Gesture.Pan()
+        // Important: allow taps inside the sheet (photo tap, buttons, etc).
+        // Without this, micro-movements during a tap can activate the pan and cancel Pressable onPress.
+        .minDistance(12)
+        .onUpdate((e) => {
+          const nextY = Math.max(0, e.translationY);
+          sheetY.value = nextY;
+          backdrop.value = 1 - Math.min(1, nextY / SHEET_HEIGHT);
+        })
+        .onEnd((e) => {
+          const shouldClose =
+            e.translationY > SHEET_HEIGHT * 0.25 || e.velocityY > 800;
+          if (shouldClose) {
+            runOnJS(closeDetails)();
+          } else {
+            sheetY.value = withSpring(0, TRANSITION_SPRING);
+            backdrop.value = withTiming(1, { duration: 120 });
+          }
+        })
+    );
   }, [SHEET_HEIGHT, backdrop, sheetY, closeDetails]);
 
   // Tap on the main photo inside the details sheet should open gallery.
@@ -810,19 +901,14 @@ export default function SwipeScreen() {
   }, [detailsMainPhotoTapGesture, sheetGesture]);
 
   const cardAnimatedStyle = useAnimatedStyle(() => {
-    const absX = Math.abs(x.value);
-    const swipeProgress = Math.min(absX / SWIPE_THRESHOLD, 1);
-    const scale = cardScale.value * (1 - swipeProgress * 0.04);
-    const opacity = cardOpacity.value * (1 - swipeProgress * 0.2);
-
     return {
       transform: [
         { translateX: x.value },
         { translateY: y.value + cardTranslateY.value },
         { rotateZ: `${x.value / 20}deg` },
-        { scale },
+        { scale: cardScale.value },
       ],
-      opacity,
+      opacity: cardOpacity.value,
     };
   });
 
@@ -860,7 +946,10 @@ export default function SwipeScreen() {
     return a;
   }, [detailsProfile?.dob]);
 
-  const detailsPhotos: string[] = useMemo(() => detailsProfile?.photos || [], [detailsProfile?.photos]);
+  const detailsPhotos: string[] = useMemo(
+    () => detailsProfile?.photos || [],
+    [detailsProfile?.photos]
+  );
   const detailsInterests: string[] = detailsProfile?.hobbies || [];
 
   useEffect(() => {
@@ -883,8 +972,18 @@ export default function SwipeScreen() {
   const detailsBio = detailsProfile?.bio || "";
 
   // Check if sections should be shown
-  const hasPersonalInfo = detailsHeight || detailsMaritalStatus || detailsHasChildren !== null || detailsEducation || detailsProfession;
-  const hasReligiousInfo = detailsSect || detailsBornMuslim !== null || detailsReligiousPractice || detailsAlcoholHabit || detailsSmokingHabit;
+  const hasPersonalInfo =
+    detailsHeight ||
+    detailsMaritalStatus ||
+    detailsHasChildren !== null ||
+    detailsEducation ||
+    detailsProfession;
+  const hasReligiousInfo =
+    detailsSect ||
+    detailsBornMuslim !== null ||
+    detailsReligiousPractice ||
+    detailsAlcoholHabit ||
+    detailsSmokingHabit;
   const hasBackgroundInfo = detailsEthnicity || detailsNationality;
 
   // Animated style for exiting card (continues from where swipe left off)
@@ -918,12 +1017,14 @@ export default function SwipeScreen() {
   const handleRewind = useCallback(async () => {
     // Guard: Don't rewind if already rewinding, swiping, or no last pass
     if (isRewinding || isSwiping || !lastPassedProfile) return;
-    
+
     setIsRewinding(true);
-    
+
     try {
       // Get current user for database operation
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         setIsRewinding(false);
         return;
@@ -975,28 +1076,38 @@ export default function SwipeScreen() {
       setTimeout(() => {
         // Clear the last passed profile (ONE rewind only - can't rewind again)
         setLastPassedProfile(null);
-        
+
         // Go back to the rewound profile's index
         setIndex(rewindToIndex);
-        
+
         // Clear the rewinding card
         setRewindingCard(null);
-        
+
         // Reset animation values
         rewindX.value = -width * 1.5;
         rewindScale.value = 0.9;
         rewindOpacity.value = 0;
         rewindRotation.value = -15;
-        
+
         setIsRewinding(false);
       }, 400);
-
     } catch (err) {
       console.error("Error in handleRewind:", err);
       Alert.alert("Error", "Failed to undo swipe. Please try again.");
       setIsRewinding(false);
     }
-  }, [isRewinding, isSwiping, lastPassedProfile, rewindX, rewindScale, rewindOpacity, rewindRotation, setIndex, setIsRewinding, setLastPassedProfile]);
+  }, [
+    isRewinding,
+    isSwiping,
+    lastPassedProfile,
+    rewindX,
+    rewindScale,
+    rewindOpacity,
+    rewindRotation,
+    setIndex,
+    setIsRewinding,
+    setLastPassedProfile,
+  ]);
 
   // Check if rewind is available (only after ONE left swipe, can't chain rewinds)
   // Uses store state + local isSwiping for comprehensive check
@@ -1067,7 +1178,7 @@ export default function SwipeScreen() {
         )}
 
         <FlatList
-          ref={(r) => (galleryListRef.current = r)}
+          ref={galleryListRef}
           data={galleryPhotos}
           keyExtractor={(item, idx) => `${item}-${idx}`}
           horizontal
@@ -1078,7 +1189,14 @@ export default function SwipeScreen() {
             setGalleryIndex(newIndex);
           }}
           renderItem={({ item }) => (
-            <View style={{ width, height: "100%", alignItems: "center", justifyContent: "center" }}>
+            <View
+              style={{
+                width,
+                height: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Image
                 source={{ uri: item }}
                 style={{ width, height: "100%" }}
@@ -1117,7 +1235,9 @@ export default function SwipeScreen() {
                     width: active ? 9 : 7,
                     height: active ? 9 : 7,
                     borderRadius: 999,
-                    backgroundColor: active ? "#B8860B" : "rgba(255,255,255,0.4)",
+                    backgroundColor: active
+                      ? "#B8860B"
+                      : "rgba(255,255,255,0.4)",
                   }}
                 />
               );
@@ -1135,7 +1255,9 @@ export default function SwipeScreen() {
           <Logo variant="colored" width={120} />
         </View>
         <Text className="text-white/70 text-center mb-4">
-          {userId ? "Profile not found" : "No profiles found matching your filters."}
+          {userId
+            ? "Profile not found"
+            : "No profiles found matching your filters."}
         </Text>
         {!userId && (
           <>
@@ -1143,7 +1265,9 @@ export default function SwipeScreen() {
               className="mt-4 bg-[#B8860B] px-6 py-3 rounded-full"
               onPress={() => router.push("/(main)/swipe/filters/")}
             >
-              <Text className="text-white font-semibold">Adjust Filters for More Profiles</Text>
+              <Text className="text-white font-semibold">
+                Adjust Filters for More Profiles
+              </Text>
             </Pressable>
             <Pressable
               className="mt-4 bg-white/10 px-6 py-3 rounded-full"
@@ -1214,24 +1338,34 @@ export default function SwipeScreen() {
         )}
       </Modal>
 
-      {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn" || source === "chat") && (
-        <Pressable
-          className="absolute left-4 z-50 bg-black/50 w-10 h-10 rounded-full items-center justify-center"
-          style={{ top: insets.top + 8 }}
-          onPress={() => {
-            router.setParams({ userId: undefined, source: undefined });
-            if (source === "chat") {
-              router.back();
-            } else {
-              router.push("/(main)/likes");
-            }
-          }}
-        >
-          <Text className="text-white text-xl">←</Text>
-        </Pressable>
-      )}
+      {source &&
+        (source === "myLikes" ||
+          source === "likedMe" ||
+          source === "viewers" ||
+          source === "passedOn" ||
+          source === "chat") && (
+          <Pressable
+            className="absolute left-4 z-50 bg-black/50 w-10 h-10 rounded-full items-center justify-center"
+            style={{ top: insets.top + 8 }}
+            onPress={() => {
+              router.setParams({ userId: undefined, source: undefined });
+              if (source === "chat") {
+                router.back();
+              } else {
+                router.push("/(main)/likes");
+              }
+            }}
+          >
+            <Text className="text-white text-xl">←</Text>
+          </Pressable>
+        )}
 
-      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) && (
+      {(!source ||
+        (source !== "myLikes" &&
+          source !== "likedMe" &&
+          source !== "viewers" &&
+          source !== "passedOn" &&
+          source !== "chat")) && (
         <>
           {/* Apply Filters Button - Top Left */}
           <Pressable
@@ -1239,7 +1373,9 @@ export default function SwipeScreen() {
             style={{ top: insets.top + 8 }}
             onPress={() => router.push("/(main)/swipe/filters/")}
           >
-            <Text className="text-white font-semibold text-sm">Apply Filters</Text>
+            <Text className="text-white font-semibold text-sm">
+              Apply Filters
+            </Text>
           </Pressable>
 
           {/* ================================================================ */}
@@ -1262,17 +1398,32 @@ export default function SwipeScreen() {
                 width: 48,
                 height: 48,
                 borderRadius: 24,
-                backgroundColor: boostExpiresAt ? "rgba(255,255,255,0.06)" : "#B8860B",
+                backgroundColor: boostExpiresAt
+                  ? "rgba(255,255,255,0.06)"
+                  : "#B8860B",
                 borderWidth: 1,
-                borderColor: boostExpiresAt ? "rgba(184, 134, 11, 0.6)" : "#B8860B",
+                borderColor: boostExpiresAt
+                  ? "rgba(184, 134, 11, 0.6)"
+                  : "#B8860B",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <View style={{ alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name="flash" size={BOOST_ICON_SIZE} color={boostExpiresAt ? "#B8860B" : "#FFFFFF"} />
+                <Ionicons
+                  name="flash"
+                  size={BOOST_ICON_SIZE}
+                  color={boostExpiresAt ? "#B8860B" : "#FFFFFF"}
+                />
                 {!!boostRemaining && (
-                  <Text style={{ marginTop: 2, fontSize: 10, fontWeight: "800", color: "#B8860B" }}>
+                  <Text
+                    style={{
+                      marginTop: 2,
+                      fontSize: 10,
+                      fontWeight: "800",
+                      color: "#B8860B",
+                    }}
+                  >
                     {boostRemaining}
                   </Text>
                 )}
@@ -1291,8 +1442,17 @@ export default function SwipeScreen() {
         </>
       )}
 
-      {(!source || (source !== "myLikes" && source !== "likedMe" && source !== "viewers" && source !== "passedOn" && source !== "chat")) ? (
+      {!source ||
+      (source !== "myLikes" &&
+        source !== "likedMe" &&
+        source !== "viewers" &&
+        source !== "passedOn" &&
+        source !== "chat") ? (
         <>
+          {/* ================================================================ */}
+          {/* REWINDING CARD - Animates in from left during rewind */}
+          {/* Renders above everything with highest z-index */}
+          {/* ================================================================ */}
           {rewindingCard && (
             <Animated.View
               key={`rewinding-${rewindingCard.id}`}
@@ -1346,7 +1506,8 @@ export default function SwipeScreen() {
             if (!profile) return null;
 
             // Skip if this is the exiting card (already rendered above)
-            if (exitingCard && profile.id === exitingCard.profile.id) return null;
+            if (exitingCard && profile.id === exitingCard.profile.id)
+              return null;
 
             const isCurrent = slotIndex === 0;
             const isNext = slotIndex === 1;
@@ -1363,8 +1524,8 @@ export default function SwipeScreen() {
             const slotStyle = isCurrent
               ? cardAnimatedStyle
               : isNext
-                ? nextCardAnimatedStyle
-                : { opacity: 0 };
+              ? nextCardAnimatedStyle
+              : { opacity: 0 };
 
             return (
               <Animated.View
@@ -1375,8 +1536,8 @@ export default function SwipeScreen() {
                 {isCurrent ? (
                   <GestureDetector gesture={cardGesture}>
                     <View style={{ width: "100%", height: "100%" }}>
-                      <SwipeCard 
-                        profile={profile} 
+                      <SwipeCard
+                        profile={profile}
                         onTap={() => openDetails(profile)}
                       />
                     </View>
@@ -1387,6 +1548,7 @@ export default function SwipeScreen() {
               </Animated.View>
             );
           })}
+
           <View
             className="absolute left-0 right-0 flex-row items-center justify-center gap-12 z-50"
             style={{ bottom: Math.max(insets.bottom, 10) + 100 }}
@@ -1397,7 +1559,6 @@ export default function SwipeScreen() {
                 onPress={() => {
                   // Always capture taps so they don't fall through to the card (which can open details/gallery).
                   if (isSwiping) return;
-                  x.value = withSpring(-width * 1.5, SPRING_CONFIG);
                   sendSwipe("pass");
                 }}
               >
@@ -1422,7 +1583,6 @@ export default function SwipeScreen() {
                 className="bg-[#B8860B] w-20 h-20 rounded-full items-center justify-center"
                 onPress={() => {
                   if (isSwiping) return;
-                  x.value = withSpring(width * 1.5, SPRING_CONFIG);
                   sendSwipe("like");
                 }}
               >
@@ -1436,33 +1596,37 @@ export default function SwipeScreen() {
           <View style={{ width: "100%", height: "100%" }}>
             <LikesProfileView profile={current} />
           </View>
-          
-          {source && (source === "myLikes" || source === "likedMe" || source === "viewers" || source === "passedOn") && (
-            <View 
-              className="absolute left-0 right-0 flex-row items-center justify-center gap-8 z-50"
-              style={{ bottom: Math.max(insets.bottom, 10) + 100 }}
-            >
-              {availableActions.showPass && (
-                <Pressable
-                  className="bg-white w-16 h-16 rounded-full items-center justify-center"
-                  onPress={() => sendSwipe("pass")}
-                  disabled={isSwiping}
-                >
-                  <Text className="text-black text-2xl">✕</Text>
-                </Pressable>
-              )}
 
-              {availableActions.showLike && (
-                <Pressable
-                  className="bg-[#B8860B] w-16 h-16 rounded-full items-center justify-center"
-                  onPress={() => sendSwipe("like")}
-                  disabled={isSwiping}
-                >
-                  <Text className="text-white text-2xl">♥</Text>
-                </Pressable>
-              )}
-            </View>
-          )}
+          {source &&
+            (source === "myLikes" ||
+              source === "likedMe" ||
+              source === "viewers" ||
+              source === "passedOn") && (
+              <View
+                className="absolute left-0 right-0 flex-row items-center justify-center gap-8 z-50"
+                style={{ bottom: Math.max(insets.bottom, 10) + 100 }}
+              >
+                {availableActions.showPass && (
+                  <Pressable
+                    className="bg-white w-16 h-16 rounded-full items-center justify-center"
+                    onPress={() => sendSwipe("pass")}
+                    disabled={isSwiping}
+                  >
+                    <Text className="text-black text-2xl">✕</Text>
+                  </Pressable>
+                )}
+
+                {availableActions.showLike && (
+                  <Pressable
+                    className="bg-[#B8860B] w-16 h-16 rounded-full items-center justify-center"
+                    onPress={() => sendSwipe("like")}
+                    disabled={isSwiping}
+                  >
+                    <Text className="text-white text-2xl">♥</Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
         </>
       )}
 
@@ -1496,7 +1660,9 @@ export default function SwipeScreen() {
                     <DiamondIcon size={18} color="#FFFFFF" />
                   </View>
                   <View>
-                    <Text className="text-white text-xl font-extrabold">Send Compliment</Text>
+                    <Text className="text-white text-xl font-extrabold">
+                      Send Compliment
+                    </Text>
                     <Text className="text-white/60 text-xs mt-0.5">
                       Stand out with a thoughtful message
                     </Text>
@@ -1510,21 +1676,27 @@ export default function SwipeScreen() {
                   }}
                   className="w-10 h-10 rounded-full items-center justify-center bg-white/5 border border-white/10"
                 >
-                  <Ionicons name="close" size={20} color="rgba(255,255,255,0.8)" />
+                  <Ionicons
+                    name="close"
+                    size={20}
+                    color="rgba(255,255,255,0.8)"
+                  />
                 </Pressable>
               </View>
-              
+
               {profiles[index] && (
                 <>
                   <View className="mb-4">
                     <Text className="text-white/80 text-sm">
                       To{" "}
                       <Text className="text-white font-semibold">
-                        {profiles[index].first_name || profiles[index].name || "this user"}
+                        {profiles[index].first_name ||
+                          profiles[index].name ||
+                          "this user"}
                       </Text>
                     </Text>
                   </View>
-                  
+
                   <TextInput
                     className="bg-white/5 text-white rounded-3xl p-4 min-h-[120px] text-base border border-white/10"
                     placeholder="Write your compliment (max 200 characters)..."
@@ -1536,7 +1708,7 @@ export default function SwipeScreen() {
                     onChangeText={setComplimentMessage}
                     style={{ textAlignVertical: "top" }}
                   />
-                  
+
                   <View className="flex-row items-center justify-between mt-3 mb-5">
                     <Text className="text-white/50 text-xs">
                       Keep it kind and respectful
@@ -1545,9 +1717,13 @@ export default function SwipeScreen() {
                       {complimentMessage.length}/200
                     </Text>
                   </View>
-                  
+
                   <Pressable
-                    className={`bg-[#EF4444] rounded-3xl py-4 items-center flex-row justify-center ${sendingCompliment || !complimentMessage.trim() ? "opacity-50" : ""}`}
+                    className={`bg-[#EF4444] rounded-3xl py-4 items-center flex-row justify-center ${
+                      sendingCompliment || !complimentMessage.trim()
+                        ? "opacity-50"
+                        : ""
+                    }`}
                     disabled={sendingCompliment || !complimentMessage.trim()}
                     onPress={sendCompliment}
                   >
@@ -1580,7 +1756,9 @@ export default function SwipeScreen() {
                   <Ionicons name="flash" size={18} color="#B8860B" />
                 </View>
                 <View>
-                  <Text className="text-white text-xl font-extrabold">Boost My Profile</Text>
+                  <Text className="text-white text-xl font-extrabold">
+                    Boost My Profile
+                  </Text>
                   <Text className="text-white/60 text-xs mt-0.5">
                     Get more visibility for 30 minutes
                   </Text>
@@ -1591,7 +1769,11 @@ export default function SwipeScreen() {
                 onPress={closeBoostModal}
                 className="w-10 h-10 rounded-full items-center justify-center bg-white/5 border border-white/10"
               >
-                <Ionicons name="close" size={20} color="rgba(255,255,255,0.8)" />
+                <Ionicons
+                  name="close"
+                  size={20}
+                  color="rgba(255,255,255,0.8)"
+                />
               </Pressable>
             </View>
 
@@ -1608,11 +1790,24 @@ export default function SwipeScreen() {
                 marginBottom: 16,
               }}
             >
-              <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "700" }}>
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.7)",
+                  fontSize: 12,
+                  fontWeight: "700",
+                }}
+              >
                 {boostExpiresAt ? "BOOST ACTIVE" : "BOOST DURATION"}
               </Text>
-              <Text style={{ color: "#B8860B", fontSize: 36, fontWeight: "900", marginTop: 6 }}>
-                {boostExpiresAt ? (boostRemaining || "—") : "30:00"}
+              <Text
+                style={{
+                  color: "#B8860B",
+                  fontSize: 36,
+                  fontWeight: "900",
+                  marginTop: 6,
+                }}
+              >
+                {boostExpiresAt ? boostRemaining || "—" : "30:00"}
               </Text>
             </View>
 
@@ -1622,19 +1817,33 @@ export default function SwipeScreen() {
                 if (boostActivating) return;
                 handleBoostNowFromModal();
               }}
-              className={`rounded-3xl py-4 items-center flex-row justify-center ${boostActivating ? "opacity-70" : ""}`}
+              className={`rounded-3xl py-4 items-center flex-row justify-center ${
+                boostActivating ? "opacity-70" : ""
+              }`}
               style={{
-                backgroundColor: boostExpiresAt ? "rgba(184, 134, 11, 0.18)" : "#B8860B",
+                backgroundColor: boostExpiresAt
+                  ? "rgba(184, 134, 11, 0.18)"
+                  : "#B8860B",
                 borderWidth: 1,
-                borderColor: boostExpiresAt ? "rgba(184, 134, 11, 0.6)" : "#B8860B",
+                borderColor: boostExpiresAt
+                  ? "rgba(184, 134, 11, 0.6)"
+                  : "#B8860B",
               }}
             >
-              <Ionicons name="flash" size={18} color={boostExpiresAt ? "#B8860B" : "#FFFFFF"} />
+              <Ionicons
+                name="flash"
+                size={18}
+                color={boostExpiresAt ? "#B8860B" : "#FFFFFF"}
+              />
               <Text
                 className="ml-2 text-base font-extrabold"
                 style={{ color: boostExpiresAt ? "#B8860B" : "#000000" }}
               >
-                {boostExpiresAt ? "Boost Active" : boostActivating ? "Boosting..." : "Boost Now"}
+                {boostExpiresAt
+                  ? "Boost Active"
+                  : boostActivating
+                  ? "Boosting..."
+                  : "Boost Now"}
               </Text>
             </Pressable>
           </View>
@@ -1651,7 +1860,9 @@ export default function SwipeScreen() {
         <View style={{ flex: 1, justifyContent: "flex-end" }}>
           {/* Backdrop */}
           <Pressable onPress={closeDetails} style={StyleSheet.absoluteFill}>
-            <Animated.View style={[{ flex: 1, backgroundColor: "#000" }, backdropStyle]} />
+            <Animated.View
+              style={[{ flex: 1, backgroundColor: "#000" }, backdropStyle]}
+            />
           </Pressable>
 
           {/* Bottom Sheet */}
@@ -1693,199 +1904,538 @@ export default function SwipeScreen() {
             <ScrollView
               showsVerticalScrollIndicator={false}
               // Extra bottom padding so content can scroll "behind" the fixed action buttons bar
-              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 10) + 180 }}
+              contentContainerStyle={{
+                paddingBottom: Math.max(insets.bottom, 10) + 180,
+              }}
               bounces={true}
             >
-                {/* Main Photo at Top - tap to open gallery, drag down to close */}
-                {detailsPhotos && detailsPhotos.length > 0 && (
-                  <View style={{ width: width, height: width * 1.1, marginBottom: 16, position: "relative" }}>
-                    {/* Photo gestures: tap opens gallery, drag-down closes sheet */}
-                    <GestureDetector gesture={detailsMainPhotoGesture}>
-                      <View style={{ width: "100%", height: "100%" }}>
+              {/* Main Photo at Top - tap to open gallery, drag down to close */}
+              {detailsPhotos && detailsPhotos.length > 0 && (
+                <View
+                  style={{
+                    width: width,
+                    height: width * 1.1,
+                    marginBottom: 16,
+                    position: "relative",
+                  }}
+                >
+                  {/* Photo gestures: tap opens gallery, drag-down closes sheet */}
+                  <GestureDetector gesture={detailsMainPhotoGesture}>
+                    <View style={{ width: "100%", height: "100%" }}>
+                      <Image
+                        source={{ uri: detailsPhotos[0] }}
+                        style={{ width: "100%", height: "100%" }}
+                        contentFit="cover"
+                        transition={0}
+                      />
+                    </View>
+                  </GestureDetector>
+
+                  {/* Name + Age overlay (bottom-left of main image) */}
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: "absolute",
+                      left: 16,
+                      bottom: 16,
+                      right: 16,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 26,
+                        fontWeight: "900",
+                        textShadowColor: "rgba(0,0,0,0.75)",
+                        textShadowOffset: { width: 0, height: 2 },
+                        textShadowRadius: 8,
+                      }}
+                    >
+                      {detailsProfile?.first_name && detailsProfile?.last_name
+                        ? `${detailsProfile.first_name} ${detailsProfile.last_name}`
+                        : detailsProfile?.name || "Unknown"}
+                      {detailsAge !== null ? `, ${detailsAge}` : ""}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Gallery (moved to directly after action buttons) */}
+              {detailsPhotos && detailsPhotos.length > 1 && (
+                <View style={{ paddingHorizontal: 20, marginTop: 10 }}>
+                  {/* Big tiles (match Profile tab grid feel) */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      justifyContent: "space-between",
+                      rowGap: 16,
+                    }}
+                  >
+                    {detailsPhotos.slice(1, 5).map((p: string, i: number) => (
+                      <Pressable
+                        key={`${p}-${i}`}
+                        onPress={() => {
+                          queueGalleryFromDetails(i + 1);
+                        }}
+                        style={{
+                          width: "48%",
+                          aspectRatio: 0.8,
+                          borderRadius: 24,
+                          overflow: "hidden",
+                        }}
+                      >
                         <Image
-                          source={{ uri: detailsPhotos[0] }}
+                          source={{ uri: p }}
                           style={{ width: "100%", height: "100%" }}
                           contentFit="cover"
                           transition={0}
+                          cachePolicy="memory-disk"
                         />
-                      </View>
-                    </GestureDetector>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
 
-                    {/* Name + Age overlay (bottom-left of main image) */}
-                    <View
-                      pointerEvents="none"
+              {/* Profile Details */}
+              <View style={{ paddingHorizontal: 20 }}>
+                {/* Personal Info Section */}
+                {hasPersonalInfo && (
+                  <View
+                    style={{
+                      marginTop: 20,
+                      backgroundColor: "rgba(255,255,255,0.05)",
+                      borderRadius: 20,
+                      padding: 16,
+                    }}
+                  >
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 10 }}
+                    >
+                      {detailsHeight ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            📏 {detailsHeight}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {detailsMaritalStatus ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            💍{" "}
+                            {detailsMaritalStatus.charAt(0).toUpperCase() +
+                              detailsMaritalStatus.slice(1)}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {detailsHasChildren !== null ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            {detailsHasChildren
+                              ? "👶 Has children"
+                              : "👶 No children"}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {detailsEducation ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            🎓 {detailsEducation}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {detailsProfession ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            💼 {detailsProfession}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </ScrollView>
+                  </View>
+                )}
+
+                {/* Religious Info Section */}
+                {hasReligiousInfo && (
+                  <View
+                    style={{
+                      marginTop: 16,
+                      backgroundColor: "rgba(255,255,255,0.05)",
+                      borderRadius: 20,
+                      padding: 16,
+                    }}
+                  >
+                    <Text
                       style={{
-                        position: "absolute",
-                        left: 16,
-                        bottom: 16,
-                        right: 16,
+                        fontSize: 18,
+                        fontWeight: "600",
+                        color: "#FFFFFF",
+                        marginBottom: 12,
                       }}
                     >
-                      <Text
-                        style={{
-                          color: "#FFFFFF",
-                          fontSize: 26,
-                          fontWeight: "900",
-                          textShadowColor: "rgba(0,0,0,0.75)",
-                          textShadowOffset: { width: 0, height: 2 },
-                          textShadowRadius: 8,
-                        }}
-                      >
-                        {detailsProfile?.first_name && detailsProfile?.last_name
-                          ? `${detailsProfile.first_name} ${detailsProfile.last_name}`
-                          : detailsProfile?.name || "Unknown"}
-                        {detailsAge !== null ? `, ${detailsAge}` : ""}
-                      </Text>
+                      Religious
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 10,
+                      }}
+                    >
+                      {detailsSect ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            🕌{" "}
+                            {detailsSect.charAt(0).toUpperCase() +
+                              detailsSect.slice(1)}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {detailsBornMuslim !== null ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            {detailsBornMuslim
+                              ? "⭐ Born Muslim"
+                              : "⭐ Converted to Islam"}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {detailsReligiousPractice ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            📿{" "}
+                            {detailsReligiousPractice.charAt(0).toUpperCase() +
+                              detailsReligiousPractice.slice(1)}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {detailsAlcoholHabit ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            🍷 Alcohol:{" "}
+                            {detailsAlcoholHabit.charAt(0).toUpperCase() +
+                              detailsAlcoholHabit.slice(1)}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {detailsSmokingHabit ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            🚬 Smoking:{" "}
+                            {detailsSmokingHabit.charAt(0).toUpperCase() +
+                              detailsSmokingHabit.slice(1)}
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
                   </View>
                 )}
 
-                {/* Gallery (moved to directly after action buttons) */}
-                {detailsPhotos && detailsPhotos.length > 1 && (
-                  <View style={{ paddingHorizontal: 20, marginTop: 10 }}>
-                    {/* Big tiles (match Profile tab grid feel) */}
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 16 }}>
-                      {detailsPhotos.slice(1, 5).map((p: string, i: number) => (
-                        <Pressable
-                          key={`${p}-${i}`}
-                          onPress={() => {
-                            queueGalleryFromDetails(i + 1);
-                          }}
+                {/* Lifestyle / Interests Section */}
+                {detailsInterests && detailsInterests.length > 0 && (
+                  <View
+                    style={{
+                      marginTop: 16,
+                      backgroundColor: "rgba(255,255,255,0.05)",
+                      borderRadius: 20,
+                      padding: 16,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: "600",
+                        color: "#FFFFFF",
+                        marginBottom: 12,
+                      }}
+                    >
+                      Lifestyle
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 10,
+                      }}
+                    >
+                      {detailsInterests.map((hobby: string, i: number) => (
+                        <View
+                          key={`${hobby}-${i}`}
                           style={{
-                            width: "48%",
-                            aspectRatio: 0.8,
-                            borderRadius: 24,
-                            overflow: "hidden",
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
                           }}
                         >
-                          <Image
-                            source={{ uri: p }}
-                            style={{ width: "100%", height: "100%" }}
-                            contentFit="cover"
-                            transition={0}
-                            cachePolicy="memory-disk"
-                          />
-                        </Pressable>
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            🎯 {hobby}
+                          </Text>
+                        </View>
                       ))}
                     </View>
                   </View>
                 )}
 
-                {/* Profile Details */}
-                <View style={{ paddingHorizontal: 20 }}>
-                  {/* Personal Info Section */}
-                  {hasPersonalInfo && (
-                    <View style={{ marginTop: 20, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 20, padding: 16 }}>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-                        {detailsHeight ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>📏 {detailsHeight}</Text>
-                          </View>
-                        ) : null}
-                        {detailsMaritalStatus ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>💍 {detailsMaritalStatus.charAt(0).toUpperCase() + detailsMaritalStatus.slice(1)}</Text>
-                          </View>
-                        ) : null}
-                        {detailsHasChildren !== null ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>{detailsHasChildren ? "👶 Has children" : "👶 No children"}</Text>
-                          </View>
-                        ) : null}
-                        {detailsEducation ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>🎓 {detailsEducation}</Text>
-                          </View>
-                        ) : null}
-                        {detailsProfession ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>💼 {detailsProfession}</Text>
-                          </View>
-                        ) : null}
-                      </ScrollView>
-                    </View>
-                  )}
-
-                  {/* Religious Info Section */}
-                  {hasReligiousInfo && (
-                    <View style={{ marginTop: 16, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 20, padding: 16 }}>
-                      <Text style={{ fontSize: 18, fontWeight: "600", color: "#FFFFFF", marginBottom: 12 }}>Religious</Text>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                        {detailsSect ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>🕌 {detailsSect.charAt(0).toUpperCase() + detailsSect.slice(1)}</Text>
-                          </View>
-                        ) : null}
-                        {detailsBornMuslim !== null ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>{detailsBornMuslim ? "⭐ Born Muslim" : "⭐ Converted to Islam"}</Text>
-                          </View>
-                        ) : null}
-                        {detailsReligiousPractice ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>📿 {detailsReligiousPractice.charAt(0).toUpperCase() + detailsReligiousPractice.slice(1)}</Text>
-                          </View>
-                        ) : null}
-                        {detailsAlcoholHabit ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>🍷 Alcohol: {detailsAlcoholHabit.charAt(0).toUpperCase() + detailsAlcoholHabit.slice(1)}</Text>
-                          </View>
-                        ) : null}
-                        {detailsSmokingHabit ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>🚬 Smoking: {detailsSmokingHabit.charAt(0).toUpperCase() + detailsSmokingHabit.slice(1)}</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Lifestyle / Interests Section */}
-                  {detailsInterests && detailsInterests.length > 0 && (
-                    <View style={{ marginTop: 16, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 20, padding: 16 }}>
-                      <Text style={{ fontSize: 18, fontWeight: "600", color: "#FFFFFF", marginBottom: 12 }}>Lifestyle</Text>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                        {detailsInterests.map((hobby: string, i: number) => (
-                          <View
-                            key={`${hobby}-${i}`}
-                            style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}
+                {/* Background Section */}
+                {hasBackgroundInfo && (
+                  <View
+                    style={{
+                      marginTop: 16,
+                      backgroundColor: "rgba(255,255,255,0.05)",
+                      borderRadius: 20,
+                      padding: 16,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: "600",
+                        color: "#FFFFFF",
+                        marginBottom: 12,
+                      }}
+                    >
+                      Background
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 10,
+                      }}
+                    >
+                      {detailsEthnicity ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
                           >
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>🎯 {hobby}</Text>
-                          </View>
-                        ))}
-                      </View>
+                            🌍 {detailsEthnicity}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {detailsNationality ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            🏳️ {detailsNationality}
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
-                  )}
+                  </View>
+                )}
 
-                  {/* Background Section */}
-                  {hasBackgroundInfo && (
-                    <View style={{ marginTop: 16, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 20, padding: 16 }}>
-                      <Text style={{ fontSize: 18, fontWeight: "600", color: "#FFFFFF", marginBottom: 12 }}>Background</Text>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                        {detailsEthnicity ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>🌍 {detailsEthnicity}</Text>
-                          </View>
-                        ) : null}
-                        {detailsNationality ? (
-                          <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: "#B8860B" }}>
-                            <Text style={{ fontSize: 14, color: "#FFFFFF", fontWeight: "500" }}>🏳️ {detailsNationality}</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </View>
-                  )}
+                {/* About / Bio Section */}
+                {detailsBio ? (
+                  <View
+                    style={{
+                      marginTop: 16,
+                      backgroundColor: "rgba(255,255,255,0.05)",
+                      borderRadius: 20,
+                      padding: 16,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: "600",
+                        color: "#FFFFFF",
+                        marginBottom: 12,
+                      }}
+                    >
+                      About Me
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        lineHeight: 24,
+                        color: "rgba(255,255,255,0.9)",
+                      }}
+                    >
+                      {detailsBio}
+                    </Text>
+                  </View>
+                ) : null}
 
-                  {/* About / Bio Section */}
-                  {detailsBio ? (
-                    <View style={{ marginTop: 16, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 20, padding: 16 }}>
-                      <Text style={{ fontSize: 18, fontWeight: "600", color: "#FFFFFF", marginBottom: 12 }}>About Me</Text>
-                      <Text style={{ fontSize: 16, lineHeight: 24, color: "rgba(255,255,255,0.9)" }}>{detailsBio}</Text>
-                    </View>
-                  ) : null}
-
-                  {/* Prompts / Q&A Section */}
-                  {detailsPrompts && detailsPrompts.length > 0 && detailsPrompts.some((p: any) => p.question && p.answer) && (
+                {/* Prompts / Q&A Section */}
+                {detailsPrompts &&
+                  detailsPrompts.length > 0 &&
+                  detailsPrompts.some((p: any) => p.question && p.answer) && (
                     <View style={{ marginTop: 16, gap: 12 }}>
                       {detailsPrompts
                         .filter((p: any) => p.question && p.answer)
@@ -1900,95 +2450,124 @@ export default function SwipeScreen() {
                               borderColor: "rgba(184,134,11,0.2)",
                             }}
                           >
-                            <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF", marginBottom: 8 }}>{prompt.question}</Text>
-                            <Text style={{ fontSize: 15, lineHeight: 22, color: "rgba(255,255,255,0.85)" }}>{prompt.answer}</Text>
+                            <Text
+                              style={{
+                                fontSize: 16,
+                                fontWeight: "600",
+                                color: "#FFFFFF",
+                                marginBottom: 8,
+                              }}
+                            >
+                              {prompt.question}
+                            </Text>
+                            <Text
+                              style={{
+                                fontSize: 15,
+                                lineHeight: 22,
+                                color: "rgba(255,255,255,0.85)",
+                              }}
+                            >
+                              {prompt.answer}
+                            </Text>
                           </View>
                         ))}
                     </View>
                   )}
-
-                </View>
+              </View>
             </ScrollView>
 
-              {/* Fixed Action Buttons bar (modal content scrolls behind) */}
+            {/* Fixed Action Buttons bar (modal content scrolls behind) */}
+            <View
+              pointerEvents="box-none"
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                paddingBottom: Math.max(insets.bottom, 10) + 10,
+                paddingTop: 12,
+                alignItems: "center",
+              }}
+            >
               <View
-                pointerEvents="box-none"
                 style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  paddingBottom: Math.max(insets.bottom, 10) + 10,
-                  paddingTop: 12,
+                  flexDirection: "row",
+                  justifyContent: "center",
                   alignItems: "center",
+                  gap: 48,
                 }}
               >
-                <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 48 }}>
-                  {availableActions.showPass && (
-                    <Pressable
-                      onPress={() => {
-                        // Always capture taps so they don't fall through to the scroll content (images) and open the gallery.
-                        if (isSwiping) return;
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                        closeDetails();
-                        setTimeout(() => sendSwipe("pass"), 150);
-                      }}
-                      style={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: 40,
-                        backgroundColor: "#FFFFFF",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Text style={{ color: "#000", fontSize: 24 }}>✕</Text>
-                    </Pressable>
-                  )}
+                {availableActions.showPass && (
+                  <Pressable
+                    onPress={() => {
+                      // Always capture taps so they don't fall through to the scroll content (images) and open the gallery.
+                      if (isSwiping) return;
+                      Haptics.impactAsync(
+                        Haptics.ImpactFeedbackStyle.Light
+                      ).catch(() => {});
+                      closeDetails();
+                      setTimeout(() => sendSwipe("pass"), 150);
+                    }}
+                    style={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: 40,
+                      backgroundColor: "#FFFFFF",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#000", fontSize: 24 }}>✕</Text>
+                  </Pressable>
+                )}
 
-                  {!hasCompliment && (!source || source === "likedMe") && (
-                    <Pressable
-                      onPress={() => {
-                        if (isSwiping) return;
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                        closeDetails();
-                        setTimeout(() => setComplimentModalVisible(true), 200);
-                      }}
-                      style={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: 40,
-                        backgroundColor: "#EF4444",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <DiamondIcon size={22} color="#FFFFFF" />
-                    </Pressable>
-                  )}
+                {!hasCompliment && (!source || source === "likedMe") && (
+                  <Pressable
+                    onPress={() => {
+                      if (isSwiping) return;
+                      Haptics.impactAsync(
+                        Haptics.ImpactFeedbackStyle.Light
+                      ).catch(() => {});
+                      closeDetails();
+                      setTimeout(() => setComplimentModalVisible(true), 200);
+                    }}
+                    style={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: 40,
+                      backgroundColor: "#EF4444",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <DiamondIcon size={22} color="#FFFFFF" />
+                  </Pressable>
+                )}
 
-                  {availableActions.showLike && (
-                    <Pressable
-                      onPress={() => {
-                        if (isSwiping) return;
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-                        closeDetails();
-                        setTimeout(() => sendSwipe("like"), 150);
-                      }}
-                      style={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: 40,
-                        backgroundColor: "#B8860B",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Text style={{ color: "#FFF", fontSize: 24 }}>♥</Text>
-                    </Pressable>
-                  )}
-                </View>
+                {availableActions.showLike && (
+                  <Pressable
+                    onPress={() => {
+                      if (isSwiping) return;
+                      Haptics.impactAsync(
+                        Haptics.ImpactFeedbackStyle.Medium
+                      ).catch(() => {});
+                      closeDetails();
+                      setTimeout(() => sendSwipe("like"), 150);
+                    }}
+                    style={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: 40,
+                      backgroundColor: "#B8860B",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#FFF", fontSize: 24 }}>♥</Text>
+                  </Pressable>
+                )}
               </View>
+            </View>
           </Animated.View>
         </View>
       </Modal>
@@ -2052,14 +2631,20 @@ function MatchCelebrationModal({
 
         <View style={matchModalStyles.buttonContainer}>
           <Pressable
-            style={[matchModalStyles.button, matchModalStyles.keepSwipingButton]}
+            style={[
+              matchModalStyles.button,
+              matchModalStyles.keepSwipingButton,
+            ]}
             onPress={onKeepSwiping}
           >
             <Text style={matchModalStyles.keepSwipingText}>Keep Swiping</Text>
           </Pressable>
 
           <Pressable
-            style={[matchModalStyles.button, matchModalStyles.sendMessageButton]}
+            style={[
+              matchModalStyles.button,
+              matchModalStyles.sendMessageButton,
+            ]}
             onPress={onSendMessage}
           >
             <Text style={matchModalStyles.sendMessageText}>Send Message</Text>

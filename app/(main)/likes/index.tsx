@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
-import { View, Text, FlatList, Pressable, Dimensions, RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Alert, Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, Text, TextInput, View } from "react-native";
 import { supabase } from "../../../lib/supabase";
 
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding
+const CARD_WIDTH = (width - 54) / 2; // 2 columns with padding
 
 // Clean photo URLs - remove localhost references and extract valid Supabase URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -308,46 +308,24 @@ export default function LikesScreen() {
     };
   }, [activeTab]);
 
-  return (
-    <View className="flex-1 bg-black pt-12 px-4">
-      {/* Refresh Button */}
-      <View className="flex-row justify-end mb-4">
-        <Pressable
-          onPress={
-            activeTab === "myLikes" 
-              ? loadMyLikes 
-              : activeTab === "likedMe" 
-              ? loadLikes 
-              : activeTab === "viewers"
-              ? loadViewers
-              : loadPassedOn
-          }
-          disabled={loading}
-          className="bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text className="text-white font-semibold">Refresh</Text>
-          )}
-        </Pressable>
-      </View>
+  const tabs = [
+    { key: "myLikes", label: "My likes", count: myLikes.length },
+    { key: "likedMe", label: "Liked me", count: likes.length },
+    { key: "viewers", label: "Viewers", count: viewers.length },
+    { key: "passedOn", label: "Passed on", count: passedOn.length },
+  ] as const;
 
-      {/* Top tabs: My Likes / Liked Me / Viewers / Passed On */}
-      <View className="flex-row bg-white/5 rounded-full p-1 mb-4">
-        {[
-          { key: "myLikes", label: "my likes" },
-          { key: "likedMe", label: "liked me" },
-          { key: "viewers", label: "viewers" },
-          { key: "passedOn", label: "passed on" },
-        ].map((tab) => {
+  return (
+    <View className="flex-1 bg-black pt-20 px-4 pb-16">
+      <View className="flex-row rounded-full px-1 py-1.5 mb-6">
+        {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
             <Pressable
               key={tab.key}
-              onPress={() => setActiveTab(tab.key as any)}
+              onPress={() => setActiveTab(tab.key)}
               className={`flex-1 py-2 rounded-full items-center justify-center ${
-                isActive ? "bg-white" : "bg-transparent"
+                isActive ? "bg-[#B8860B]" : "bg-transparent"
               }`}
             >
               <Text
@@ -356,6 +334,7 @@ export default function LikesScreen() {
                 }`}
               >
                 {tab.label}
+                {tab.count > 0 ? ` (${tab.count})` : ""}
               </Text>
             </Pressable>
           );
@@ -365,15 +344,25 @@ export default function LikesScreen() {
       {/* Content per tab */}
       {activeTab === "myLikes" && (
         myLikes.length === 0 ? (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-white/60 text-base">No likes yet</Text>
+          <View className="flex-1 items-center justify-center px-16">
+            <Text className="text-4xl mb-4">✨</Text>
+            <Text className="text-white text-lg font-semibold mb-2">No likes yet</Text>
+            <Text className="text-white/60 text-center text-sm mb-5">
+              Keep swiping to find your perfect match. Your likes will show up here.
+            </Text>
+            <Pressable
+              className="bg-[#B8860B] px-6 py-3 rounded-full"
+              onPress={() => router.push("/(main)/swipe")}
+            >
+              <Text className="text-black font-semibold text-sm">Go to swipe</Text>
+            </Pressable>
           </View>
         ) : (
           <FlatList
             data={myLikes}
             numColumns={2}
-            columnWrapperStyle={{ gap: 12 }}
-            contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
+            columnWrapperStyle={{ gap: 14 }}
+            contentContainerStyle={{ gap: 16, paddingBottom: 80, paddingTop: 4 }}
             keyExtractor={(item, index) => item.id || `my-like-${index}`}
             refreshControl={
               <RefreshControl refreshing={loading} onRefresh={loadMyLikes} tintColor="#fff" />
@@ -397,12 +386,17 @@ export default function LikesScreen() {
               
               return (
                 <Pressable
-                  className="bg-white/10 rounded-2xl overflow-hidden"
+                  className="bg-white/5 rounded-3xl overflow-hidden"
                   style={{ 
                     width: CARD_WIDTH, 
-                    height: CARD_WIDTH * 1.4,
-                    borderWidth: 2,
-                    borderColor: "#B8860B"
+                    height: CARD_WIDTH * 1.45,
+                    borderWidth: 1,
+                    borderColor: "rgba(184,134,11,0.7)",
+                    shadowColor: "#000",
+                    shadowOpacity: 0.4,
+                    shadowRadius: 18,
+                    shadowOffset: { width: 0, height: 12 },
+                    elevation: 16,
                   }}
                   onPress={async () => {
                     // Track profile view when tapping from my likes tab
@@ -428,7 +422,6 @@ export default function LikesScreen() {
                         cachePolicy="memory-disk"
                         priority="normal"
                       />
-                      {/* Gradient overlay for text readability */}
                       <View 
                         style={{ 
                           position: 'absolute', 
@@ -439,17 +432,22 @@ export default function LikesScreen() {
                           backgroundColor: 'rgba(0,0,0,0.6)' 
                         }} 
                       />
-                      {/* Name on bottom left */}
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
-                        <Text className="text-white text-lg font-bold" numberOfLines={1}>
+                        <Text className="text-white text-lg font-semibold" numberOfLines={1}>
                           {fullName}
                         </Text>
+                        <View className="flex-row mt-2">
+                          <View className="px-2.5 py-1.5 rounded-full bg-white/10">
+                            <Text className="text-[11px] text-white/90 font-semibold">
+                              You liked
+                            </Text>
+                          </View>
+                        </View>
                       </View>
                     </View>
                   ) : (
                     <View className="w-full h-full bg-white/5 items-center justify-center" style={{ position: 'relative' }}>
                       <Text className="text-white/60 text-4xl">👤</Text>
-                      {/* Name on bottom left even without photo */}
                       <View 
                         style={{ 
                           position: 'absolute', 
@@ -461,9 +459,16 @@ export default function LikesScreen() {
                         }} 
                       />
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
-                        <Text className="text-white text-lg font-bold" numberOfLines={1}>
+                        <Text className="text-white text-lg font-semibold" numberOfLines={1}>
                           {fullName}
                         </Text>
+                        <View className="flex-row mt-2">
+                          <View className="px-2.5 py-1.5 rounded-full bg-white/10">
+                            <Text className="text-[11px] text-white/90 font-semibold">
+                              You liked
+                            </Text>
+                          </View>
+                        </View>
                       </View>
                     </View>
                   )}
@@ -476,15 +481,19 @@ export default function LikesScreen() {
 
       {activeTab === "viewers" && (
         viewers.length === 0 ? (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-white/60 text-base">No viewers yet</Text>
+          <View className="flex-1 items-center justify-center px-10">
+            <Text className="text-4xl mb-4">👀</Text>
+            <Text className="text-white text-lg font-semibold mb-2">No viewers yet</Text>
+            <Text className="text-white/60 text-center text-sm">
+              People who check your profile will appear here.
+            </Text>
           </View>
         ) : (
           <FlatList
             data={viewers}
             numColumns={2}
-            columnWrapperStyle={{ gap: 12 }}
-            contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
+            columnWrapperStyle={{ gap: 14 }}
+            contentContainerStyle={{ gap: 16, paddingBottom: 80, paddingTop: 4 }}
             keyExtractor={(item, index) => item.id || `viewer-${index}`}
             refreshControl={
               <RefreshControl refreshing={loading} onRefresh={loadViewers} tintColor="#fff" />
@@ -510,12 +519,17 @@ export default function LikesScreen() {
               
               return (
                 <Pressable
-                  className="bg-white/10 rounded-2xl overflow-hidden"
+                  className="bg-white/5 rounded-3xl overflow-hidden"
                   style={{ 
                     width: CARD_WIDTH, 
-                    height: CARD_WIDTH * 1.4,
-                    borderWidth: 2,
-                    borderColor: "#B8860B"
+                    height: CARD_WIDTH * 1.45,
+                    borderWidth: 1,
+                    borderColor: "rgba(184,134,11,0.7)",
+                    shadowColor: "#000",
+                    shadowOpacity: 0.4,
+                    shadowRadius: 18,
+                    shadowOffset: { width: 0, height: 12 },
+                    elevation: 16,
                   }}
                   onPress={async () => {
                     // Track profile view when tapping from viewers tab
@@ -542,7 +556,6 @@ export default function LikesScreen() {
                         cachePolicy="memory-disk"
                         priority="normal"
                       />
-                      {/* Gradient overlay for text readability */}
                       <View 
                         style={{ 
                           position: 'absolute', 
@@ -553,22 +566,23 @@ export default function LikesScreen() {
                           backgroundColor: 'rgba(0,0,0,0.6)' 
                         }} 
                       />
-                      {/* Name and view count on bottom */}
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
-                        <Text className="text-white text-lg font-bold" numberOfLines={1}>
+                        <Text className="text-white text-lg font-semibold" numberOfLines={1}>
                           {fullName}
                         </Text>
-                        {viewCount > 1 && (
-                          <Text className="text-white/70 text-xs mt-1">
-                            Viewed {viewCount} times
-                          </Text>
-                        )}
+                        <View className="flex-row mt-2">
+                          <View className="px-2.5 py-1.5 rounded-full bg-white/10">
+                            <Text className="text-[11px] text-white/90 font-semibold">
+                              {viewCount > 1 ? `Viewed ${viewCount} times` : "Viewed you"}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
                     </View>
                   ) : (
                     <View className="w-full h-full bg-white/5 items-center justify-center" style={{ position: 'relative' }}>
                       <Text className="text-white/60 text-4xl">👤</Text>
-                      <View 
+                      <View
                         style={{ 
                           position: 'absolute', 
                           bottom: 0, 
@@ -579,14 +593,16 @@ export default function LikesScreen() {
                         }} 
                       />
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
-                        <Text className="text-white text-lg font-bold" numberOfLines={1}>
+                        <Text className="text-white text-lg font-semibold" numberOfLines={1}>
                           {fullName}
                         </Text>
-                        {viewCount > 1 && (
-                          <Text className="text-white/70 text-xs mt-1">
-                            Viewed {viewCount} times
-                          </Text>
-                        )}
+                        <View className="flex-row mt-2">
+                          <View className="px-2.5 py-1.5 rounded-full bg-white/10">
+                            <Text className="text-[11px] text-white/90 font-semibold">
+                              {viewCount > 1 ? `Viewed ${viewCount} times` : "Viewed you"}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
                     </View>
                   )}
@@ -599,15 +615,19 @@ export default function LikesScreen() {
 
       {activeTab === "passedOn" && (
         passedOn.length === 0 ? (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-white/60 text-base">No passed profiles yet</Text>
+          <View className="flex-1 items-center justify-center px-10">
+            <Text className="text-4xl mb-4">⏳</Text>
+            <Text className="text-white text-lg font-semibold mb-2">No passed profiles yet</Text>
+            <Text className="text-white/60 text-center text-sm">
+              Profiles you skip will show up here.
+            </Text>
           </View>
         ) : (
           <FlatList
             data={passedOn}
             numColumns={2}
-            columnWrapperStyle={{ gap: 12 }}
-            contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
+            columnWrapperStyle={{ gap: 14 }}
+            contentContainerStyle={{ gap: 16, paddingBottom: 80, paddingTop: 4 }}
             keyExtractor={(item, index) => item.id || `passed-${index}`}
             refreshControl={
               <RefreshControl refreshing={loading} onRefresh={loadPassedOn} tintColor="#fff" />
@@ -631,12 +651,17 @@ export default function LikesScreen() {
               
               return (
                 <Pressable
-                  className="bg-white/10 rounded-2xl overflow-hidden"
+                  className="bg-white/5 rounded-3xl overflow-hidden"
                   style={{ 
                     width: CARD_WIDTH, 
-                    height: CARD_WIDTH * 1.4,
-                    borderWidth: 2,
-                    borderColor: "#B8860B"
+                    height: CARD_WIDTH * 1.45,
+                    borderWidth: 1,
+                    borderColor: "rgba(184,134,11,0.7)",
+                    shadowColor: "#000",
+                    shadowOpacity: 0.4,
+                    shadowRadius: 18,
+                    shadowOffset: { width: 0, height: 12 },
+                    elevation: 16,
                   }}
                   onPress={async () => {
                     // Navigate to swipe screen with this user's profile
@@ -654,7 +679,6 @@ export default function LikesScreen() {
                         cachePolicy="memory-disk"
                         priority="normal"
                       />
-                      {/* Gradient overlay for text readability */}
                       <View 
                         style={{ 
                           position: 'absolute', 
@@ -665,17 +689,22 @@ export default function LikesScreen() {
                           backgroundColor: 'rgba(0,0,0,0.6)' 
                         }} 
                       />
-                      {/* Name on bottom left */}
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
-                        <Text className="text-white text-lg font-bold" numberOfLines={1}>
+                        <Text className="text-white text-lg font-semibold" numberOfLines={1}>
                           {fullName}
                         </Text>
+                        <View className="flex-row mt-2">
+                          <View className="px-2.5 py-1.5 rounded-full bg-white/10">
+                            <Text className="text-[11px] text-white/90 font-semibold">
+                              You passed
+                            </Text>
+                          </View>
+                        </View>
                       </View>
                     </View>
                   ) : (
                     <View className="w-full h-full bg-white/5 items-center justify-center" style={{ position: 'relative' }}>
                       <Text className="text-white/60 text-4xl">👤</Text>
-                      {/* Name on bottom left even without photo */}
                       <View 
                         style={{ 
                           position: 'absolute', 
@@ -687,9 +716,16 @@ export default function LikesScreen() {
                         }} 
                       />
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
-                        <Text className="text-white text-lg font-bold" numberOfLines={1}>
+                        <Text className="text-white text-lg font-semibold" numberOfLines={1}>
                           {fullName}
                         </Text>
+                        <View className="flex-row mt-2">
+                          <View className="px-2.5 py-1.5 rounded-full bg-white/10">
+                            <Text className="text-[11px] text-white/90 font-semibold">
+                              You passed
+                            </Text>
+                          </View>
+                        </View>
                       </View>
                     </View>
                   )}
@@ -702,15 +738,25 @@ export default function LikesScreen() {
 
       {activeTab === "likedMe" && (
         likes.length === 0 ? (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-white/60 text-base">No likes yet</Text>
+          <View className="flex-1 items-center justify-center px-10">
+            <Text className="text-4xl mb-4">💛</Text>
+            <Text className="text-white text-lg font-semibold mb-2">No likes yet</Text>
+            <Text className="text-white/60 text-center text-sm mb-5">
+              When someone likes you, they will appear here.
+            </Text>
+            <Pressable
+              className="bg-[#B8860B] px-6 py-3 rounded-full"
+              onPress={() => router.push("/(main)/swipe")}
+            >
+              <Text className="text-black font-semibold text-sm">Go to swipe</Text>
+            </Pressable>
           </View>
         ) : (
         <FlatList
           data={likes}
           numColumns={2}
-          columnWrapperStyle={{ gap: 12 }}
-          contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
+          columnWrapperStyle={{ gap: 14 }}
+          contentContainerStyle={{ gap: 16, paddingBottom: 80, paddingTop: 4 }}
           keyExtractor={(item, index) => item.id || item.swipe_id || `like-${index}`}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={loadLikes} tintColor="#fff" />
@@ -742,12 +788,17 @@ export default function LikesScreen() {
             
             return (
               <Pressable
-                className="bg-white/10 rounded-2xl overflow-hidden"
+                className="bg-white/5 rounded-3xl overflow-hidden"
                 style={{ 
                   width: CARD_WIDTH, 
-                  height: CARD_WIDTH * 1.4,
-                  borderWidth: 2,
-                  borderColor: "#B8860B"
+                  height: CARD_WIDTH * 1.45,
+                  borderWidth: 1,
+                  borderColor: "rgba(184,134,11,0.7)",
+                  shadowColor: "#000",
+                  shadowOpacity: 0.4,
+                  shadowRadius: 18,
+                  shadowOffset: { width: 0, height: 12 },
+                  elevation: 16,
                 }}
                   onPress={async () => {
                     // Track profile view when tapping from likes tab
@@ -774,7 +825,6 @@ export default function LikesScreen() {
                       cachePolicy="memory-disk"
                       priority="normal"
                     />
-                    {/* Gradient overlay for text readability */}
                     <View 
                       style={{ 
                         position: 'absolute', 
@@ -785,17 +835,22 @@ export default function LikesScreen() {
                         backgroundColor: 'rgba(0,0,0,0.6)' 
                       }} 
                     />
-                    {/* Name on bottom left */}
-                    <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
-                      <Text className="text-white text-lg font-bold" numberOfLines={1}>
-                        {fullName}
-                      </Text>
+                  <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
+                    <Text className="text-white text-lg font-semibold" numberOfLines={1}>
+                      {fullName}
+                    </Text>
+                    <View className="flex-row mt-2">
+                      <View className="px-2.5 py-1.5 rounded-full bg-white/10">
+                        <Text className="text-[11px] text-white/90 font-semibold">
+                          Liked you
+                        </Text>
+                      </View>
+                      </View>
                     </View>
                   </View>
                 ) : (
                   <View className="w-full h-full bg-white/5 items-center justify-center" style={{ position: 'relative' }}>
                     <Text className="text-white/60 text-4xl">👤</Text>
-                    {/* Name on bottom left even without photo */}
                     <View 
                       style={{ 
                         position: 'absolute', 
@@ -806,10 +861,17 @@ export default function LikesScreen() {
                         backgroundColor: 'rgba(0,0,0,0.6)' 
                       }} 
                     />
-                    <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
-                      <Text className="text-white text-lg font-bold" numberOfLines={1}>
-                        {fullName}
-                      </Text>
+                  <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
+                    <Text className="text-white text-lg font-semibold" numberOfLines={1}>
+                      {fullName}
+                    </Text>
+                    <View className="flex-row mt-2">
+                      <View className="px-2.5 py-1.5 rounded-full bg-white/10">
+                        <Text className="text-[11px] text-white/90 font-semibold">
+                          Liked you
+                        </Text>
+                      </View>
+                      </View>
                     </View>
                   </View>
                 )}
@@ -935,4 +997,3 @@ export default function LikesScreen() {
     </View>
   );
 }
-
