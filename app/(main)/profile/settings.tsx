@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { View, Text, ScrollView, Pressable, Alert, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { supabase } from "../../../lib/supabase";
 
 interface SettingsItemProps {
@@ -95,27 +95,27 @@ export default function SettingsScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </Pressable>
-        <Text className="text-white text-xl font-bold ml-4">Settings</Text>
+        <Text className="text-white text-xl font-bold ml-4">Settings !</Text>
       </View>
 
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
         {/* Account Section */}
         <Text className="text-gray-400 text-sm font-medium mb-3 mt-4">ACCOUNT</Text>
-        
+
         <SettingsItem
           icon="person-outline"
           title="Account Information"
           subtitle="Email, phone number"
           onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
         />
-        
+
         <SettingsItem
           icon="notifications-outline"
           title="Notifications"
           subtitle="Push notifications, email alerts"
           onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
         />
-        
+
         <SettingsItem
           icon="lock-closed-outline"
           title="Privacy"
@@ -125,14 +125,14 @@ export default function SettingsScreen() {
 
         {/* Preferences Section */}
         <Text className="text-gray-400 text-sm font-medium mb-3 mt-6">PREFERENCES</Text>
-        
+
         <SettingsItem
           icon="options-outline"
           title="Discovery Settings"
           subtitle="Age range, distance, filters"
           onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
         />
-        
+
         <SettingsItem
           icon="language-outline"
           title="Language"
@@ -142,20 +142,20 @@ export default function SettingsScreen() {
 
         {/* Support Section */}
         <Text className="text-gray-400 text-sm font-medium mb-3 mt-6">SUPPORT</Text>
-        
+
         <SettingsItem
           icon="help-circle-outline"
           title="Help & Support"
           subtitle="FAQ, contact us"
           onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
         />
-        
+
         <SettingsItem
           icon="document-text-outline"
           title="Terms of Service"
           onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
         />
-        
+
         <SettingsItem
           icon="shield-outline"
           title="Privacy Policy"
@@ -164,7 +164,7 @@ export default function SettingsScreen() {
 
         {/* Danger Zone */}
         <Text className="text-gray-400 text-sm font-medium mb-3 mt-6">DANGER ZONE</Text>
-        
+
         <SettingsItem
           icon="log-out-outline"
           title="Log Out"
@@ -172,7 +172,7 @@ export default function SettingsScreen() {
           showChevron={false}
           danger
         />
-        
+
         <SettingsItem
           icon="trash-outline"
           title="Delete Account"

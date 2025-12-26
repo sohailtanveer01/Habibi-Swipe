@@ -284,7 +284,7 @@ export default function SwipeScreen() {
           index: startIndex,
           animated: false,
         });
-      } catch {}
+      } catch { }
     }, 0);
   }, []);
 
@@ -411,7 +411,7 @@ export default function SwipeScreen() {
         duration: 200,
         easing: Easing.out(Easing.cubic),
       });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
 
       // Fetch prompts for this profile
       if (profile.id) {
@@ -1366,88 +1366,88 @@ export default function SwipeScreen() {
           source !== "viewers" &&
           source !== "passedOn" &&
           source !== "chat")) && (
-        <>
-          {/* Apply Filters Button - Top Left */}
-          <Pressable
-            className="absolute left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
-            style={{ top: insets.top + 8 }}
-            onPress={() => router.push("/(main)/swipe/filters/")}
-          >
-            <Text className="text-white font-semibold text-sm">
-              Apply Filters
-            </Text>
-          </Pressable>
-
-          {/* ================================================================ */}
-          {/* BOOST + REWIND (Top Right) */}
-          {/* ================================================================ */}
-          <View
-            style={{
-              position: "absolute",
-              right: 16,
-              top: insets.top + 8,
-              zIndex: 50,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
+          <>
+            {/* Apply Filters Button - Top Left */}
             <Pressable
-              onPress={openBoostModal}
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: boostExpiresAt
-                  ? "rgba(255,255,255,0.06)"
-                  : "#B8860B",
-                borderWidth: 1,
-                borderColor: boostExpiresAt
-                  ? "rgba(184, 134, 11, 0.6)"
-                  : "#B8860B",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+              className="absolute left-4 z-50 bg-[#B8860B] px-4 py-2 rounded-full flex-row items-center gap-2"
+              style={{ top: insets.top + 8 }}
+              onPress={() => router.push("/(main)/swipe/filters/")}
             >
-              <View style={{ alignItems: "center", justifyContent: "center" }}>
-                <Ionicons
-                  name="flash"
-                  size={BOOST_ICON_SIZE}
-                  color={boostExpiresAt ? "#B8860B" : "#FFFFFF"}
-                />
-                {!!boostRemaining && (
-                  <Text
-                    style={{
-                      marginTop: 2,
-                      fontSize: 10,
-                      fontWeight: "800",
-                      color: "#B8860B",
-                    }}
-                  >
-                    {boostRemaining}
-                  </Text>
-                )}
-              </View>
+              <Text className="text-white font-semibold text-sm">
+                Apply Filters
+              </Text>
             </Pressable>
 
-            {canRewindNow && (
+            {/* ================================================================ */}
+            {/* BOOST + REWIND (Top Right) */}
+            {/* ================================================================ */}
+            <View
+              style={{
+                position: "absolute",
+                right: 16,
+                top: insets.top + 8,
+                zIndex: 50,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
               <Pressable
-                className="w-12 h-12 rounded-full items-center justify-center bg-[#B8860B]"
-                onPress={handleRewind}
+                onPress={openBoostModal}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: boostExpiresAt
+                    ? "rgba(255,255,255,0.06)"
+                    : "#B8860B",
+                  borderWidth: 1,
+                  borderColor: boostExpiresAt
+                    ? "rgba(184, 134, 11, 0.6)"
+                    : "#B8860B",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                <Ionicons name="arrow-undo" size={22} color="#FFFFFF" />
+                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons
+                    name="flash"
+                    size={BOOST_ICON_SIZE}
+                    color={boostExpiresAt ? "#B8860B" : "#FFFFFF"}
+                  />
+                  {!!boostRemaining && (
+                    <Text
+                      style={{
+                        marginTop: 2,
+                        fontSize: 10,
+                        fontWeight: "800",
+                        color: "#B8860B",
+                      }}
+                    >
+                      {boostRemaining}
+                    </Text>
+                  )}
+                </View>
               </Pressable>
-            )}
-          </View>
-        </>
-      )}
+
+              {canRewindNow && (
+                <Pressable
+                  className="w-12 h-12 rounded-full items-center justify-center bg-[#B8860B]"
+                  onPress={handleRewind}
+                >
+                  <Ionicons name="arrow-undo" size={22} color="#FFFFFF" />
+                </Pressable>
+              )}
+            </View>
+          </>
+        )}
 
       {!source ||
-      (source !== "myLikes" &&
-        source !== "likedMe" &&
-        source !== "viewers" &&
-        source !== "passedOn" &&
-        source !== "chat") ? (
+        (source !== "myLikes" &&
+          source !== "likedMe" &&
+          source !== "viewers" &&
+          source !== "passedOn" &&
+          source !== "chat") ? (
         <>
           {/* ================================================================ */}
           {/* REWINDING CARD - Animates in from left during rewind */}
@@ -1524,8 +1524,8 @@ export default function SwipeScreen() {
             const slotStyle = isCurrent
               ? cardAnimatedStyle
               : isNext
-              ? nextCardAnimatedStyle
-              : { opacity: 0 };
+                ? nextCardAnimatedStyle
+                : { opacity: 0 };
 
             return (
               <Animated.View
@@ -1719,11 +1719,10 @@ export default function SwipeScreen() {
                   </View>
 
                   <Pressable
-                    className={`bg-[#EF4444] rounded-3xl py-4 items-center flex-row justify-center ${
-                      sendingCompliment || !complimentMessage.trim()
+                    className={`bg-[#EF4444] rounded-3xl py-4 items-center flex-row justify-center ${sendingCompliment || !complimentMessage.trim()
                         ? "opacity-50"
                         : ""
-                    }`}
+                      }`}
                     disabled={sendingCompliment || !complimentMessage.trim()}
                     onPress={sendCompliment}
                   >
@@ -1817,9 +1816,8 @@ export default function SwipeScreen() {
                 if (boostActivating) return;
                 handleBoostNowFromModal();
               }}
-              className={`rounded-3xl py-4 items-center flex-row justify-center ${
-                boostActivating ? "opacity-70" : ""
-              }`}
+              className={`rounded-3xl py-4 items-center flex-row justify-center ${boostActivating ? "opacity-70" : ""
+                }`}
               style={{
                 backgroundColor: boostExpiresAt
                   ? "rgba(184, 134, 11, 0.18)"
@@ -1842,8 +1840,8 @@ export default function SwipeScreen() {
                 {boostExpiresAt
                   ? "Boost Active"
                   : boostActivating
-                  ? "Boosting..."
-                  : "Boost Now"}
+                    ? "Boosting..."
+                    : "Boost Now"}
               </Text>
             </Pressable>
           </View>
@@ -2504,7 +2502,7 @@ export default function SwipeScreen() {
                       if (isSwiping) return;
                       Haptics.impactAsync(
                         Haptics.ImpactFeedbackStyle.Light
-                      ).catch(() => {});
+                      ).catch(() => { });
                       closeDetails();
                       setTimeout(() => sendSwipe("pass"), 150);
                     }}
@@ -2527,7 +2525,7 @@ export default function SwipeScreen() {
                       if (isSwiping) return;
                       Haptics.impactAsync(
                         Haptics.ImpactFeedbackStyle.Light
-                      ).catch(() => {});
+                      ).catch(() => { });
                       closeDetails();
                       setTimeout(() => setComplimentModalVisible(true), 200);
                     }}
@@ -2550,7 +2548,7 @@ export default function SwipeScreen() {
                       if (isSwiping) return;
                       Haptics.impactAsync(
                         Haptics.ImpactFeedbackStyle.Medium
-                      ).catch(() => {});
+                      ).catch(() => { });
                       closeDetails();
                       setTimeout(() => sendSwipe("like"), 150);
                     }}
