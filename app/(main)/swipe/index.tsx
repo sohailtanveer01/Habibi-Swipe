@@ -20,6 +20,8 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Easing,
+  Extrapolate,
+  interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -610,16 +612,17 @@ export default function SwipeScreen() {
       const exitDirection = x.value >= 0 ? 1 : -1;
       exitingX.value = x.value;
       // Animate it flying off screen quickly with timing (faster than spring)
+      // Animate it flying off screen smoothly
       exitingX.value = withTiming(exitDirection * width * 1.5, {
-        duration: 150,
-        easing: Easing.out(Easing.ease),
+        duration: 450,
+        easing: Easing.out(Easing.quad),
       });
       setExitingCard({ profile: currentProfile, exitX: x.value });
 
       // Clear exiting card after animation completes
       setTimeout(() => {
         setExitingCard(null);
-      }, 180);
+      }, 450);
     }
 
     setIndex((i) => i + 1);
@@ -797,7 +800,18 @@ export default function SwipeScreen() {
             }
           }, 300);
         } else {
-          moveToNextCard();
+          // Only animate if we're not already in a swipe animation (e.g. from a gesture)
+          if (Math.abs(x.value) < 10) {
+            const targetX = action === "pass" ? -width * 1.5 : width * 1.5;
+            x.value = withSpring(targetX, { damping: 20, stiffness: 80, mass: 1 }, (finished) => {
+              if (finished) {
+                runOnJS(moveToNextCard)();
+              }
+            });
+          } else {
+            // Already animated by gesture, just move to next
+            moveToNextCard();
+          }
         }
       }
     } catch (err) {
@@ -829,18 +843,20 @@ export default function SwipeScreen() {
       const isHorizontal = absX > absY;
       const isVerticalUp = e.translationY < 0 && absY > absX; // Swipe UP (negative Y)
 
-      if (isHorizontal && absX > 50) {
+      if (isHorizontal && (absX > 50 || Math.abs(e.velocityX) > 500)) {
         // Horizontal swipe - check for like/pass
         const shouldLike =
-          e.translationX > SWIPE_THRESHOLD && availableActions.showLike;
+          (e.translationX > SWIPE_THRESHOLD || e.velocityX > 800) &&
+          availableActions.showLike;
         const shouldPass =
-          e.translationX < -SWIPE_THRESHOLD && availableActions.showPass;
+          (e.translationX < -SWIPE_THRESHOLD || e.velocityX < -800) &&
+          availableActions.showPass;
 
         if (shouldLike) {
-          x.value = withSpring(width * 1.5, SPRING_CONFIG);
+          x.value = withSpring(width * 1.5, { ...SPRING_CONFIG, velocity: e.velocityX });
           runOnJS(sendSwipe)("like");
         } else if (shouldPass) {
-          x.value = withSpring(-width * 1.5, SPRING_CONFIG);
+          x.value = withSpring(-width * 1.5, { ...SPRING_CONFIG, velocity: e.velocityX });
           runOnJS(sendSwipe)("pass");
         } else {
           x.value = withSpring(0, SPRING_CONFIG);
@@ -933,6 +949,38 @@ export default function SwipeScreen() {
       transform: [{ scale }],
       opacity,
     };
+  });
+
+  const likeOverlayStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      x.value,
+      [0, SWIPE_THRESHOLD / 2, width * 0.7, width],
+      [0, 1, 1, 0],
+      Extrapolate.CLAMP
+    );
+    const scale = interpolate(
+      x.value,
+      [0, SWIPE_THRESHOLD / 2],
+      [0.8, 1],
+      Extrapolate.CLAMP
+    );
+    return { opacity, transform: [{ scale }] };
+  });
+
+  const nopeOverlayStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      x.value,
+      [-width, -width * 0.7, -SWIPE_THRESHOLD / 2, 0],
+      [0, 1, 1, 0],
+      Extrapolate.CLAMP
+    );
+    const scale = interpolate(
+      x.value,
+      [-SWIPE_THRESHOLD / 2, 0],
+      [1, 0.8],
+      Extrapolate.CLAMP
+    );
+    return { opacity, transform: [{ scale }] };
   });
 
   // Bottom sheet animated styles
@@ -1565,6 +1613,49 @@ export default function SwipeScreen() {
             );
           })}
 
+          {/* Fixed Swipe Overlays (outside moving cards) */}
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              {
+                position: "absolute",
+                top: SCREEN_HEIGHT * 0.22,
+                right: 60,
+                zIndex: 100,
+                padding: 16,
+                borderRadius: 100,
+                backgroundColor: "rgba(184,134,11,0.15)",
+                borderWidth: 3,
+                borderColor: "#B8860B",
+                transform: [{ rotate: "15deg" }],
+              },
+              likeOverlayStyle,
+            ]}
+          >
+            <Ionicons name="heart" size={70} color="#B8860B" />
+          </Animated.View>
+
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              {
+                position: "absolute",
+                top: SCREEN_HEIGHT * 0.22,
+                left: 60,
+                zIndex: 100,
+                padding: 16,
+                borderRadius: 100,
+                backgroundColor: "rgba(255,255,255,0.15)",
+                borderWidth: 3,
+                borderColor: "#FFFFFF",
+                transform: [{ rotate: "-15deg" }],
+              },
+              nopeOverlayStyle,
+            ]}
+          >
+            <Ionicons name="close" size={70} color="#FFFFFF" />
+          </Animated.View>
+
           <View
             className="absolute left-0 right-0 flex-row items-center justify-center gap-12 z-50"
             style={{ bottom: Math.max(insets.bottom, 10) + 100 }}
@@ -1590,7 +1681,7 @@ export default function SwipeScreen() {
                   setComplimentModalVisible(true);
                 }}
               >
-                <DiamondIcon size={22} color="#FFFFFF" />
+                <DiamondIcon size={22} color="#FFFFFF" style={{}} />
               </Pressable>
             )}
 
@@ -1673,7 +1764,7 @@ export default function SwipeScreen() {
                 <View className="flex-row items-center">
                   {/* Match the red compliment action button (red circle + white diamond) */}
                   <View className="w-10 h-10 rounded-full items-center justify-center bg-[#EF4444] border border-[#EF4444]/50 mr-3">
-                    <DiamondIcon size={18} color="#FFFFFF" />
+                    <DiamondIcon size={18} color="#FFFFFF" style={{}} />
                   </View>
                   <View>
                     <Text className="text-white text-xl font-extrabold">
@@ -1742,7 +1833,7 @@ export default function SwipeScreen() {
                     disabled={sendingCompliment || !complimentMessage.trim()}
                     onPress={sendCompliment}
                   >
-                    <DiamondIcon size={18} color="#FFFFFF" />
+                    <DiamondIcon size={18} color="#FFFFFF" style={{}} />
                     <Text className="text-white text-base font-extrabold ml-2">
                       {sendingCompliment ? "Sending..." : "Send Compliment"}
                     </Text>
@@ -2573,7 +2664,7 @@ export default function SwipeScreen() {
                       justifyContent: "center",
                     }}
                   >
-                    <DiamondIcon size={22} color="#FFFFFF" />
+                    <DiamondIcon size={22} color="#FFFFFF" style={{}} />
                   </Pressable>
                 )}
 
