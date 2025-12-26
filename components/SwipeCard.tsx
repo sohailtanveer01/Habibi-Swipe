@@ -74,10 +74,17 @@ export default function SwipeCard({ profile, onTap }: SwipeCardProps) {
 
       {/* Name, Age, and optional profession */}
       <View style={styles.infoContainer} pointerEvents="none">
-        <Text style={styles.nameText}>
-          {fullName}
-          {age !== null ? `, ${age}` : ""}
-        </Text>
+        <View style={styles.nameContainer}>
+          <Text style={styles.nameText}>
+            {fullName}
+            {age !== null ? `, ${age}` : ""}
+          </Text>
+          {profile?.is_liked_by_them && (
+            <View style={styles.likedBadge}>
+              <Text style={styles.likedBadgeText}>Liked you</Text>
+            </View>
+          )}
+        </View>
         {!!profession && (
           <Text style={styles.subText} numberOfLines={1}>
             {profession}
@@ -147,5 +154,22 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.5)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+  nameContainer: {
+    alignItems: "center",
+    gap: 8,
+  },
+  likedBadge: {
+    backgroundColor: "#B8860B", // Gold color
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  likedBadgeText: {
+    color: "#000",
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
   },
 });

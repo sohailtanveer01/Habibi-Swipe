@@ -1961,21 +1961,28 @@ export default function SwipeScreen() {
                       right: 16,
                     }}
                   >
-                    <Text
-                      style={{
-                        color: "#FFFFFF",
-                        fontSize: 26,
-                        fontWeight: "900",
-                        textShadowColor: "rgba(0,0,0,0.75)",
-                        textShadowOffset: { width: 0, height: 2 },
-                        textShadowRadius: 8,
-                      }}
-                    >
-                      {detailsProfile?.first_name && detailsProfile?.last_name
-                        ? `${detailsProfile.first_name} ${detailsProfile.last_name}`
-                        : detailsProfile?.name || "Unknown"}
-                      {detailsAge !== null ? `, ${detailsAge}` : ""}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Text
+                        style={{
+                          color: "#FFFFFF",
+                          fontSize: 26,
+                          fontWeight: "900",
+                          textShadowColor: "rgba(0,0,0,0.75)",
+                          textShadowOffset: { width: 0, height: 2 },
+                          textShadowRadius: 8,
+                        }}
+                      >
+                        {detailsProfile?.first_name && detailsProfile?.last_name
+                          ? `${detailsProfile.first_name} ${detailsProfile.last_name}`
+                          : detailsProfile?.name || "Unknown"}
+                        {detailsAge !== null ? `, ${detailsAge}` : ""}
+                      </Text>
+                      {detailsProfile?.is_liked_by_them && (
+                        <View style={{ backgroundColor: "#B8860B", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 8 }}>
+                          <Text style={{ color: "#000", fontSize: 10, fontWeight: "700", textTransform: "uppercase" }}>Liked you</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </View>
               )}
