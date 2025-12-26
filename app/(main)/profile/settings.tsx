@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { supabase } from "../../../lib/supabase";
 
@@ -40,6 +40,53 @@ function SettingsItem({ icon, title, subtitle, onPress, showChevron = true, dang
 export default function SettingsScreen() {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [blurPhotos, setBlurPhotos] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchBlurSetting();
+  }, []);
+
+  const fetchBlurSetting = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("blur_photos")
+        .eq("id", user.id)
+        .single();
+
+      if (error) throw error;
+      setBlurPhotos(data?.blur_photos || false);
+    } catch (error) {
+      console.error("Error fetching blur setting:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleBlurPhotos = async () => {
+    const newValue = !blurPhotos;
+    setBlurPhotos(newValue); // Optimistic update
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("users")
+        .update({ blur_photos: newValue })
+        .eq("id", user.id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error updating blur setting:", error);
+      setBlurPhotos(!newValue); // Rollback
+      Alert.alert("Error", "Failed to update privacy setting.");
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert(
@@ -95,7 +142,7 @@ export default function SettingsScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </Pressable>
-        <Text className="text-white text-xl font-bold ml-4">Settings !</Text>
+        <Text className="text-white text-xl font-bold ml-4">Settings</Text>
       </View>
 
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
@@ -122,6 +169,24 @@ export default function SettingsScreen() {
           subtitle="Profile visibility, blocking"
           onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
         />
+
+        <View className="flex-row items-center justify-between py-4 px-4 bg-white/5 rounded-2xl mb-3">
+          <View className="flex-row items-center flex-1">
+            <View className="w-10 h-10 rounded-full items-center justify-center bg-[#B8860B]/20">
+              <Ionicons name="eye-off-outline" size={20} color="#B8860B" />
+            </View>
+            <View className="ml-3 flex-1">
+              <Text className="text-base font-medium text-white">Blur My Photos</Text>
+              <Text className="text-gray-400 text-sm mt-0.5">Your photos will be visible only to people you like</Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={toggleBlurPhotos}
+            className={`w-12 h-6 rounded-full px-1 justify-center ${blurPhotos ? 'bg-[#B8860B]' : 'bg-gray-600'}`}
+          >
+            <View className={`w-4 h-4 rounded-full bg-white transition-all ${blurPhotos ? 'ml-6' : 'ml-0'}`} />
+          </Pressable>
+        </View>
 
         {/* Preferences Section */}
         <Text className="text-gray-400 text-sm font-medium mb-3 mt-6">PREFERENCES</Text>

@@ -1203,6 +1203,12 @@ export default function SwipeScreen() {
                 contentFit="contain"
                 transition={0}
                 cachePolicy="memory-disk"
+                blurRadius={
+                  (detailsVisible ? detailsProfile : current)?.blur_photos &&
+                    !(detailsVisible ? detailsProfile : current)?.is_liked_by_them
+                    ? 50
+                    : 0
+                }
               />
             </View>
           )}
@@ -1530,7 +1536,7 @@ export default function SwipeScreen() {
             return (
               <Animated.View
                 key={profile.id}
-                style={[baseStyle, slotStyle]}
+                style={[baseStyle, slotStyle] as any}
                 pointerEvents={isCurrent ? "auto" : "none"}
               >
                 {isCurrent ? (
@@ -1720,8 +1726,8 @@ export default function SwipeScreen() {
 
                   <Pressable
                     className={`bg-[#EF4444] rounded-3xl py-4 items-center flex-row justify-center ${sendingCompliment || !complimentMessage.trim()
-                        ? "opacity-50"
-                        : ""
+                      ? "opacity-50"
+                      : ""
                       }`}
                     disabled={sendingCompliment || !complimentMessage.trim()}
                     onPress={sendCompliment}
@@ -1925,6 +1931,12 @@ export default function SwipeScreen() {
                         style={{ width: "100%", height: "100%" }}
                         contentFit="cover"
                         transition={0}
+                        blurRadius={
+                          detailsProfile?.blur_photos &&
+                            !detailsProfile?.is_liked_by_them
+                            ? 50
+                            : 0
+                        }
                       />
                     </View>
                   </GestureDetector>
@@ -1989,6 +2001,12 @@ export default function SwipeScreen() {
                           contentFit="cover"
                           transition={0}
                           cachePolicy="memory-disk"
+                          blurRadius={
+                            detailsProfile?.blur_photos &&
+                              !detailsProfile?.is_liked_by_them
+                              ? 50
+                              : 0
+                          }
                         />
                       </Pressable>
                     ))}

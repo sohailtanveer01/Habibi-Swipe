@@ -1,6 +1,6 @@
-import { View, Text, Dimensions, StyleSheet, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
 
 const { width, height } = Dimensions.get("window");
 
@@ -56,6 +56,7 @@ export default function SwipeCard({ profile, onTap }: SwipeCardProps) {
             priority="high"
             placeholderContentFit="cover"
             placeholder={{ blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
+            blurRadius={profile?.blur_photos && !profile?.is_liked_by_them ? 50 : 0}
           />
         </Pressable>
       ) : (

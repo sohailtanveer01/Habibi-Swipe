@@ -1,6 +1,6 @@
-import { View, Text, Dimensions, StyleSheet, ScrollView } from "react-native";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
+import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
 import { supabase } from "../lib/supabase";
 
 const { width, height } = Dimensions.get("window");
@@ -70,16 +70,16 @@ export default function LikesProfileView({ profile }: any) {
   const renderImage = (photo: string, index: number) => {
     const isMainPhoto = index === 0;
     const screenHeight = Dimensions.get('window').height;
-    
+
     return (
-      <View 
-        key={index} 
+      <View
+        key={index}
         style={[
           isMainPhoto ? styles.mainImageContainer : styles.secondaryImageContainer
         ]}
       >
-        <Image 
-          source={{ uri: photo }} 
+        <Image
+          source={{ uri: photo }}
           style={[
             isMainPhoto ? styles.mainImage : styles.secondaryImage
           ]}
@@ -87,8 +87,9 @@ export default function LikesProfileView({ profile }: any) {
           transition={200}
           cachePolicy="memory-disk"
           priority={isMainPhoto ? "high" : "normal"}
+          blurRadius={profile?.blur_photos && !profile?.is_liked_by_them ? 50 : 0}
         />
-        
+
         {/* Name and Age overlay on first image only */}
         {isMainPhoto && (
           <View style={styles.nameOverlay}>
@@ -102,11 +103,11 @@ export default function LikesProfileView({ profile }: any) {
   };
 
   // Build sections array - alternate between images and data
-  const sections: JSX.Element[] = [];
+  const sections: any[] = [];
   let imageIndex = 0;
   let sectionIndex = 0;
 
-  const dataSections: JSX.Element[] = [];
+  const dataSections: any[] = [];
 
   // Add first image
   if (photos.length > 0) {
@@ -261,7 +262,7 @@ export default function LikesProfileView({ profile }: any) {
       sections.push(dataSections[sectionIndex]);
       sectionIndex++;
     }
-    
+
     // Add image if available
     if (imageIndex < photos.length) {
       sections.push(renderImage(photos[imageIndex], imageIndex));
@@ -290,7 +291,7 @@ export default function LikesProfileView({ profile }: any) {
 
 const getStyles = () => {
   const screenHeight = Dimensions.get('window').height;
-  
+
   return StyleSheet.create({
     container: {
       width,
