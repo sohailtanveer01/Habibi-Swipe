@@ -244,9 +244,19 @@ export default function SwipeScreen() {
 
         setHasCompliment(!!existingCompliment);
 
+        // Check if THEY have liked ME
+        const { data: likedMeData } = await supabase
+          .from("swipes")
+          .select("id")
+          .eq("swiper_id", targetUserId)
+          .eq("swiped_id", user.id)
+          .eq("action", "like")
+          .maybeSingle();
+
         const profileWithPrompts = {
           ...profile,
           prompts: promptsData || [],
+          is_liked_by_them: !!likedMeData,
         };
 
         setProfiles([profileWithPrompts]);

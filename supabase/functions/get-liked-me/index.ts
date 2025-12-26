@@ -66,12 +66,12 @@ serve(async (req) => {
       console.log("⚠️ No exact 'like' matches, checking all actions...");
       const uniqueActions = [...new Set(allSwipes.map(s => s.action))];
       console.log("📊 Unique actions found:", uniqueActions);
-      
+
       // Try filtering in memory - check for 'like' in any case
       const filteredSwipes = allSwipes
         .filter(s => s.action && s.action.toLowerCase() === 'like')
         .map(s => ({ swiper_id: s.swiper_id, created_at: s.created_at }));
-      
+
       if (filteredSwipes.length > 0) {
         console.log("✅ Found swipes with case-insensitive match:", filteredSwipes.length);
         swipes = filteredSwipes;
@@ -82,7 +82,7 @@ serve(async (req) => {
     if (swipesError && (!swipes || swipes.length === 0)) {
       console.error("❌ Error fetching swipes:", swipesError);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: swipesError.message,
           debug: {
             userId: user.id,
@@ -96,7 +96,7 @@ serve(async (req) => {
     if (!swipes || swipes.length === 0) {
       console.log("⚠️ No swipes found for user:", user.id);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           likedMe: [],
           debug: {
             userId: user.id,
@@ -129,7 +129,7 @@ serve(async (req) => {
       .from("blocks")
       .select("blocked_id")
       .eq("blocker_id", user.id);
-    
+
     const { data: blocksIAmBlocked } = await supabaseClient
       .from("blocks")
       .select("blocker_id")
@@ -142,7 +142,7 @@ serve(async (req) => {
     if (blocksIAmBlocked) {
       blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
     }
-    
+
     console.log("🔒 Blocking check:", {
       userId: user.id,
       blocksIBlocked: blocksIBlocked?.length || 0,
@@ -181,7 +181,7 @@ serve(async (req) => {
     // Fetch full user profiles for the users who liked (excluding matched users)
     const { data: likerProfiles, error: profilesError } = await supabaseClient
       .from("users")
-      .select("id, first_name, last_name, name, photos")
+      .select("id, first_name, last_name, name, photos, blur_photos, dob, height, marital_status, has_children, education, profession, sect, born_muslim, religious_practice, alcohol_habit, smoking_habit, ethnicity, nationality, hobbies, bio, location")
       .in("id", unmatchedLikerIds);
 
     if (profilesError) {
@@ -195,7 +195,7 @@ serve(async (req) => {
     // Map profiles with their like timestamp (most recent like)
     // Also filter out any blocked users and matched users as a safety check
     const likedMeWithTimestamp = (likerProfiles || [])
-      .filter((profile) => 
+      .filter((profile) =>
         !blockedUserIds.has(profile.id) && !matchedUserIds.has(profile.id)
       )
       .map((profile) => {
@@ -203,6 +203,7 @@ serve(async (req) => {
         return {
           ...profile,
           likedAt: mostRecentSwipe?.created_at,
+          is_liked_by_them: true,
         };
       })
       .sort((a, b) => {
@@ -211,7 +212,7 @@ serve(async (req) => {
         const dateB = b.likedAt ? new Date(b.likedAt).getTime() : 0;
         return dateB - dateA;
       });
-    
+
     console.log("✅ Matched users filter:", {
       totalLikerIds: likerUserIds.length,
       matchedUserIds: Array.from(matchedUserIds),

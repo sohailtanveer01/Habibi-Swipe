@@ -117,7 +117,7 @@ serve(async (req) => {
       .from("blocks")
       .select("blocked_id")
       .eq("blocker_id", user.id);
-    
+
     const { data: blocksIAmBlocked } = await supabaseClient
       .from("blocks")
       .select("blocker_id")
@@ -179,6 +179,15 @@ serve(async (req) => {
       });
     }
 
+    // Get users who have liked the current user (to unblur them if they appear in feed)
+    const { data: likers } = await supabaseClient
+      .from("swipes")
+      .select("swiper_id")
+      .eq("swiped_id", user.id)
+      .eq("action", "like");
+
+    const likerIdsSet = new Set(likers?.map((l: any) => l.swiper_id) || []);
+
     console.log("🔒 Compliment filter:", {
       userId: user.id,
       receivedComplimentsCount: receivedCompliments?.length || 0,
@@ -218,9 +227,9 @@ serve(async (req) => {
       const a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos((lat1 * Math.PI) / 180) *
-          Math.cos((lat2 * Math.PI) / 180) *
-          Math.sin(dLon / 2) *
-          Math.sin(dLon / 2);
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     };
@@ -241,13 +250,13 @@ serve(async (req) => {
     // Helper function to parse height string to cm
     const parseHeightToCm = (heightStr: string | null): number | null => {
       if (!heightStr) return null;
-      
+
       // Try to parse "175 cm" format
       const cmMatch = heightStr.match(/(\d+)\s*cm/i);
       if (cmMatch) {
         return parseInt(cmMatch[1], 10);
       }
-      
+
       // Try to parse "5'10\"" or "5'10" format
       const ftMatch = heightStr.match(/(\d+)'(\d+)/);
       if (ftMatch) {
@@ -255,7 +264,7 @@ serve(async (req) => {
         const inches = parseInt(ftMatch[2], 10);
         return Math.round((feet * 30.48) + (inches * 2.54));
       }
-      
+
       return null;
     };
 
@@ -368,8 +377,8 @@ serve(async (req) => {
           // Country-based filtering
           if (searchCountry) {
             // Filter by country (case-insensitive partial match)
-            if (!profile.nationality || 
-                !profile.nationality.toLowerCase().includes(searchCountry.toLowerCase())) {
+            if (!profile.nationality ||
+              !profile.nationality.toLowerCase().includes(searchCountry.toLowerCase())) {
               return false;
             }
           }
@@ -391,27 +400,27 @@ serve(async (req) => {
       }
 
       // Ethnicity filter
-      if (preferences && preferences.ethnicity_preferences && 
-          Array.isArray(preferences.ethnicity_preferences) && 
-          preferences.ethnicity_preferences.length > 0) {
+      if (preferences && preferences.ethnicity_preferences &&
+        Array.isArray(preferences.ethnicity_preferences) &&
+        preferences.ethnicity_preferences.length > 0) {
         if (!profile.ethnicity || !preferences.ethnicity_preferences.includes(profile.ethnicity)) {
           return false;
         }
       }
 
       // Marital status filter
-      if (preferences && preferences.marital_status_preferences && 
-          Array.isArray(preferences.marital_status_preferences) && 
-          preferences.marital_status_preferences.length > 0) {
+      if (preferences && preferences.marital_status_preferences &&
+        Array.isArray(preferences.marital_status_preferences) &&
+        preferences.marital_status_preferences.length > 0) {
         if (!profile.marital_status || !preferences.marital_status_preferences.includes(profile.marital_status)) {
           return false;
         }
       }
 
       // Children filter
-      if (preferences && preferences.children_preferences && 
-          Array.isArray(preferences.children_preferences) && 
-          preferences.children_preferences.length > 0) {
+      if (preferences && preferences.children_preferences &&
+        Array.isArray(preferences.children_preferences) &&
+        preferences.children_preferences.length > 0) {
         // profile.has_children is a boolean, children_preferences contains 'yes' or 'no'
         const profileHasChildren = profile.has_children === true ? "yes" : profile.has_children === false ? "no" : null;
         if (profileHasChildren === null || !preferences.children_preferences.includes(profileHasChildren)) {
@@ -420,9 +429,9 @@ serve(async (req) => {
       }
 
       // Religiosity filter
-      if (preferences && preferences.religiosity_preferences && 
-          Array.isArray(preferences.religiosity_preferences) && 
-          preferences.religiosity_preferences.length > 0) {
+      if (preferences && preferences.religiosity_preferences &&
+        Array.isArray(preferences.religiosity_preferences) &&
+        preferences.religiosity_preferences.length > 0) {
         if (!profile.religious_practice || !preferences.religiosity_preferences.includes(profile.religious_practice)) {
           return false;
         }
@@ -445,6 +454,7 @@ serve(async (req) => {
           ...p,
           is_boosted: isBoosted,
           boost_expires_at: boostExpiresAt,
+          is_liked_by_them: likerIdsSet.has(p.id),
           __sortKey: sortKey,
         };
       })
