@@ -2727,9 +2727,8 @@ function MatchCelebrationModal({
     <View style={matchModalStyles.container}>
       <View style={matchModalStyles.content}>
         <View style={matchModalStyles.logoContainer}>
-          <Logo variant="transparent" width={100} />
+          <Logo variant="transparent" width={100} height={100} />
         </View>
-        <Text style={matchModalStyles.title}>🎉</Text>
         <Text style={matchModalStyles.congratsText}>It&apos;s a Match!</Text>
         <Text style={matchModalStyles.subtitle}>
           You and {fullName} liked each other

@@ -1,9 +1,9 @@
-import { View, Text, ScrollView, Pressable, Dimensions, StyleSheet } from "react-native";
-import { Image } from "expo-image";
-import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
-import { useEffect, useState, useCallback } from "react";
-import { supabase } from "../../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { supabase } from "../../../lib/supabase";
 
 function calculateAge(dob: string | null): number | null {
   if (!dob) return null;
@@ -22,7 +22,7 @@ export default function ProfilePreviewScreen() {
   const { userId } = useLocalSearchParams<{ userId?: string }>();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
-  
+
   // Determine if viewing own profile or someone else's
   const [isViewingOwnProfile, setIsViewingOwnProfile] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -58,7 +58,7 @@ export default function ProfilePreviewScreen() {
       const profileUserId = userId || user.id;
       const isViewingOtherProfile = userId && userId !== user.id;
       const isOwnProfile = !userId || userId === user.id;
-      
+
       setIsViewingOwnProfile(isOwnProfile);
 
       const { data, error } = await supabase
@@ -81,7 +81,7 @@ export default function ProfilePreviewScreen() {
       }
 
       setProfile(data);
-      
+
       // Handle name - prefer first_name/last_name, fallback to name
       if (data.first_name && data.last_name) {
         setFirstName(data.first_name);
@@ -108,7 +108,7 @@ export default function ProfilePreviewScreen() {
       setBornMuslim(data.born_muslim ?? null);
       setAlcoholHabit(data.alcohol_habit || "");
       setSmokingHabit(data.smoking_habit || "");
-      
+
       // Handle location data (could be PostGIS point, object, or string)
       if (data.location) {
         if (typeof data.location === 'string') {
@@ -120,7 +120,7 @@ export default function ProfilePreviewScreen() {
           setLocation(`${data.location.lat.toFixed(2)}, ${data.location.lon.toFixed(2)}`);
         }
       }
-      
+
       // Track view if viewing someone else's profile
       if (isViewingOtherProfile) {
         try {
@@ -133,7 +133,7 @@ export default function ProfilePreviewScreen() {
           // Don't fail the profile load if view tracking fails
         }
       }
-      
+
       setLoading(false);
     } catch (error: any) {
       console.error("Error loading profile:", error);
@@ -182,16 +182,16 @@ export default function ProfilePreviewScreen() {
   // Render image with optional name/age overlay (only for first image)
   const renderImage = (photo: string, index: number) => {
     const isMainPhoto = index === 0;
-    
+
     return (
-      <View 
-        key={index} 
+      <View
+        key={index}
         style={[
           isMainPhoto ? styles.mainImageContainer : styles.secondaryImageContainer
         ]}
       >
-        <Image 
-          source={{ uri: photo }} 
+        <Image
+          source={{ uri: photo }}
           style={[
             isMainPhoto ? styles.mainImage : styles.secondaryImage
           ]}
@@ -200,7 +200,7 @@ export default function ProfilePreviewScreen() {
           cachePolicy="memory-disk"
           priority={isMainPhoto ? "high" : "normal"}
         />
-        
+
         {/* Name and Age overlay on first image only */}
         {isMainPhoto && (
           <View style={styles.nameOverlay}>
@@ -217,7 +217,7 @@ export default function ProfilePreviewScreen() {
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
       {/* Back Button - Fixed at top */}
       <View style={styles.topBar}>
-        <Pressable 
+        <Pressable
           onPress={() => {
             // If viewing own profile, navigate back to profile page
             // Otherwise, use router.back() to go to previous screen
@@ -226,7 +226,7 @@ export default function ProfilePreviewScreen() {
             } else {
               router.back();
             }
-          }} 
+          }}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -234,7 +234,7 @@ export default function ProfilePreviewScreen() {
       </View>
 
       {/* Scrollable Profile Preview */}
-      <ScrollView 
+      <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -257,8 +257,8 @@ export default function ProfilePreviewScreen() {
           if (hasPersonalInfo) {
             dataSections.push(
               <View key="personal" style={styles.sectionCard}>
-                <ScrollView 
-                  horizontal 
+                <ScrollView
+                  horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.horizontalChipsContainer}
                 >
@@ -398,7 +398,7 @@ export default function ProfilePreviewScreen() {
               sections.push(dataSections[sectionIndex]);
               sectionIndex++;
             }
-            
+
             // Add image if available
             if (imageIndex < photos.length) {
               sections.push(renderImage(photos[imageIndex], imageIndex));
@@ -415,7 +415,7 @@ export default function ProfilePreviewScreen() {
 
 const getStyles = () => {
   const screenHeight = Dimensions.get('window').height;
-  
+
   return StyleSheet.create({
     topBar: {
       paddingTop: 50,
@@ -477,23 +477,23 @@ const getStyles = () => {
       color: '#FFFFFF',
     },
     sectionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 20,
-    padding: 20,
-    marginHorizontal: 20,
-    marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 16,
-  },
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      borderRadius: 20,
+      padding: 20,
+      marginHorizontal: 20,
+      marginTop: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      marginBottom: 16,
+    },
     sectionContent: {
       gap: 12,
     },
@@ -519,35 +519,35 @@ const getStyles = () => {
       color: '#FFFFFF',
       fontWeight: '500',
     },
-  bioText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#FFFFFF',
-    opacity: 0.9,
-  },
-  promptsContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 12,
-  },
-  promptCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 18,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(184, 134, 11, 0.2)',
-  },
-  promptQuestion: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
+    bioText: {
+      fontSize: 16,
+      lineHeight: 24,
+      color: '#FFFFFF',
+      opacity: 0.9,
+    },
+    promptsContainer: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      gap: 12,
+    },
+    promptCard: {
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      borderRadius: 18,
+      padding: 18,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: 'rgba(184, 134, 11, 0.2)',
+    },
+    promptQuestion: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      marginBottom: 8,
+    },
     promptAnswer: {
       fontSize: 15,
       lineHeight: 22,

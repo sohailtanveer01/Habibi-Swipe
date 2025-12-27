@@ -33,7 +33,7 @@ async function sendExpoPush(
     console.error("Expo push exception:", e);
   }
 }
-serve(async (req)=>{
+serve(async (req) => {
   // Handle preflight OPTIONS
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -109,21 +109,21 @@ serve(async (req)=>{
     if (reverseSwipe) {
       const user1 = user.id < swiped_id ? user.id : swiped_id;
       const user2 = user.id > swiped_id ? user.id : swiped_id;
-      
+
       const { data: existingMatch } = await supabase
         .from("matches")
         .select("id")
         .eq("user1", user1)
         .eq("user2", user2)
         .maybeSingle();
-      
+
       if (!existingMatch) {
         const { data: newMatch, error: matchError } = await supabase
           .from("matches")
           .insert({ user1, user2 })
           .select("id")
           .single();
-        
+
         if (matchError) console.error("Error creating match:", matchError);
         else matchId = newMatch.id;
       } else {
@@ -152,7 +152,7 @@ serve(async (req)=>{
         const tokens = (tokenRows ?? []).map((r: any) => r.token).filter(Boolean);
         if (tokens.length > 0) {
           let title, body, data;
-          
+
           if (reverseSwipe) {
             // Match Notification
             title = "It's a Match! 🎉";
@@ -164,7 +164,7 @@ serve(async (req)=>{
             body = action === "superlike" ? `${likerName} super liked you! 💫` : `${likerName} liked you! 💖`;
             data = { type: "new_like", swiperId: user.id };
           }
-          
+
           await sendExpoPush(tokens, { title, body, data });
           console.log(`📱 Sent ${reverseSwipe ? "match" : "like"} notification to user:`, swiped_id);
         }
@@ -181,7 +181,7 @@ serve(async (req)=>{
         headers: corsHeaders
       });
     }
-    
+
     // Get the other user's profile for the match celebration screen
     if (matchId) {
       const { data: profile } = await supabase
@@ -189,12 +189,12 @@ serve(async (req)=>{
         .select("id, first_name, last_name, name, photos")
         .eq("id", swiped_id)
         .single();
-      
+
       if (profile) {
         otherUser = profile;
       }
     }
-    
+
     return new Response(JSON.stringify({
       matched: true,
       matchId: matchId,
