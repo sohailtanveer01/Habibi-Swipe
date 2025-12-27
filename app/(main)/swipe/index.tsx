@@ -382,8 +382,19 @@ export default function SwipeScreen() {
       }
       Alert.alert("Boost Activated", "Your profile is boosted for 30 minutes.");
     } catch (e: any) {
-      console.error("Boost activation error:", e);
-      Alert.alert("Error", e?.message || "Failed to activate boost.");
+      if (e?.message?.includes("NO_BOOSTS_REMAINING")) {
+        Alert.alert(
+          "No Boosts Left",
+          e.message || "You've used your free boost. Upgrade to Premium for 5 boosts!",
+          [
+            { text: "Later", style: "cancel" },
+            { text: "Upgrade", onPress: () => router.push("/(main)/profile/subscription") }
+          ]
+        );
+      } else {
+        console.error("Boost activation error:", e);
+        Alert.alert("Error", e?.message || "Failed to activate boost.");
+      }
     } finally {
       setBoostActivating(false);
     }
@@ -748,6 +759,19 @@ export default function SwipeScreen() {
       });
 
       if (error) {
+        if (error.message?.includes("DAILY_LIMIT_REACHED")) {
+          Alert.alert(
+            "Limit Reached",
+            "You've reached your daily limit of 20 likes. Upgrade to Premium for unlimited likes!",
+            [
+              { text: "Later", style: "cancel" },
+              { text: "Upgrade", onPress: () => router.push("/(main)/profile/subscription") }
+            ]
+          );
+          setIsSwiping(false);
+          return;
+        }
+
         console.error("Swipe error:", error);
         setIsSwiping(false);
         return;

@@ -69,6 +69,45 @@ serve(async (req) => {
         headers: corsHeaders
       });
     }
+
+    // --- SUBSCRIPTION CHECK ---
+    const { data: userData, error: userDataError } = await supabase
+      .from("users")
+      .select("is_premium")
+      .eq("id", user.id)
+      .single();
+
+    if (userDataError) {
+      console.error("Error fetching user data:", userDataError);
+    }
+
+    const isPremium = userData?.is_premium || false;
+
+    // If liking/superliking, check daily limit for non-premium users
+    if (!isPremium && (action === "like" || action === "superlike")) {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+      const { count, error: countError } = await supabase
+        .from("swipes")
+        .select("*", { count: "exact", head: true })
+        .eq("swiper_id", user.id)
+        .in("action", ["like", "superlike"])
+        .gt("created_at", twentyFourHoursAgo);
+
+      if (countError) {
+        console.error("Error counting daily likes:", countError);
+      } else if (count !== null && count >= 20) {
+        return new Response(JSON.stringify({
+          error: "DAILY_LIMIT_REACHED",
+          message: "You've reached your daily limit of 20 likes. Upgrade to Premium for unlimited likes!"
+        }), {
+          status: 403,
+          headers: corsHeaders
+        });
+      }
+    }
+    // --------------------------
+
     // Upsert swipe (insert or update if exists)
     // This allows users to change their mind (e.g., unlike someone by passing)
     const { error: swipeError } = await supabase.from("swipes").upsert({

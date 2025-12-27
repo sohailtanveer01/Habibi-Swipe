@@ -42,6 +42,34 @@ serve(async (req) => {
     const minutesRaw = typeof body?.minutes === "number" ? body.minutes : 30;
     const minutes = Math.max(1, Math.min(60, Math.floor(minutesRaw))); // clamp 1..60
 
+    // --- SUBSCRIPTION & BOOST COUNT CHECK ---
+    const { data: userData, error: userDataError } = await supabaseClient
+      .from("users")
+      .select("is_premium, boost_count")
+      .eq("id", user.id)
+      .single();
+
+    if (userDataError || !userData) {
+      console.error("Error fetching user data:", userDataError);
+      return new Response(JSON.stringify({ error: "Could not verify boost balance" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (userData.boost_count <= 0) {
+      return new Response(JSON.stringify({
+        error: "NO_BOOSTS_REMAINING",
+        message: userData.is_premium
+          ? "You've used all your premium boosts for this period."
+          : "You've used your free boost. Upgrade to Premium for 5 boosts!"
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // ------------------------------------------
+
     // If a boost is already active, return it
     const { data: existing, error: existingErr } = await supabaseClient
       .from("profile_boosts")
@@ -63,6 +91,20 @@ serve(async (req) => {
 
     const now = new Date();
     const expiresAt = addMinutes(now, minutes);
+
+    // Decrement boost count first
+    const { error: decrementError } = await supabaseClient
+      .from("users")
+      .update({ boost_count: userData.boost_count - 1 })
+      .eq("id", user.id);
+
+    if (decrementError) {
+      console.error("Error decrementing boost count:", decrementError);
+      return new Response(JSON.stringify({ error: "Failed to update boost balance" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { data: created, error: insertErr } = await supabaseClient
       .from("profile_boosts")

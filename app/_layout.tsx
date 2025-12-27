@@ -1,18 +1,21 @@
-import "../global.css";
-// eslint-disable-next-line import/no-duplicates
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useRouter } from "expo-router";
-import "react-native-gesture-handler";
-// eslint-disable-next-line import/no-duplicates
 import * as Notifications from "expo-notifications";
+import { Stack, useRouter } from "expo-router";
+import * as ScreenOrientation from "expo-screen-orientation";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { Platform } from "react-native";
+import "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import Purchases from "react-native-purchases";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import "../global.css";
 import { LikesNotificationProvider } from "../lib/likesNotificationContext";
 import { registerAndSyncPushToken } from "../lib/pushNotifications";
 import { supabase } from "../lib/supabase";
-import * as ScreenOrientation from "expo-screen-orientation";
+
+// RevenueCat configuration
+const REVENUECAT_API_KEY = "test_PrYkXQQOqDKUcylpmHBHJZJzGtf";
 
 // Configure QueryClient with optimized cache settings
 const qc = new QueryClient({
@@ -50,6 +53,11 @@ export default function RootLayout() {
       }
     });
 
+    // Configure RevenueCat
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+    }
+
     return () => {
       sub.remove();
       authSub?.subscription?.unsubscribe();
@@ -62,21 +70,21 @@ export default function RootLayout() {
         <StatusBar style="light" />
         <QueryClientProvider client={qc}>
           <LikesNotificationProvider>
-            <Stack 
-              screenOptions={{ 
+            <Stack
+              screenOptions={{
                 headerShown: false,
                 // Keep gestures enabled but prevent back navigation to auth
               }}
             >
-              <Stack.Screen 
-                name="(auth)" 
+              <Stack.Screen
+                name="(auth)"
                 options={{
                   // Allow gestures on auth screen
                   gestureEnabled: true,
                 }}
               />
-              <Stack.Screen 
-                name="(main)" 
+              <Stack.Screen
+                name="(main)"
                 options={{
                   // Disable swipe back gesture on main tabs to prevent going back to auth
                   gestureEnabled: false,
