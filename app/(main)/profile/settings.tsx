@@ -153,7 +153,7 @@ export default function SettingsScreen() {
           icon="person-outline"
           title="Account Information"
           subtitle="Email, phone number"
-          onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
+          onPress={() => router.push("/(main)/profile/account-info")}
         />
 
         <SettingsItem

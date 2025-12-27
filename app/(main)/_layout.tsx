@@ -22,21 +22,21 @@ export default function MainLayout() {
   const loadProfile = useUserStore((s) => s.loadProfile);
   const loadAllCounts = useBadgeStore((s) => s.loadAllCounts);
   const setNewLikes = useBadgeStore((s) => s.setNewLikes);
-  
+
   const pathname = usePathname();
   const searchParams = useGlobalSearchParams();
   const insets = useSafeAreaInsets();
-  
+
   // Track user's active status (updates last_active_at periodically)
   useActiveStatus();
-  
+
   // Check if we're on a chat detail screen or filters screen
   const isChatDetail = pathname?.includes("/chat/") && pathname !== "/chat";
   const isFiltersScreen = pathname?.includes("/swipe/filters");
-  
+
   // Check if viewing from likes section (has source parameter in URL)
   const isViewingFromLikes = pathname?.includes("/swipe") && (searchParams?.source === "myLikes" || searchParams?.source === "likedMe" || searchParams?.source === "viewers" || searchParams?.source === "passedOn" || searchParams?.source === "chat");
-  
+
   // Hide tab bar on chat detail or filters screen
   const hideTabBar = isChatDetail || isFiltersScreen;
 
@@ -95,7 +95,7 @@ export default function MainLayout() {
 
   // Check for new likes (people who liked the current user)
   const checkNewLikesRef = useRef<(() => Promise<void>) | null>(null);
-  
+
   useEffect(() => {
     const checkNewLikes = async () => {
       console.log("🔍 checkNewLikes() called");
@@ -140,7 +140,7 @@ export default function MainLayout() {
         .from("blocks")
         .select("blocked_id")
         .eq("blocker_id", user.id);
-      
+
       const { data: blocksIAmBlocked } = await supabase
         .from("blocks")
         .select("blocker_id")
@@ -175,7 +175,7 @@ export default function MainLayout() {
         (id) => !matchedUserIds.has(id) && !blockedUserIds.has(id)
       );
 
-        console.log("💖 New likes count:", newLikes.length, "from likers:", newLikes);
+      console.log("💖 New likes count:", newLikes.length, "from likers:", newLikes);
       setNewLikes(newLikes.length);
     };
 
@@ -186,7 +186,7 @@ export default function MainLayout() {
 
     // Subscribe to swipes table changes
     let channel: any = null;
-    
+
     const setupSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -344,7 +344,7 @@ export default function MainLayout() {
             const isActive = !isViewingFromLikes && focused;
             return (
               <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
-              
+
                 <MaterialCommunityIcons name={isActive ? "cards" : "cards-outline"} size={36} color={isActive ? "#B8860B" : "#9CA3AF"} />
               </View>
             );
@@ -361,10 +361,10 @@ export default function MainLayout() {
             const isActive = isViewingFromLikes || focused;
             return (
               <View style={[styles.iconContainer, isActive && styles.activeIconContainer, { position: "relative" }]}>
-                <Ionicons 
-                  name={isActive ? "heart" : "heart-outline"} 
-                  size={36} 
-                  color={isActive ? "#B8860B" : "#9CA3AF"} 
+                <Ionicons
+                  name={isActive ? "heart" : "heart-outline"}
+                  size={36}
+                  color={isActive ? "#B8860B" : "#9CA3AF"}
                 />
                 {newLikesCount > 0 && (
                   <View style={styles.likesCountBadge}>
@@ -385,10 +385,10 @@ export default function MainLayout() {
           tabBarLabel: "",
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.activeIconContainer, { position: "relative" }]}>
-              <Ionicons 
-                name={focused ? "paper-plane" : "paper-plane-outline"} 
-                size={32} 
-                color={focused ? "#B8860B" : "#9CA3AF"} 
+              <Ionicons
+                name={focused ? "paper-plane" : "paper-plane-outline"}
+                size={32}
+                color={focused ? "#B8860B" : "#9CA3AF"}
               />
               {totalUnreadCount > 0 && (
                 <View style={styles.likesCountBadge}>
@@ -460,6 +460,7 @@ export default function MainLayout() {
       <Tabs.Screen name="profile/subscription" options={{ href: null }} />
       <Tabs.Screen name="chat/unmatches" options={{ href: null }} />
       <Tabs.Screen name="profile/settings" options={{ href: null }} />
+      <Tabs.Screen name="profile/account-info" options={{ href: null }} />
     </Tabs>
   );
 }
