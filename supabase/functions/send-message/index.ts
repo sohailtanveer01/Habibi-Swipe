@@ -157,9 +157,9 @@ serve(async (req) => {
 
     // Get message data from request
     const { matchId, content, mediaUrl, mediaType, replyToId } = await req.json();
-    
+
     console.log("📍 Received request:", { matchId, content, mediaUrl, mediaType, replyToId });
-    
+
     if (!matchId) {
       return new Response(
         JSON.stringify({ error: "Missing matchId" }),
@@ -221,32 +221,32 @@ serve(async (req) => {
       match_id: matchId,
       sender_id: user.id,
     };
-    
+
     // Add content if provided
     if (content && content.trim()) {
       messageData.content = content.trim();
     }
-    
+
     // Add media if provided
     if (mediaUrl) {
       const finalMediaType = mediaType || "image"; // Default to image if not specified
-      
+
       // Use image_url for images, voice_url for voice notes
       if (finalMediaType === "image") {
         messageData.image_url = mediaUrl;
       } else if (finalMediaType === "audio" || finalMediaType === "voice") {
         messageData.voice_url = mediaUrl;
       }
-      
+
       messageData.media_type = finalMediaType;
-      
-      console.log("📸 Adding media to message:", { 
+
+      console.log("📸 Adding media to message:", {
         image_url: finalMediaType === "image" ? mediaUrl : null,
         voice_url: (finalMediaType === "audio" || finalMediaType === "voice") ? mediaUrl : null,
-        media_type: finalMediaType 
+        media_type: finalMediaType
       });
     }
-    
+
     // Add reply_to_id if provided
     if (replyToId) {
       // Verify the reply-to message exists and is in the same match
@@ -255,7 +255,7 @@ serve(async (req) => {
         .select("id, match_id")
         .eq("id", replyToId)
         .single();
-      
+
       if (replyError || !replyToMessage) {
         console.error("❌ Reply-to message not found:", replyError);
         return new Response(
@@ -263,20 +263,20 @@ serve(async (req) => {
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       if (replyToMessage.match_id !== matchId) {
         return new Response(
           JSON.stringify({ error: "Reply-to message must be in the same match" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       messageData.reply_to_id = replyToId;
       console.log("💬 Adding reply to message:", replyToId);
     }
-    
+
     console.log("📤 Message data to insert:", JSON.stringify(messageData, null, 2));
-    
+
     const { data: message, error: messageError } = await supabaseClient
       .from("messages")
       .insert(messageData)
@@ -317,24 +317,42 @@ serve(async (req) => {
           auth: { persistSession: false },
         });
 
-        const { data: rows, error: tokenErr } = await tokenClient
-          .from("user_push_tokens")
-          .select("token")
+        // Check recipient's notification preferences
+        const { data: recipientPrefs, error: prefsError } = await tokenClient
+          .from("user_preferences")
+          .select("notifications_enabled")
           .eq("user_id", recipientId)
-          .eq("revoked", false)
-          .order("last_seen_at", { ascending: false })
-          .limit(5);
+          .single();
 
-        if (tokenErr) {
-          console.error("Error fetching push tokens:", tokenErr);
+        if (prefsError) {
+          console.error("Error fetching notification preferences:", prefsError);
+        }
+
+        // Only send notification if enabled
+        const notificationsEnabled = recipientPrefs?.notifications_enabled ?? true;
+
+        if (notificationsEnabled) {
+          const { data: rows, error: tokenErr } = await tokenClient
+            .from("user_push_tokens")
+            .select("token")
+            .eq("user_id", recipientId)
+            .eq("revoked", false)
+            .order("last_seen_at", { ascending: false })
+            .limit(5);
+
+          if (tokenErr) {
+            console.error("Error fetching push tokens:", tokenErr);
+          } else {
+            const tokens = (rows ?? []).map((r: any) => r.token).filter(Boolean);
+            const body = String(messageData.content).slice(0, 120);
+            await sendExpoPush(tokens, {
+              title: "New message",
+              body,
+              data: { type: "chat_message", chatId: matchId },
+            });
+          }
         } else {
-          const tokens = (rows ?? []).map((r: any) => r.token).filter(Boolean);
-          const body = String(messageData.content).slice(0, 120);
-          await sendExpoPush(tokens, {
-            title: "New message",
-            body,
-            data: { type: "chat_message", chatId: matchId },
-          });
+          console.log("Push notification skipped - user preferences disabled");
         }
       }
     } catch (e) {

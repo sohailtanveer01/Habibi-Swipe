@@ -461,6 +461,7 @@ export default function MainLayout() {
       <Tabs.Screen name="chat/unmatches" options={{ href: null }} />
       <Tabs.Screen name="profile/settings" options={{ href: null }} />
       <Tabs.Screen name="profile/account-info" options={{ href: null }} />
+      <Tabs.Screen name="profile/notifications" options={{ href: null }} />
     </Tabs>
   );
 }

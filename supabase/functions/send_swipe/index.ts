@@ -179,34 +179,52 @@ serve(async (req) => {
         .single();
       const likerName = likerProfile?.first_name || likerProfile?.name || "Someone";
 
-      const { data: tokenRows, error: tokenErr } = await supabase
-        .from("user_push_tokens")
-        .select("token")
+      // Check recipient's notification preferences
+      const { data: recipientPrefs, error: prefsError } = await supabase
+        .from("user_preferences")
+        .select("notifications_enabled")
         .eq("user_id", swiped_id)
-        .eq("revoked", false)
-        .order("last_seen_at", { ascending: false })
-        .limit(5);
+        .single();
 
-      if (!tokenErr) {
-        const tokens = (tokenRows ?? []).map((r: any) => r.token).filter(Boolean);
-        if (tokens.length > 0) {
-          let title, body, data;
+      if (prefsError) {
+        console.error("Error fetching notification preferences:", prefsError);
+      }
 
-          if (reverseSwipe) {
-            // Match Notification
-            title = "It's a Match! 🎉";
-            body = `You and ${likerName} have matched! Tap to chat.`;
-            data = { type: "match", matchId: matchId, swiperId: user.id };
-          } else {
-            // Like Notification
-            title = "New Like!";
-            body = action === "superlike" ? `${likerName} super liked you! 💫` : `${likerName} liked you! 💖`;
-            data = { type: "new_like", swiperId: user.id };
+      // Only send notification if enabled
+      const notificationsEnabled = recipientPrefs?.notifications_enabled ?? true;
+
+      if (notificationsEnabled) {
+        const { data: tokenRows, error: tokenErr } = await supabase
+          .from("user_push_tokens")
+          .select("token")
+          .eq("user_id", swiped_id)
+          .eq("revoked", false)
+          .order("last_seen_at", { ascending: false })
+          .limit(5);
+
+        if (!tokenErr) {
+          const tokens = (tokenRows ?? []).map((r: any) => r.token).filter(Boolean);
+          if (tokens.length > 0) {
+            let title, body, data;
+
+            if (reverseSwipe) {
+              // Match Notification
+              title = "It's a Match! 🎉";
+              body = `You and ${likerName} have matched! Tap to chat.`;
+              data = { type: "match", matchId: matchId, swiperId: user.id };
+            } else {
+              // Like Notification
+              title = "New Like!";
+              body = action === "superlike" ? `${likerName} super liked you! 💫` : `${likerName} liked you! 💖`;
+              data = { type: "new_like", swiperId: user.id };
+            }
+
+            await sendExpoPush(tokens, { title, body, data });
+            console.log(`📱 Sent ${reverseSwipe ? "match" : "like"} notification to user:`, swiped_id);
           }
-
-          await sendExpoPush(tokens, { title, body, data });
-          console.log(`📱 Sent ${reverseSwipe ? "match" : "like"} notification to user:`, swiped_id);
         }
+      } else {
+        console.log("Push notification skipped - user preferences disabled");
       }
     } catch (e) {
       console.error("Push notification failed:", e);

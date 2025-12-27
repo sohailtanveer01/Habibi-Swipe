@@ -160,7 +160,7 @@ export default function SettingsScreen() {
           icon="notifications-outline"
           title="Notifications"
           subtitle="Push notifications, email alerts"
-          onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
+          onPress={() => router.push("/(main)/profile/notifications")}
         />
 
         <SettingsItem
@@ -188,22 +188,7 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
 
-        {/* Preferences Section */}
-        <Text className="text-gray-400 text-sm font-medium mb-3 mt-6">PREFERENCES</Text>
 
-        <SettingsItem
-          icon="options-outline"
-          title="Discovery Settings"
-          subtitle="Age range, distance, filters"
-          onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
-        />
-
-        <SettingsItem
-          icon="language-outline"
-          title="Language"
-          subtitle="English"
-          onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
-        />
 
         {/* Support Section */}
         <Text className="text-gray-400 text-sm font-medium mb-3 mt-6">SUPPORT</Text>
