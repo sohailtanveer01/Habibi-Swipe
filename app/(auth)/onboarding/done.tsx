@@ -1,9 +1,9 @@
-import { View, Text, Pressable, ActivityIndicator } from "react-native";
-import { useOnboarding } from "../../../lib/onboardingStore";
-import { supabase } from "../../../lib/supabase";
+import OnboardingBackground from "@/components/OnboardingBackground";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import OnboardingBackground from "@/components/OnboardingBackground";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { useOnboarding } from "../../../lib/onboardingStore";
+import { supabase } from "../../../lib/supabase";
 
 export default function OnboardingDone() {
   const { data } = useOnboarding();
@@ -22,7 +22,7 @@ export default function OnboardingDone() {
     try {
       // Upload any local photo URIs that haven't been uploaded yet
       const uploadedPhotos: string[] = [];
-      
+
       for (const photo of data.photos) {
         // Check if it's already a URL (uploaded) or a local URI (needs upload)
         if (photo.startsWith('http://') || photo.startsWith('https://')) {
@@ -83,6 +83,8 @@ export default function OnboardingDone() {
         bio: data.bio,
         photos: uploadedPhotos,
         location: locationPoint,
+        city: data.city,
+        country: data.country,
         verified: false,
         last_active_at: new Date().toISOString(),
       });

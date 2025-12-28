@@ -109,14 +109,16 @@ export default function ProfilePreviewScreen() {
       setAlcoholHabit(data.alcohol_habit || "");
       setSmokingHabit(data.smoking_habit || "");
 
-      // Handle location data (could be PostGIS point, object, or string)
-      if (data.location) {
+      // Handle location data - prioritize city and country fields
+      if (data.city || data.country) {
+        setLocation(`${data.city || ''}${data.city && data.country ? ', ' : ''}${data.country || ''}`);
+      } else if (data.location) {
         if (typeof data.location === 'string') {
-          setLocation(data.location);
+          setLocation(data.location.startsWith('POINT') ? 'Nearby' : data.location);
         } else if (data.location.city || data.location.country) {
           setLocation(`${data.location.city || ''}${data.location.city && data.location.country ? ', ' : ''}${data.location.country || ''}`);
         } else if (data.location.lat && data.location.lon) {
-          // PostGIS point - could reverse geocode or show coordinates
+          // PostGIS point - coordinates fallback
           setLocation(`${data.location.lat.toFixed(2)}, ${data.location.lon.toFixed(2)}`);
         }
       }

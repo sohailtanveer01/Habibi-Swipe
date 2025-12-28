@@ -175,6 +175,14 @@ export default function SwipeScreen() {
 
   const BOOST_ICON_SIZE = 22;
 
+
+  useEffect(() => {
+    if (profiles[index]) {
+      console.log("Current profile prompts:", profiles[index]);
+    }
+  }, [index, profiles]);
+
+
   // Countdown timer for active boost
   useEffect(() => {
     if (!boostExpiresAt) {
@@ -222,11 +230,7 @@ export default function SwipeScreen() {
       }
 
       if (profile) {
-        const { data: promptsData } = await supabase
-          .from("user_prompts")
-          .select("question, answer, display_order")
-          .eq("user_id", targetUserId)
-          .order("display_order", { ascending: true });
+
 
         const { data: existingSwipeData } = await supabase
           .from("swipes")
@@ -420,12 +424,16 @@ export default function SwipeScreen() {
   const openDetails = useCallback(
     async (profile: any) => {
       if (!profile) return;
+
       setDetailsProfile(profile);
-      setDetailsPrompts([]);
+
+      // ✅ USE PROMPTS FROM SWIPE FEED
+      setDetailsPrompts(profile.prompts ?? []);
+
       setDetailsVisible(true);
       sheetY.value = SHEET_HEIGHT;
       backdrop.value = 0;
-      // Animate in
+
       sheetY.value = withTiming(0, {
         duration: 280,
         easing: Easing.out(Easing.cubic),
@@ -434,20 +442,12 @@ export default function SwipeScreen() {
         duration: 200,
         easing: Easing.out(Easing.cubic),
       });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
 
-      // Fetch prompts for this profile
-      if (profile.id) {
-        const { data } = await supabase
-          .from("user_prompts")
-          .select("question, answer, display_order")
-          .eq("user_id", profile.id)
-          .order("display_order", { ascending: true });
-        if (data) setDetailsPrompts(data);
-      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
     },
     [SHEET_HEIGHT, backdrop, sheetY]
   );
+
 
   // Close profile details bottom sheet
   const closeDetails = useCallback(() => {
@@ -1052,6 +1052,13 @@ export default function SwipeScreen() {
   const detailsEthnicity = detailsProfile?.ethnicity || "";
   const detailsNationality = detailsProfile?.nationality || "";
   const detailsBio = detailsProfile?.bio || "";
+  const detailsLocation = detailsProfile?.city || detailsProfile?.country
+    ? `${detailsProfile?.city || ''}${detailsProfile?.city && detailsProfile?.country ? ', ' : ''}${detailsProfile?.country || ''}`
+    : (detailsProfile?.location
+      ? (typeof detailsProfile.location === 'string'
+        ? (detailsProfile.location.startsWith('POINT') ? 'Nearby' : detailsProfile.location)
+        : `${detailsProfile.location.city || ''}${detailsProfile.location.city && detailsProfile.location.country ? ', ' : ''}${detailsProfile.location.country || ''}`)
+      : "");
 
   // Check if sections should be shown
   const hasPersonalInfo =
@@ -2541,6 +2548,27 @@ export default function SwipeScreen() {
                             }}
                           >
                             🏳️ {detailsNationality}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {detailsLocation ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: "#B8860B",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: "#FFFFFF",
+                              fontWeight: "500",
+                            }}
+                          >
+                            📍 {detailsLocation}
                           </Text>
                         </View>
                       ) : null}

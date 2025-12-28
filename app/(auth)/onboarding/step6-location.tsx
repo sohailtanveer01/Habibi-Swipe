@@ -1,10 +1,10 @@
-import { View, Text, Pressable, Platform, KeyboardAvoidingView } from "react-native";
+import OnboardingBackground from "@/components/OnboardingBackground";
+import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { useOnboarding } from "../../../lib/onboardingStore";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Ionicons } from "@expo/vector-icons";
-import OnboardingBackground from "@/components/OnboardingBackground";
+import { KeyboardAvoidingView, Platform, Pressable, Text, View } from "react-native";
+import { useOnboarding } from "../../../lib/onboardingStore";
 
 const TOTAL_STEPS = 8;
 const CURRENT_STEP = 6;
@@ -26,9 +26,28 @@ export default function Step6Location() {
     }
 
     const loc = await Location.getCurrentPositionAsync({});
+
+    // Reverse geocode to get city and country
+    let city = "";
+    let country = "";
+    try {
+      const reverse = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+      if (reverse && reverse.length > 0) {
+        city = reverse[0].city || reverse[0].region || "";
+        country = reverse[0].country || "";
+      }
+    } catch (e) {
+      console.error("Error reverse geocoding:", e);
+    }
+
     setData((d) => ({
       ...d,
       location: { lat: loc.coords.latitude, lon: loc.coords.longitude },
+      city,
+      country,
     }));
 
     setLoading(false);
@@ -37,94 +56,93 @@ export default function Step6Location() {
 
   return (
     <OnboardingBackground>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-      <View className="flex-1">
-        {/* Header with Back Button and Progress Indicators */}
-        <View className="pt-20 px-6 pb-8">
-        <View className="flex-row items-center justify-between mb-8">
-          {/* Back Button */}
-          <Pressable
-            onPress={() => router.back()}
-            className="w-10 h-10 rounded-full border border-[#B8860B] items-center justify-center"
-          >
-            <Ionicons name="chevron-back" size={20} color="white" />
-          </Pressable>
+        <View className="flex-1">
+          {/* Header with Back Button and Progress Indicators */}
+          <View className="pt-20 px-6 pb-8">
+            <View className="flex-row items-center justify-between mb-8">
+              {/* Back Button */}
+              <Pressable
+                onPress={() => router.back()}
+                className="w-10 h-10 rounded-full border border-[#B8860B] items-center justify-center"
+              >
+                <Ionicons name="chevron-back" size={20} color="white" />
+              </Pressable>
 
-          {/* Step Indicators - Centered */}
-          <View className="flex-row items-center gap-2 flex-1 justify-center px-4">
-            {Array.from({ length: 5 }, (_, i) => i + 1).map((indicator) => {
-              const getIndicatorForStep = (step: number) => {
-                if (step <= 5) return step;
-                return 5;
-              };
-              const activeIndicator = getIndicatorForStep(CURRENT_STEP);
-              const isActive = indicator === activeIndicator;
-              return (
-                <View
-                  key={indicator}
-                  className={`h-1 rounded-full ${
-                    isActive ? "bg-[#F5F573] w-8" : "bg-[#B8860B] w-6"
-                  }`}
-                />
-              );
-            })}
+              {/* Step Indicators - Centered */}
+              <View className="flex-row items-center gap-2 flex-1 justify-center px-4">
+                {Array.from({ length: 5 }, (_, i) => i + 1).map((indicator) => {
+                  const getIndicatorForStep = (step: number) => {
+                    if (step <= 5) return step;
+                    return 5;
+                  };
+                  const activeIndicator = getIndicatorForStep(CURRENT_STEP);
+                  const isActive = indicator === activeIndicator;
+                  return (
+                    <View
+                      key={indicator}
+                      className={`h-1 rounded-full ${isActive ? "bg-[#F5F573] w-8" : "bg-[#B8860B] w-6"
+                        }`}
+                    />
+                  );
+                })}
+              </View>
+
+              {/* Step Text - Right Aligned */}
+              <Text className="text-[#B8860B] text-xs font-medium" style={{ width: 50, textAlign: 'right' }}>
+                step {CURRENT_STEP}/{TOTAL_STEPS}
+              </Text>
+            </View>
           </View>
 
-          {/* Step Text - Right Aligned */}
-          <Text className="text-[#B8860B] text-xs font-medium" style={{ width: 50, textAlign: 'right' }}>
-            step {CURRENT_STEP}/{TOTAL_STEPS}
-          </Text>
-        </View>
-      </View>
-
-      <View className="flex-1 px-6 justify-center items-center">
-        {/* Location Icon Circle */}
-        <View 
-          className="w-32 h-32 rounded-full items-center justify-center mb-8"
-          style={{
-            borderWidth: 2,
-            borderColor: "#eebd2b", // Golden yellow ring
-          }}
-        >
-          <Ionicons name="location" size={64} color="#eebd2b" />
-        </View>
-
-        {/* Heading */}
-        <Text className="text-white text-3xl font-bold mb-4 text-center">
-          Find Matches Nearby
-        </Text>
-
-        {/* Description */}
-        <Text className="text-white/70 text-base mb-10 text-center px-4">
-          Enable your location to connect with people in your area and enhance your matching potential.
-        </Text>
-
-        {/* Buttons */}
-        <View className="w-full">
-          <Pressable
-            className="bg-[#B8860B] p-4 rounded-2xl items-center mb-3"
-            onPress={enableLocation}
-            disabled={loading}
-          >
-            <Text className="text-white text-lg font-semibold">
-              {loading ? "Getting location..." : "Enable Location"}
-            </Text>
-          </Pressable>
-
-          {!hasLocation && (
-            <Pressable
-              className="bg-white/10 p-4 rounded-2xl items-center"
-              onPress={() => router.push("/onboarding/step7-ethnicity")}
+          <View className="flex-1 px-6 justify-center items-center">
+            {/* Location Icon Circle */}
+            <View
+              className="w-32 h-32 rounded-full items-center justify-center mb-8"
+              style={{
+                borderWidth: 2,
+                borderColor: "#eebd2b", // Golden yellow ring
+              }}
             >
-              <Text className="text-white/80">Skip for now</Text>
-            </Pressable>
-          )}
+              <Ionicons name="location" size={64} color="#eebd2b" />
+            </View>
+
+            {/* Heading */}
+            <Text className="text-white text-3xl font-bold mb-4 text-center">
+              Find Matches Nearby
+            </Text>
+
+            {/* Description */}
+            <Text className="text-white/70 text-base mb-10 text-center px-4">
+              Enable your location to connect with people in your area and enhance your matching potential.
+            </Text>
+
+            {/* Buttons */}
+            <View className="w-full">
+              <Pressable
+                className="bg-[#B8860B] p-4 rounded-2xl items-center mb-3"
+                onPress={enableLocation}
+                disabled={loading}
+              >
+                <Text className="text-white text-lg font-semibold">
+                  {loading ? "Getting location..." : "Enable Location"}
+                </Text>
+              </Pressable>
+
+              {!hasLocation && (
+                <Pressable
+                  className="bg-white/10 p-4 rounded-2xl items-center"
+                  onPress={() => router.push("/onboarding/step7-ethnicity")}
+                >
+                  <Text className="text-white/80">Skip for now</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
         </View>
-      </View>
-      </View>
       </KeyboardAvoidingView>
     </OnboardingBackground>
   );

@@ -20,6 +20,8 @@ type OnboardingData = {
   bio: string;
   photos: string[]; // Supabase public URLs
   location: { lat: number; lon: number } | null;
+  city: string;
+  country: string;
   ethnicity: string;
   nationality: string;
   prompts: Array<{ id: string; question: string; answer: string }>; // User prompts and answers
@@ -55,6 +57,8 @@ const defaultData: OnboardingData = {
   bio: "",
   photos: [],
   location: null,
+  city: "",
+  country: "",
   ethnicity: "",
   nationality: "",
   prompts: [],

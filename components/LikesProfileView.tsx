@@ -43,7 +43,14 @@ export default function LikesProfileView({ profile }: any) {
   const nationality = profile.nationality || "";
   const hobbies = profile.hobbies || [];
   const bio = profile.bio || "";
-  const location = profile.location ? (typeof profile.location === 'string' ? profile.location : `${profile.location.city || ''}${profile.location.city && profile.location.country ? ', ' : ''}${profile.location.country || ''}`) : null;
+  // Handle location - prioritize new city/country fields
+  const location = profile.city || profile.country
+    ? `${profile.city || ''}${profile.city && profile.country ? ', ' : ''}${profile.country || ''}`
+    : (profile.location
+      ? (typeof profile.location === 'string'
+        ? (profile.location.startsWith('POINT') ? 'Nearby' : profile.location)
+        : `${profile.location.city || ''}${profile.location.city && profile.location.country ? ', ' : ''}${profile.location.country || ''}`)
+      : null);
 
   // Fetch prompts
   useEffect(() => {
