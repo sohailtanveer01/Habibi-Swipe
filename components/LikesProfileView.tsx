@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
+import { getFlagByName } from "../lib/countries";
 import { supabase } from "../lib/supabase";
 
 const { width, height } = Dimensions.get("window");
@@ -126,7 +127,7 @@ export default function LikesProfileView({ profile }: any) {
   if (hasPersonalInfo) {
     dataSections.push(
       <View key="personal" style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Personal Info</Text>
+        <Text style={styles.sectionTitle}>Essentials</Text>
         <View style={styles.chipsContainer}>
           {height && (
             <View style={styles.infoChip}>
@@ -207,7 +208,9 @@ export default function LikesProfileView({ profile }: any) {
           ))}
           {location && (
             <View style={styles.infoChip}>
-              <Text style={styles.infoChipText}>📍 {location}</Text>
+              <Text style={styles.infoChipText}>
+                {getFlagByName(profile.country || "") || "📍"} {location}
+              </Text>
             </View>
           )}
         </View>
@@ -228,7 +231,9 @@ export default function LikesProfileView({ profile }: any) {
           )}
           {nationality && (
             <View style={styles.infoChip}>
-              <Text style={styles.infoChipText}>🏳️ {nationality}</Text>
+              <Text style={styles.infoChipText}>
+                {getFlagByName(nationality) || "🏳️"} {nationality}
+              </Text>
             </View>
           )}
         </View>
@@ -353,22 +358,26 @@ const getStyles = () => {
       color: '#FFFFFF',
     },
     sectionCard: {
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-      borderRadius: 20,
+      backgroundColor: "rgba(255, 255, 255, 0.08)",
+      borderRadius: 24,
       padding: 20,
       marginHorizontal: 20,
-      marginTop: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
+      marginTop: 24,
+      borderWidth: 1,
+      borderColor: "rgba(255, 255, 255, 0.12)",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 3,
+      shadowRadius: 12,
+      elevation: 5,
     },
     sectionTitle: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: "800",
+      color: "rgba(255, 255, 255, 0.5)",
       marginBottom: 16,
+      textTransform: "uppercase",
+      letterSpacing: 2,
     },
     chipsContainer: {
       flexDirection: 'row',
@@ -376,45 +385,56 @@ const getStyles = () => {
       gap: 10,
     },
     infoChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
       paddingHorizontal: 16,
       paddingVertical: 10,
       borderRadius: 20,
       borderWidth: 1.5,
-      borderColor: '#B8860B',
-      backgroundColor: 'transparent',
+      borderColor: "rgba(184, 134, 11, 0.5)",
+      backgroundColor: "rgba(184, 134, 11, 0.05)",
     },
     infoChipText: {
       color: '#FFFFFF',
       fontSize: 14,
-      fontWeight: '500',
+      fontWeight: '600',
     },
     bioText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      lineHeight: 24,
+      fontSize: 17,
+      lineHeight: 26,
+      color: "rgba(255, 255, 255, 0.95)",
+      fontWeight: "500",
     },
     promptsContainer: {
       paddingHorizontal: 20,
-      marginTop: 16,
+      marginTop: 24,
       gap: 16,
     },
     promptCard: {
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-      borderRadius: 20,
-      padding: 20,
-      borderWidth: 1.5,
-      borderColor: '#B8860B',
+      backgroundColor: "rgba(184, 134, 11, 0.08)",
+      borderRadius: 24,
+      padding: 24,
+      borderWidth: 1,
+      borderColor: "rgba(184, 134, 11, 0.25)",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.4,
+      shadowRadius: 16,
+      elevation: 8,
     },
     promptQuestion: {
-      color: '#B8860B',
-      fontSize: 16,
-      fontWeight: '600',
-      marginBottom: 8,
+      fontSize: 13,
+      fontWeight: "800",
+      color: "#B8860B",
+      marginBottom: 12,
+      textTransform: "uppercase",
+      letterSpacing: 1.2,
     },
     promptAnswer: {
-      color: '#FFFFFF',
-      fontSize: 15,
-      lineHeight: 22,
+      fontSize: 22,
+      lineHeight: 30,
+      color: "#FFFFFF",
+      fontWeight: "800",
     },
     placeholder: {
       alignItems: 'center',

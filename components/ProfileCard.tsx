@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import { Dimensions, Text, View } from "react-native";
+import { getFlagByName } from "../lib/countries";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - 32;
@@ -133,7 +134,9 @@ export default function ProfileCard({
             {/* Location */}
             {(profile.city || profile.country || profile.location) && (
               <View className="flex-row items-center gap-2">
-                <Text className="text-white/70 text-base">📍</Text>
+                <Text className="text-white/70 text-base">
+                  {getFlagByName(profile.country || "") || "📍"}
+                </Text>
                 <Text className="text-white/90 text-base">
                   {profile.city || profile.country
                     ? `${profile.city || ''}${profile.city && profile.country ? ', ' : ''}${profile.country || ''}`
@@ -189,7 +192,9 @@ export default function ProfileCard({
             {/* Ethnicity & Nationality */}
             {(profile.ethnicity || profile.nationality) && (
               <View className="flex-row items-center gap-2">
-                <Text className="text-white/70 text-base">🌍</Text>
+                <Text className="text-white/70 text-base">
+                  {profile.nationality ? (getFlagByName(profile.nationality) || "🌍") : "🌍"}
+                </Text>
                 <Text className="text-white/90 text-base">
                   {[profile.ethnicity, profile.nationality].filter(Boolean).join(" • ")}
                 </Text>

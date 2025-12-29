@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import * as ScreenCapture from "expo-screen-capture";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -34,6 +35,7 @@ import DiamondIcon from "../../../components/DiamondIcon";
 import LikesProfileView from "../../../components/LikesProfileView";
 import Logo from "../../../components/Logo";
 import SwipeCard from "../../../components/SwipeCard";
+import { getFlagByName } from "../../../lib/countries";
 import { useSwipeStore } from "../../../lib/stores/swipeStore";
 import { supabase } from "../../../lib/supabase";
 
@@ -56,6 +58,7 @@ const TRANSITION_SPRING = {
 };
 
 export default function SwipeScreen() {
+  ScreenCapture.usePreventScreenCapture();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userId, source } = useLocalSearchParams<{
@@ -2157,57 +2160,25 @@ export default function SwipeScreen() {
               <View style={{ paddingHorizontal: 20 }}>
                 {/* Personal Info Section */}
                 {hasPersonalInfo && (
-                  <View
-                    style={{
-                      marginTop: 20,
-                      backgroundColor: "rgba(255,255,255,0.05)",
-                      borderRadius: 20,
-                      padding: 16,
-                    }}
-                  >
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={{ gap: 10 }}
+                  <View style={detailsStyles.sectionCard}>
+                    <Text style={detailsStyles.sectionTitle}>Essentials</Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 10,
+                      }}
                     >
                       {detailsHeight ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             📏 {detailsHeight}
                           </Text>
                         </View>
                       ) : null}
                       {detailsMaritalStatus ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             💍{" "}
                             {detailsMaritalStatus.charAt(0).toUpperCase() +
                               detailsMaritalStatus.slice(1)}
@@ -2215,22 +2186,8 @@ export default function SwipeScreen() {
                         </View>
                       ) : null}
                       {detailsHasChildren !== null ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             {detailsHasChildren
                               ? "👶 Has children"
                               : "👶 No children"}
@@ -2238,71 +2195,27 @@ export default function SwipeScreen() {
                         </View>
                       ) : null}
                       {detailsEducation ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             🎓 {detailsEducation}
                           </Text>
                         </View>
                       ) : null}
                       {detailsProfession ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             💼 {detailsProfession}
                           </Text>
                         </View>
                       ) : null}
-                    </ScrollView>
+                    </View>
                   </View>
                 )}
 
                 {/* Religious Info Section */}
                 {hasReligiousInfo && (
-                  <View
-                    style={{
-                      marginTop: 16,
-                      backgroundColor: "rgba(255,255,255,0.05)",
-                      borderRadius: 20,
-                      padding: 16,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 18,
-                        fontWeight: "600",
-                        color: "#FFFFFF",
-                        marginBottom: 12,
-                      }}
-                    >
-                      Religious
-                    </Text>
+                  <View style={detailsStyles.sectionCard}>
+                    <Text style={detailsStyles.sectionTitle}>Religious</Text>
                     <View
                       style={{
                         flexDirection: "row",
@@ -2311,22 +2224,8 @@ export default function SwipeScreen() {
                       }}
                     >
                       {detailsSect ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             🕌{" "}
                             {detailsSect.charAt(0).toUpperCase() +
                               detailsSect.slice(1)}
@@ -2334,22 +2233,8 @@ export default function SwipeScreen() {
                         </View>
                       ) : null}
                       {detailsBornMuslim !== null ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             {detailsBornMuslim
                               ? "⭐ Born Muslim"
                               : "⭐ Converted to Islam"}
@@ -2357,22 +2242,8 @@ export default function SwipeScreen() {
                         </View>
                       ) : null}
                       {detailsReligiousPractice ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             📿{" "}
                             {detailsReligiousPractice.charAt(0).toUpperCase() +
                               detailsReligiousPractice.slice(1)}
@@ -2380,22 +2251,8 @@ export default function SwipeScreen() {
                         </View>
                       ) : null}
                       {detailsAlcoholHabit ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             🍷 Alcohol:{" "}
                             {detailsAlcoholHabit.charAt(0).toUpperCase() +
                               detailsAlcoholHabit.slice(1)}
@@ -2403,22 +2260,8 @@ export default function SwipeScreen() {
                         </View>
                       ) : null}
                       {detailsSmokingHabit ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             🚬 Smoking:{" "}
                             {detailsSmokingHabit.charAt(0).toUpperCase() +
                               detailsSmokingHabit.slice(1)}
@@ -2431,24 +2274,8 @@ export default function SwipeScreen() {
 
                 {/* Lifestyle / Interests Section */}
                 {detailsInterests && detailsInterests.length > 0 && (
-                  <View
-                    style={{
-                      marginTop: 16,
-                      backgroundColor: "rgba(255,255,255,0.05)",
-                      borderRadius: 20,
-                      padding: 16,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 18,
-                        fontWeight: "600",
-                        color: "#FFFFFF",
-                        marginBottom: 12,
-                      }}
-                    >
-                      Lifestyle
-                    </Text>
+                  <View style={detailsStyles.sectionCard}>
+                    <Text style={detailsStyles.sectionTitle}>Interests</Text>
                     <View
                       style={{
                         flexDirection: "row",
@@ -2457,23 +2284,8 @@ export default function SwipeScreen() {
                       }}
                     >
                       {detailsInterests.map((hobby: string, i: number) => (
-                        <View
-                          key={`${hobby}-${i}`}
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View key={`${hobby}-${i}`} style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             🎯 {hobby}
                           </Text>
                         </View>
@@ -2484,24 +2296,8 @@ export default function SwipeScreen() {
 
                 {/* Background Section */}
                 {hasBackgroundInfo && (
-                  <View
-                    style={{
-                      marginTop: 16,
-                      backgroundColor: "rgba(255,255,255,0.05)",
-                      borderRadius: 20,
-                      padding: 16,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 18,
-                        fontWeight: "600",
-                        color: "#FFFFFF",
-                        marginBottom: 12,
-                      }}
-                    >
-                      Background
-                    </Text>
+                  <View style={detailsStyles.sectionCard}>
+                    <Text style={detailsStyles.sectionTitle}>Background</Text>
                     <View
                       style={{
                         flexDirection: "row",
@@ -2510,65 +2306,25 @@ export default function SwipeScreen() {
                       }}
                     >
                       {detailsEthnicity ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
                             🌍 {detailsEthnicity}
                           </Text>
                         </View>
                       ) : null}
                       {detailsNationality ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
-                            🏳️ {detailsNationality}
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
+                            {getFlagByName(detailsNationality) || "🏳️"}{" "}
+                            {detailsNationality}
                           </Text>
                         </View>
                       ) : null}
                       {detailsLocation ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            borderWidth: 1.5,
-                            borderColor: "#B8860B",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: "#FFFFFF",
-                              fontWeight: "500",
-                            }}
-                          >
-                            📍 {detailsLocation}
+                        <View style={detailsStyles.infoChip}>
+                          <Text style={detailsStyles.infoChipText}>
+                            {getFlagByName(detailsProfile?.country || "") || "📍"}{" "}
+                            {detailsLocation}
                           </Text>
                         </View>
                       ) : null}
@@ -2578,33 +2334,9 @@ export default function SwipeScreen() {
 
                 {/* About / Bio Section */}
                 {detailsBio ? (
-                  <View
-                    style={{
-                      marginTop: 16,
-                      backgroundColor: "rgba(255,255,255,0.05)",
-                      borderRadius: 20,
-                      padding: 16,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 18,
-                        fontWeight: "600",
-                        color: "#FFFFFF",
-                        marginBottom: 12,
-                      }}
-                    >
-                      About Me
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        lineHeight: 24,
-                        color: "rgba(255,255,255,0.9)",
-                      }}
-                    >
-                      {detailsBio}
-                    </Text>
+                  <View style={detailsStyles.sectionCard}>
+                    <Text style={detailsStyles.sectionTitle}>About Me</Text>
+                    <Text style={detailsStyles.bioText}>{detailsBio}</Text>
                   </View>
                 ) : null}
 
@@ -2612,37 +2344,15 @@ export default function SwipeScreen() {
                 {detailsPrompts &&
                   detailsPrompts.length > 0 &&
                   detailsPrompts.some((p: any) => p.question && p.answer) && (
-                    <View style={{ marginTop: 16, gap: 12 }}>
+                    <View style={{ marginTop: 24, gap: 16 }}>
                       {detailsPrompts
                         .filter((p: any) => p.question && p.answer)
                         .map((prompt: any, idx: number) => (
-                          <View
-                            key={idx}
-                            style={{
-                              backgroundColor: "rgba(255,255,255,0.05)",
-                              borderRadius: 18,
-                              padding: 18,
-                              borderWidth: 1,
-                              borderColor: "rgba(184,134,11,0.2)",
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 16,
-                                fontWeight: "600",
-                                color: "#FFFFFF",
-                                marginBottom: 8,
-                              }}
-                            >
+                          <View key={idx} style={detailsStyles.promptCard}>
+                            <Text style={detailsStyles.promptQuestion}>
                               {prompt.question}
                             </Text>
-                            <Text
-                              style={{
-                                fontSize: 15,
-                                lineHeight: 22,
-                                color: "rgba(255,255,255,0.85)",
-                              }}
-                            >
+                            <Text style={detailsStyles.promptAnswer}>
                               {prompt.answer}
                             </Text>
                           </View>
@@ -2936,3 +2646,74 @@ const matchModalStyles = {
     color: "#000000",
   },
 };
+
+const detailsStyles = StyleSheet.create({
+  sectionCard: {
+    marginTop: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "rgba(255, 255, 255, 0.5)",
+    marginBottom: 16,
+    textTransform: "uppercase",
+    letterSpacing: 2,
+  },
+  infoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "rgba(184, 134, 11, 0.5)",
+    backgroundColor: "rgba(184, 134, 11, 0.05)",
+  },
+  infoChipText: {
+    fontSize: 14,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  promptCard: {
+    backgroundColor: "rgba(184, 134, 11, 0.08)",
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "rgba(184, 134, 11, 0.25)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  promptQuestion: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#B8860B",
+    marginBottom: 12,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+  },
+  promptAnswer: {
+    fontSize: 22,
+    lineHeight: 30,
+    color: "#FFFFFF",
+    fontWeight: "800",
+  },
+  bioText: {
+    fontSize: 17,
+    lineHeight: 26,
+    color: "rgba(255, 255, 255, 0.95)",
+    fontWeight: "500",
+  },
+});

@@ -14,6 +14,14 @@ export function countryFlag(code: string) {
   return String.fromCodePoint(A + first, A + second);
 }
 
+// Get flag emoji by country name
+export function getFlagByName(name: string): string {
+  if (!name) return "";
+  const country = COUNTRIES.find(c => c.name.toLowerCase() === name.toLowerCase());
+  if (country) return countryFlag(country.code);
+  return "";
+}
+
 // Comprehensive country list (ISO 3166-1 alpha-2). Includes widely-used entries for nationality pickers.
 export const COUNTRIES: Country[] = [
   { name: "Afghanistan", code: "AF" },
