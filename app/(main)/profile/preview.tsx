@@ -240,7 +240,7 @@ export default function ProfilePreviewScreen() {
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* Build alternating layout: Image -> Data -> Image -> Data... */}
         {(() => {
@@ -441,30 +441,29 @@ const getStyles = () => {
       justifyContent: 'center',
     },
     mainImageContainer: {
-      width: '100%',
+      marginHorizontal: 20,
       height: screenHeight * 0.65,
       position: 'relative',
       marginBottom: 16,
+      borderRadius: 24,
+      overflow: 'hidden',
+      marginTop: 80, // Space for the back button
     },
     mainImage: {
       width: '100%',
       height: '100%',
+      borderRadius: 24,
     },
     secondaryImageContainer: {
       marginHorizontal: 20,
       marginBottom: 16,
-      borderRadius: 20,
+      borderRadius: 24,
       overflow: 'hidden',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 3,
     },
     secondaryImage: {
       width: '100%',
       height: screenHeight * 0.5,
-      borderRadius: 20,
+      borderRadius: 24,
     },
     nameOverlay: {
       position: 'absolute',
@@ -485,7 +484,7 @@ const getStyles = () => {
       borderRadius: 24,
       padding: 20,
       marginHorizontal: 20,
-      marginTop: 24,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: "rgba(255, 255, 255, 0.12)",
       shadowColor: "#000",
