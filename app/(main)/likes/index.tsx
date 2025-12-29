@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, Text, TextInput, View } from "react-native";
 import { supabase } from "../../../lib/supabase";
 
 const { width } = Dimensions.get("window");
@@ -10,7 +10,7 @@ const CARD_WIDTH = (width - 54) / 2; // 2 columns with padding
 // Clean photo URLs - remove localhost references and extract valid Supabase URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
   if (!url || typeof url !== 'string') return null;
-  
+
   // Remove localhost references (e.g., "blob:http://localhost:8081/...")
   if (url.includes('localhost')) {
     // Extract the Supabase URL part before the localhost reference
@@ -20,12 +20,12 @@ function cleanPhotoUrl(url: string | null | undefined): string | null {
     }
     return null;
   }
-  
+
   // Check if it's a valid HTTP/HTTPS URL
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
-  
+
   return null;
 }
 
@@ -63,7 +63,7 @@ export default function LikesScreen() {
     }
 
     console.log("Liked me response:", data);
-    
+
     // Parse the response if it's a string
     let parsedData = data;
     if (typeof data === 'string') {
@@ -76,7 +76,7 @@ export default function LikesScreen() {
         return;
       }
     }
-    
+
     // Handle different response formats
     let likesArray = [];
     if (parsedData) {
@@ -94,10 +94,10 @@ export default function LikesScreen() {
         likesArray = parsedData.data;
       }
     }
-    
+
     console.log("Parsed liked me array:", likesArray.length);
     console.log("First liked me item:", likesArray[0] ? JSON.stringify(likesArray[0], null, 2) : "none");
-    
+
     setLikes(likesArray);
     setLoading(false);
   };
@@ -123,7 +123,7 @@ export default function LikesScreen() {
     }
 
     console.log("My likes response:", data);
-    
+
     // Parse the response if it's a string
     let parsedData = data;
     if (typeof data === 'string') {
@@ -135,7 +135,7 @@ export default function LikesScreen() {
         return;
       }
     }
-    
+
     // Handle different response formats
     let myLikesArray = [];
     if (parsedData) {
@@ -147,7 +147,7 @@ export default function LikesScreen() {
         myLikesArray = parsedData.data;
       }
     }
-    
+
     console.log("Parsed my likes array:", myLikesArray.length);
     console.log("First my like item:", myLikesArray[0] ? JSON.stringify(myLikesArray[0], null, 2) : "none");
     setMyLikes(myLikesArray);
@@ -175,7 +175,7 @@ export default function LikesScreen() {
     }
 
     console.log("Viewers response:", data);
-    
+
     // Parse the response if it's a string
     let parsedData = data;
     if (typeof data === 'string') {
@@ -187,7 +187,7 @@ export default function LikesScreen() {
         return;
       }
     }
-    
+
     // Handle different response formats
     let viewersArray = [];
     if (parsedData) {
@@ -199,7 +199,7 @@ export default function LikesScreen() {
         viewersArray = parsedData.data;
       }
     }
-    
+
     console.log("Parsed viewers array:", viewersArray.length);
     setViewers(viewersArray);
     setLoading(false);
@@ -226,7 +226,7 @@ export default function LikesScreen() {
     }
 
     console.log("Passed on response:", data);
-    
+
     // Parse the response if it's a string
     let parsedData = data;
     if (typeof data === 'string') {
@@ -239,7 +239,7 @@ export default function LikesScreen() {
         return;
       }
     }
-    
+
     // Handle different response formats
     let passedOnArray = [];
     if (parsedData) {
@@ -251,7 +251,7 @@ export default function LikesScreen() {
         passedOnArray = parsedData.data;
       }
     }
-    
+
     console.log("Parsed passed on array:", passedOnArray.length);
     setPassedOn(passedOnArray);
     setLoading(false);
@@ -315,6 +315,14 @@ export default function LikesScreen() {
     { key: "passedOn", label: "Passed on", count: passedOn.length },
   ] as const;
 
+  if (loading && !likes.length && !myLikes.length && !viewers.length && !passedOn.length) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color="#B8860B" />
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-black pt-20 px-4 pb-16">
       <View className="flex-row rounded-full px-1 py-1.5 mb-6">
@@ -324,14 +332,12 @@ export default function LikesScreen() {
             <Pressable
               key={tab.key}
               onPress={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2 rounded-full items-center justify-center ${
-                isActive ? "bg-[#B8860B]" : "bg-transparent"
-              }`}
+              className={`flex-1 py-2 rounded-full items-center justify-center ${isActive ? "bg-[#B8860B]" : "bg-transparent"
+                }`}
             >
               <Text
-                className={`text-sm font-semibold ${
-                  isActive ? "text-black" : "text-white/70"
-                }`}
+                className={`text-sm font-semibold ${isActive ? "text-black" : "text-white/70"
+                  }`}
               >
                 {tab.label}
                 {tab.count > 0 ? ` (${tab.count})` : ""}
@@ -379,16 +385,16 @@ export default function LikesScreen() {
                   }
                 }
               }
-              
+
               const fullName = item.first_name && item.last_name
                 ? `${item.first_name} ${item.last_name}`
                 : item.name || "Unknown";
-              
+
               return (
                 <Pressable
                   className="bg-white/5 rounded-3xl overflow-hidden"
-                  style={{ 
-                    width: CARD_WIDTH, 
+                  style={{
+                    width: CARD_WIDTH,
                     height: CARD_WIDTH * 1.45,
                     borderWidth: 1,
                     borderColor: "rgba(184,134,11,0.7)",
@@ -422,15 +428,15 @@ export default function LikesScreen() {
                         cachePolicy="memory-disk"
                         priority="normal"
                       />
-                      <View 
-                        style={{ 
-                          position: 'absolute', 
-                          bottom: 0, 
-                          left: 0, 
-                          right: 0, 
-                          height: 80, 
-                          backgroundColor: 'rgba(0,0,0,0.6)' 
-                        }} 
+                      <View
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 80,
+                          backgroundColor: 'rgba(0,0,0,0.6)'
+                        }}
                       />
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
                         <Text className="text-white text-lg font-semibold" numberOfLines={1}>
@@ -448,15 +454,15 @@ export default function LikesScreen() {
                   ) : (
                     <View className="w-full h-full bg-white/5 items-center justify-center" style={{ position: 'relative' }}>
                       <Text className="text-white/60 text-4xl">👤</Text>
-                      <View 
-                        style={{ 
-                          position: 'absolute', 
-                          bottom: 0, 
-                          left: 0, 
-                          right: 0, 
-                          height: 80, 
-                          backgroundColor: 'rgba(0,0,0,0.6)' 
-                        }} 
+                      <View
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 80,
+                          backgroundColor: 'rgba(0,0,0,0.6)'
+                        }}
                       />
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
                         <Text className="text-white text-lg font-semibold" numberOfLines={1}>
@@ -510,18 +516,18 @@ export default function LikesScreen() {
                   }
                 }
               }
-              
+
               const fullName = item.first_name && item.last_name
                 ? `${item.first_name} ${item.last_name}`
                 : item.name || "Unknown";
-              
+
               const viewCount = item.viewCount || 1;
-              
+
               return (
                 <Pressable
                   className="bg-white/5 rounded-3xl overflow-hidden"
-                  style={{ 
-                    width: CARD_WIDTH, 
+                  style={{
+                    width: CARD_WIDTH,
                     height: CARD_WIDTH * 1.45,
                     borderWidth: 1,
                     borderColor: "rgba(184,134,11,0.7)",
@@ -556,15 +562,15 @@ export default function LikesScreen() {
                         cachePolicy="memory-disk"
                         priority="normal"
                       />
-                      <View 
-                        style={{ 
-                          position: 'absolute', 
-                          bottom: 0, 
-                          left: 0, 
-                          right: 0, 
-                          height: 80, 
-                          backgroundColor: 'rgba(0,0,0,0.6)' 
-                        }} 
+                      <View
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 80,
+                          backgroundColor: 'rgba(0,0,0,0.6)'
+                        }}
                       />
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
                         <Text className="text-white text-lg font-semibold" numberOfLines={1}>
@@ -583,14 +589,14 @@ export default function LikesScreen() {
                     <View className="w-full h-full bg-white/5 items-center justify-center" style={{ position: 'relative' }}>
                       <Text className="text-white/60 text-4xl">👤</Text>
                       <View
-                        style={{ 
-                          position: 'absolute', 
-                          bottom: 0, 
-                          left: 0, 
-                          right: 0, 
-                          height: 80, 
-                          backgroundColor: 'rgba(0,0,0,0.6)' 
-                        }} 
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 80,
+                          backgroundColor: 'rgba(0,0,0,0.6)'
+                        }}
                       />
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
                         <Text className="text-white text-lg font-semibold" numberOfLines={1}>
@@ -644,16 +650,16 @@ export default function LikesScreen() {
                   }
                 }
               }
-              
+
               const fullName = item.first_name && item.last_name
                 ? `${item.first_name} ${item.last_name}`
                 : item.name || "Unknown";
-              
+
               return (
                 <Pressable
                   className="bg-white/5 rounded-3xl overflow-hidden"
-                  style={{ 
-                    width: CARD_WIDTH, 
+                  style={{
+                    width: CARD_WIDTH,
                     height: CARD_WIDTH * 1.45,
                     borderWidth: 1,
                     borderColor: "rgba(184,134,11,0.7)",
@@ -679,15 +685,15 @@ export default function LikesScreen() {
                         cachePolicy="memory-disk"
                         priority="normal"
                       />
-                      <View 
-                        style={{ 
-                          position: 'absolute', 
-                          bottom: 0, 
-                          left: 0, 
-                          right: 0, 
-                          height: 80, 
-                          backgroundColor: 'rgba(0,0,0,0.6)' 
-                        }} 
+                      <View
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 80,
+                          backgroundColor: 'rgba(0,0,0,0.6)'
+                        }}
                       />
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
                         <Text className="text-white text-lg font-semibold" numberOfLines={1}>
@@ -705,15 +711,15 @@ export default function LikesScreen() {
                   ) : (
                     <View className="w-full h-full bg-white/5 items-center justify-center" style={{ position: 'relative' }}>
                       <Text className="text-white/60 text-4xl">👤</Text>
-                      <View 
-                        style={{ 
-                          position: 'absolute', 
-                          bottom: 0, 
-                          left: 0, 
-                          right: 0, 
-                          height: 80, 
-                          backgroundColor: 'rgba(0,0,0,0.6)' 
-                        }} 
+                      <View
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 80,
+                          backgroundColor: 'rgba(0,0,0,0.6)'
+                        }}
                       />
                       <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
                         <Text className="text-white text-lg font-semibold" numberOfLines={1}>
@@ -752,54 +758,54 @@ export default function LikesScreen() {
             </Pressable>
           </View>
         ) : (
-        <FlatList
-          data={likes}
-          numColumns={2}
-          columnWrapperStyle={{ gap: 14 }}
-          contentContainerStyle={{ gap: 16, paddingBottom: 80, paddingTop: 4 }}
-          keyExtractor={(item, index) => item.id || item.swipe_id || `like-${index}`}
-          refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={loadLikes} tintColor="#fff" />
-          }
-          renderItem={({ item }) => {
-            // Clean and get the first valid photo
-            let mainPhoto: string | null = null;
-            if (item.photos && Array.isArray(item.photos) && item.photos.length > 0) {
-              // Try each photo until we find a valid one
-              for (const photo of item.photos) {
-                const cleaned = cleanPhotoUrl(photo);
-                if (cleaned) {
-                  mainPhoto = cleaned;
-                  break;
+          <FlatList
+            data={likes}
+            numColumns={2}
+            columnWrapperStyle={{ gap: 14 }}
+            contentContainerStyle={{ gap: 16, paddingBottom: 80, paddingTop: 4 }}
+            keyExtractor={(item, index) => item.id || item.swipe_id || `like-${index}`}
+            refreshControl={
+              <RefreshControl refreshing={loading} onRefresh={loadLikes} tintColor="#fff" />
+            }
+            renderItem={({ item }) => {
+              // Clean and get the first valid photo
+              let mainPhoto: string | null = null;
+              if (item.photos && Array.isArray(item.photos) && item.photos.length > 0) {
+                // Try each photo until we find a valid one
+                for (const photo of item.photos) {
+                  const cleaned = cleanPhotoUrl(photo);
+                  if (cleaned) {
+                    mainPhoto = cleaned;
+                    break;
+                  }
                 }
               }
-            }
-            
-            const fullName = item.first_name && item.last_name
-              ? `${item.first_name} ${item.last_name}`
-              : item.name || "Unknown";
-            
-            console.log("Rendering like card:", {
-              name: fullName,
-              hasPhotos: item.photos?.length || 0,
-              mainPhoto: mainPhoto ? "valid" : "none",
-              rawPhotos: item.photos
-            });
-            
-            return (
-              <Pressable
-                className="bg-white/5 rounded-3xl overflow-hidden"
-                style={{ 
-                  width: CARD_WIDTH, 
-                  height: CARD_WIDTH * 1.45,
-                  borderWidth: 1,
-                  borderColor: "rgba(184,134,11,0.7)",
-                  shadowColor: "#000",
-                  shadowOpacity: 0.4,
-                  shadowRadius: 18,
-                  shadowOffset: { width: 0, height: 12 },
-                  elevation: 16,
-                }}
+
+              const fullName = item.first_name && item.last_name
+                ? `${item.first_name} ${item.last_name}`
+                : item.name || "Unknown";
+
+              console.log("Rendering like card:", {
+                name: fullName,
+                hasPhotos: item.photos?.length || 0,
+                mainPhoto: mainPhoto ? "valid" : "none",
+                rawPhotos: item.photos
+              });
+
+              return (
+                <Pressable
+                  className="bg-white/5 rounded-3xl overflow-hidden"
+                  style={{
+                    width: CARD_WIDTH,
+                    height: CARD_WIDTH * 1.45,
+                    borderWidth: 1,
+                    borderColor: "rgba(184,134,11,0.7)",
+                    shadowColor: "#000",
+                    shadowOpacity: 0.4,
+                    shadowRadius: 18,
+                    shadowOffset: { width: 0, height: 12 },
+                    elevation: 16,
+                  }}
                   onPress={async () => {
                     // Track profile view when tapping from likes tab
                     try {
@@ -814,72 +820,72 @@ export default function LikesScreen() {
                     // Navigate to swipe screen with this user's profile
                     router.push(`/(main)/swipe?userId=${item.id}&source=likedMe`);
                   }}
-              >
-                {mainPhoto ? (
-                  <View style={{ width: '100%', height: '100%', position: 'relative' }}>
-                    <Image
-                      source={{ uri: mainPhoto }}
-                      style={{ width: '100%', height: '100%' }}
-                      contentFit="cover"
-                      transition={200}
-                      cachePolicy="memory-disk"
-                      priority="normal"
-                    />
-                    <View 
-                      style={{ 
-                        position: 'absolute', 
-                        bottom: 0, 
-                        left: 0, 
-                        right: 0, 
-                        height: 80, 
-                        backgroundColor: 'rgba(0,0,0,0.6)' 
-                      }} 
-                    />
-                  <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
-                    <Text className="text-white text-lg font-semibold" numberOfLines={1}>
-                      {fullName}
-                    </Text>
-                    <View className="flex-row mt-2">
-                      <View className="px-2.5 py-1.5 rounded-full bg-white/10">
-                        <Text className="text-[11px] text-white/90 font-semibold">
-                          Liked you
+                >
+                  {mainPhoto ? (
+                    <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                      <Image
+                        source={{ uri: mainPhoto }}
+                        style={{ width: '100%', height: '100%' }}
+                        contentFit="cover"
+                        transition={200}
+                        cachePolicy="memory-disk"
+                        priority="normal"
+                      />
+                      <View
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 80,
+                          backgroundColor: 'rgba(0,0,0,0.6)'
+                        }}
+                      />
+                      <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
+                        <Text className="text-white text-lg font-semibold" numberOfLines={1}>
+                          {fullName}
                         </Text>
-                      </View>
+                        <View className="flex-row mt-2">
+                          <View className="px-2.5 py-1.5 rounded-full bg-white/10">
+                            <Text className="text-[11px] text-white/90 font-semibold">
+                              Liked you
+                            </Text>
+                          </View>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                ) : (
-                  <View className="w-full h-full bg-white/5 items-center justify-center" style={{ position: 'relative' }}>
-                    <Text className="text-white/60 text-4xl">👤</Text>
-                    <View 
-                      style={{ 
-                        position: 'absolute', 
-                        bottom: 0, 
-                        left: 0, 
-                        right: 0, 
-                        height: 80, 
-                        backgroundColor: 'rgba(0,0,0,0.6)' 
-                      }} 
-                    />
-                  <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
-                    <Text className="text-white text-lg font-semibold" numberOfLines={1}>
-                      {fullName}
-                    </Text>
-                    <View className="flex-row mt-2">
-                      <View className="px-2.5 py-1.5 rounded-full bg-white/10">
-                        <Text className="text-[11px] text-white/90 font-semibold">
-                          Liked you
+                  ) : (
+                    <View className="w-full h-full bg-white/5 items-center justify-center" style={{ position: 'relative' }}>
+                      <Text className="text-white/60 text-4xl">👤</Text>
+                      <View
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 80,
+                          backgroundColor: 'rgba(0,0,0,0.6)'
+                        }}
+                      />
+                      <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}>
+                        <Text className="text-white text-lg font-semibold" numberOfLines={1}>
+                          {fullName}
                         </Text>
-                      </View>
+                        <View className="flex-row mt-2">
+                          <View className="px-2.5 py-1.5 rounded-full bg-white/10">
+                            <Text className="text-[11px] text-white/90 font-semibold">
+                              Liked you
+                            </Text>
+                          </View>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                )}
-              </Pressable>
-            );
-          }}
-        />
-      ))}
+                  )}
+                </Pressable>
+              );
+            }}
+          />
+        ))}
 
       {/* Compliment Modal */}
       <Modal
@@ -920,13 +926,13 @@ export default function LikesScreen() {
                   <Text className="text-white/70 text-lg">✕</Text>
                 </Pressable>
               </View>
-              
+
               {selectedUser && (
                 <>
                   <Text className="text-white/80 text-sm mb-4">
                     Send a message to {selectedUser.first_name || selectedUser.name || "this user"} before matching
                   </Text>
-                  
+
                   <TextInput
                     className="bg-white/10 text-white rounded-2xl p-4 mb-4 min-h-[120px] text-base"
                     placeholder="Write your compliment (max 200 characters)..."
@@ -938,17 +944,17 @@ export default function LikesScreen() {
                     onChangeText={setComplimentMessage}
                     style={{ textAlignVertical: "top" }}
                   />
-                  
+
                   <Text className="text-white/50 text-xs mb-4 text-right">
                     {complimentMessage.length}/200
                   </Text>
-                  
+
                   <Pressable
                     className={`bg-[#B8860B] rounded-2xl py-4 items-center ${sendingCompliment || !complimentMessage.trim() ? "opacity-50" : ""}`}
                     disabled={sendingCompliment || !complimentMessage.trim()}
                     onPress={async () => {
                       if (!complimentMessage.trim() || !selectedUser) return;
-                      
+
                       setSendingCompliment(true);
                       try {
                         const { error, data } = await supabase.functions.invoke("send-compliment", {
@@ -957,13 +963,13 @@ export default function LikesScreen() {
                             message: complimentMessage.trim(),
                           },
                         });
-                        
+
                         if (error) {
                           Alert.alert("Error", error.message || "Failed to send compliment. Please try again.");
                           setSendingCompliment(false);
                           return;
                         }
-                        
+
                         Alert.alert("Success", "Compliment sent! They'll see it in their chat list.", [
                           {
                             text: "OK",

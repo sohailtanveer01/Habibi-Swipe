@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { getFlagByName } from "../../../lib/countries";
 import { supabase } from "../../../lib/supabase";
 
@@ -158,7 +158,7 @@ export default function ProfilePreviewScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#FFFFFF' }}>Loading...</Text>
+        <ActivityIndicator size="large" color="#B8860B" />
       </View>
     );
   }

@@ -5,6 +5,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as ScreenCapture from "expo-screen-capture";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
@@ -1216,7 +1217,7 @@ export default function SwipeScreen() {
   if (loadingSpecificProfile) {
     return (
       <View className="flex-1 bg-black items-center justify-center">
-        <Text className="text-white">Loading profile...</Text>
+        <ActivityIndicator size="large" color="#B8860B" />
       </View>
     );
   }

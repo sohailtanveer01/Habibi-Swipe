@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router";
-import { supabase } from "../../../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { supabase } from "../../../../lib/supabase";
 
 export default function FiltersListScreen() {
   const router = useRouter();
@@ -105,17 +105,17 @@ export default function FiltersListScreen() {
     return `${count} selected`;
   };
 
-  const FilterItem = ({ 
-    icon, 
-    iconColor, 
-    title, 
-    value, 
-    onPress 
-  }: { 
-    icon: string; 
-    iconColor: string; 
-    title: string; 
-    value: string; 
+  const FilterItem = ({
+    icon,
+    iconColor,
+    title,
+    value,
+    onPress
+  }: {
+    icon: string;
+    iconColor: string;
+    title: string;
+    value: string;
     onPress: () => void;
   }) => (
     <Pressable
@@ -144,7 +144,7 @@ export default function FiltersListScreen() {
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <ActivityIndicator size="large" color="#B8860B" />
         </View>
       </View>
     );
@@ -161,7 +161,7 @@ export default function FiltersListScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
