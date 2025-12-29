@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { supabase } from "../../../../lib/supabase";
 
 export default function FiltersListScreen() {
@@ -39,6 +40,48 @@ export default function FiltersListScreen() {
       setLoading(false);
     }
   }, [router]);
+
+  const handleClearAll = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("user_preferences")
+        .upsert({
+          user_id: user.id,
+          location_enabled: false,
+          location_filter_type: "distance",
+          search_radius_miles: 50,
+          search_location: null,
+          search_country: null,
+          age_min: null,
+          age_max: null,
+          height_min_cm: null,
+          height_max_cm: null,
+          ethnicity_preferences: null,
+          marital_status_preferences: null,
+          children_preferences: null,
+          religiosity_preferences: null,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: "user_id",
+        });
+
+      if (error) throw error;
+
+      // Give feedback
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("Filters Cleared", "All your preferences have been reset to default.");
+
+      // Reload preferences to refresh the UI
+      await loadPreferences();
+    } catch (error) {
+      console.error("Error clearing filters:", error);
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadPreferences();
@@ -158,7 +201,17 @@ export default function FiltersListScreen() {
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
         <Text style={styles.headerTitle}>Filters</Text>
-        <View style={{ width: 24 }} />
+        <Pressable
+          onPress={handleClearAll}
+          disabled={loading}
+
+          style={({ pressed }) => [
+            styles.clearAllButton,
+            { opacity: pressed ? 0.8 : 1 }
+          ]}
+        >
+          <Text style={styles.clearAllText}>Clear all</Text>
+        </Pressable>
       </View>
 
       <ScrollView
@@ -271,9 +324,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "800",
     color: "#FFFFFF",
+    flex: 1,
+    textAlign: "center",
+  },
+  clearAllButton: {
+    backgroundColor: "#B8860B",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 80,
+  },
+  clearAllText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
   },
   scrollView: {
     flex: 1,
