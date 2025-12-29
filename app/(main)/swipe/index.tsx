@@ -233,6 +233,12 @@ export default function SwipeScreen() {
       }
 
       if (profile) {
+        // Fetch prompts for this specific user
+        const { data: promptsData } = await supabase
+          .from("user_prompts")
+          .select("question, answer, display_order")
+          .eq("user_id", targetUserId)
+          .order("display_order", { ascending: true });
 
 
         const { data: existingSwipeData } = await supabase
