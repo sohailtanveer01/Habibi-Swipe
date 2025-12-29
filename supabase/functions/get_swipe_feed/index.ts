@@ -440,6 +440,33 @@ serve(async (req) => {
       return true;
     });
 
+    // AFTER filteredProfiles is computed
+    const promptMap = new Map<string, any[]>();
+
+    if (candidateIds.length > 0) {
+      const { data: prompts, error } = await supabaseClient
+        .from("user_prompts")
+        .select("user_id, question, answer, display_order")
+        .in("user_id", candidateIds)
+        .order("display_order", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching prompts:", error);
+      }
+
+      prompts?.forEach((p) => {
+        if (!promptMap.has(p.user_id)) {
+          promptMap.set(p.user_id, []);
+        }
+        promptMap.get(p.user_id)!.push({
+          question: p.question,
+          answer: p.answer,
+          display_order: p.display_order,
+        });
+      });
+    }
+
+
     // Mark boost state and apply a "biased shuffle" to keep the feed natural:
     // Boosted profiles are more likely to appear earlier, but not in a spammy block.
     const BOOST_BONUS = 3; // higher => stronger prioritization, still mixed via jitter
@@ -455,6 +482,7 @@ serve(async (req) => {
           is_boosted: isBoosted,
           boost_expires_at: boostExpiresAt,
           is_liked_by_them: likerIdsSet.has(p.id),
+          prompts: promptMap.get(p.id) || [],
           __sortKey: sortKey,
         };
       })
