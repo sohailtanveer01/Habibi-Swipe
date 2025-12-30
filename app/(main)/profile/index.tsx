@@ -1,19 +1,19 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { View, Text, ScrollView, ActivityIndicator, Pressable, Alert, LayoutChangeEvent } from "react-native";
-import { Image } from "expo-image";
-import { supabase } from "../../../lib/supabase";
-import { useRouter } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { GestureDetector, Gesture } from "react-native-gesture-handler";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Alert, LayoutChangeEvent, Pressable, ScrollView, Text, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  runOnJS,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUserStore } from "../../../lib/stores/userStore";
+import { supabase } from "../../../lib/supabase";
 
 async function uploadPhoto(uri: string, userId: string) {
   const ext = uri.split(".").pop() || "jpg";
@@ -21,7 +21,7 @@ async function uploadPhoto(uri: string, userId: string) {
 
   const response = await fetch(uri);
   const blob = await response.arrayBuffer();
-  
+
   const { error } = await supabase.storage
     .from("profile-photos")
     .upload(filePath, blob, { contentType: `image/${ext}` });
@@ -37,20 +37,20 @@ async function uploadPhoto(uri: string, userId: string) {
 
 function calculateProfileCompletion(profile: any, prompts: any[] = []): number {
   if (!profile) return 0;
-  
+
   // Mandatory fields (excluded from calculation):
   // - first_name, last_name (basic info)
   // - 1 main photo (photos.length >= 1)
-  
+
   // Calculate completion for each optional category
-  
+
   // 1. Photos: 1 is mandatory, 5 are optional (max 6 total)
   // Completion = (number of photos - 1) / 5 * 100
   const photoCount = profile.photos?.length || 0;
-  const photoCompletion = photoCount >= 1 
+  const photoCompletion = photoCount >= 1
     ? Math.min(100, Math.round(((photoCount - 1) / 5) * 100))
     : 0;
-  
+
   // 2. Personal Info (height, dob, marital_status, has_children)
   let personalInfoCompleted = 0;
   const personalInfoTotal = 4;
@@ -59,7 +59,7 @@ function calculateProfileCompletion(profile: any, prompts: any[] = []): number {
   if (profile.marital_status) personalInfoCompleted++;
   if (profile.has_children !== null && profile.has_children !== undefined) personalInfoCompleted++;
   const personalInfoCompletion = Math.round((personalInfoCompleted / personalInfoTotal) * 100);
-  
+
   // 3. Religious Info (sect, born_muslim, religious_practice, alcohol_habit, smoking_habit)
   let religiousInfoCompleted = 0;
   const religiousInfoTotal = 5;
@@ -69,33 +69,33 @@ function calculateProfileCompletion(profile: any, prompts: any[] = []): number {
   if (profile.alcohol_habit) religiousInfoCompleted++;
   if (profile.smoking_habit) religiousInfoCompleted++;
   const religiousInfoCompletion = Math.round((religiousInfoCompleted / religiousInfoTotal) * 100);
-  
+
   // 4. Professional Info (education, profession)
   let professionalInfoCompleted = 0;
   const professionalInfoTotal = 2;
   if (profile.education) professionalInfoCompleted++;
   if (profile.profession) professionalInfoCompleted++;
   const professionalInfoCompletion = Math.round((professionalInfoCompleted / professionalInfoTotal) * 100);
-  
+
   // 5. Background Info (ethnicity, nationality)
   let backgroundInfoCompleted = 0;
   const backgroundInfoTotal = 2;
   if (profile.ethnicity) backgroundInfoCompleted++;
   if (profile.nationality) backgroundInfoCompleted++;
   const backgroundInfoCompletion = Math.round((backgroundInfoCompleted / backgroundInfoTotal) * 100);
-  
+
   // 6. Bio
   const bioCompletion = profile.bio ? 100 : 0;
-  
+
   // 7. Hobbies (at least 1 hobby = 100%)
   const hobbiesCompletion = (profile.hobbies && profile.hobbies.length > 0) ? 100 : 0;
-  
+
   // 8. Prompts (count prompts with both question and answer filled)
   // Typically users can have up to 3 prompts, so completion = (filled prompts / 3) * 100
   const filledPrompts = prompts.filter((p: any) => p.question && p.answer).length;
   const promptsTotal = 3; // Maximum 3 prompts
   const promptsCompletion = Math.min(100, Math.round((filledPrompts / promptsTotal) * 100));
-  
+
   // Calculate weighted average (each category contributes equally)
   const categories = [
     photoCompletion,
@@ -107,10 +107,10 @@ function calculateProfileCompletion(profile: any, prompts: any[] = []): number {
     hobbiesCompletion,
     promptsCompletion,
   ];
-  
+
   const totalCompletion = categories.reduce((sum, completion) => sum + completion, 0);
   const averageCompletion = Math.round(totalCompletion / categories.length);
-  
+
   return averageCompletion;
 }
 
@@ -160,7 +160,7 @@ function DraggablePhotoCard({
     "worklet";
     let closestIndex: number | null = null;
     let minDistance = Infinity;
-    
+
     for (let i = 0; i < maxPhotos; i++) {
       const pos = layoutPositions[i];
       if (pos) {
@@ -255,7 +255,7 @@ function DraggablePhotoCard({
       "worklet";
       translateX.value = e.translationX;
       translateY.value = e.translationY;
-      
+
       const currentPos = layoutPositions[index];
       if (currentPos && onDragUpdate) {
         const targetX = currentPos.x + currentPos.width / 2 + e.translationX;
@@ -268,15 +268,15 @@ function DraggablePhotoCard({
       "worklet";
       const currentPos = layoutPositions[index];
       let targetIndex: number | null = null;
-      
+
       if (currentPos) {
         const targetX = currentPos.x + currentPos.width / 2 + e.translationX;
         const targetY = currentPos.y + currentPos.height / 2 + e.translationY;
         targetIndex = findTargetIndex(targetX, targetY);
       }
-      
+
       runOnJS(onDragEnd)(targetIndex);
-      
+
       // Reset animations
       isPressed.value = false;
       translateX.value = withSpring(0);
@@ -315,7 +315,7 @@ function DraggablePhotoCard({
   const isHoverTarget = hoverTargetIndex === index && draggingIndex !== null && draggingIndex !== index;
 
   return (
-    <View 
+    <View
       className="w-[48%]"
       style={{ aspectRatio: 0.8 }}
       onLayout={onLayout}
@@ -420,7 +420,7 @@ export default function ProfileScreen() {
       }
 
       setProfile(data);
-      
+
       // Handle name
       if (data.first_name && data.last_name) {
         setFirstName(data.first_name);
@@ -430,7 +430,7 @@ export default function ProfileScreen() {
         setFirstName(nameParts[0] || "");
         setLastName(nameParts.slice(1).join(" ") || "");
       }
-      
+
       setPhotos(data.photos || []);
       // Reset layout positions when photos change
       layoutPositions.current = {};
@@ -482,10 +482,10 @@ export default function ProfileScreen() {
         const newPhotos = [...photos];
         newPhotos[targetIndex] = url;
         setPhotos(newPhotos);
-        
+
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const locationPoint = profile?.location && 
+          const locationPoint = profile?.location &&
             typeof profile.location === 'object' &&
             typeof profile.location.lon === 'number' &&
             typeof profile.location.lat === 'number' &&
@@ -507,7 +507,7 @@ export default function ProfileScreen() {
             .from("users")
             .update(updatePayload)
             .eq("id", user.id);
-          
+
           if (updateError) {
             console.error("Error updating photos:", updateError);
             Alert.alert("Error", "Failed to save photo. Please try again.");
@@ -515,17 +515,17 @@ export default function ProfileScreen() {
             setPhotos(photos);
             return;
           }
-          
+
           // Reload profile to ensure sync
           await loadProfile();
         }
       } else {
         const newPhotosArray = [...photos, url];
         setPhotos(newPhotosArray);
-        
+
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const locationPoint = profile?.location && 
+          const locationPoint = profile?.location &&
             typeof profile.location === 'object' &&
             typeof profile.location.lon === 'number' &&
             typeof profile.location.lat === 'number' &&
@@ -547,7 +547,7 @@ export default function ProfileScreen() {
             .from("users")
             .update(updatePayload)
             .eq("id", user.id);
-          
+
           if (updateError) {
             console.error("Error updating photos:", updateError);
             Alert.alert("Error", "Failed to save photo. Please try again.");
@@ -555,7 +555,7 @@ export default function ProfileScreen() {
             setPhotos(photos);
             return;
           }
-          
+
           // Reload profile to ensure sync
           await loadProfile();
         }
@@ -574,66 +574,11 @@ export default function ProfileScreen() {
     }
     const newPhotos = photos.filter((p) => p !== url);
     setPhotos(newPhotos);
-    
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const locationPoint = profile?.location && 
-          typeof profile.location === 'object' &&
-          typeof profile.location.lon === 'number' &&
-          typeof profile.location.lat === 'number' &&
-          !isNaN(profile.location.lon) &&
-          !isNaN(profile.location.lat)
-          ? `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`
-          : null;
-
-          const updatePayload: any = {
-            photos: newPhotos,
-            last_active_at: new Date().toISOString(),
-          };
-
-          if (locationPoint) {
-            updatePayload.location = locationPoint;
-          }
-
-          const { error: updateError } = await supabase
-            .from("users")
-            .update(updatePayload)
-            .eq("id", user.id);
-        
-        if (updateError) {
-          console.error("Error removing photo:", updateError);
-          Alert.alert("Error", "Failed to remove photo. Please try again.");
-          // Revert the state change
-          setPhotos(photos);
-          return;
-        }
-        
-        console.log("Photo removed successfully, reloading profile...");
-        // Reload profile to ensure sync
-        await loadProfile();
-      }
-    } catch (e: any) {
-      console.error("Error removing photo:", e);
-      Alert.alert("Error", "Failed to remove photo. Please try again.");
-      // Revert the state change
-      setPhotos(photos);
-    }
-  };
-
-  const handleReorder = async (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) return;
-    
-    const newPhotos = [...photos];
-    const [movedPhoto] = newPhotos.splice(fromIndex, 1);
-    newPhotos.splice(toIndex, 0, movedPhoto);
-    
-    setPhotos(newPhotos);
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const locationPoint = profile?.location && 
+        const locationPoint = profile?.location &&
           typeof profile.location === 'object' &&
           typeof profile.location.lon === 'number' &&
           typeof profile.location.lat === 'number' &&
@@ -655,16 +600,71 @@ export default function ProfileScreen() {
           .from("users")
           .update(updatePayload)
           .eq("id", user.id);
-      
+
+        if (updateError) {
+          console.error("Error removing photo:", updateError);
+          Alert.alert("Error", "Failed to remove photo. Please try again.");
+          // Revert the state change
+          setPhotos(photos);
+          return;
+        }
+
+        console.log("Photo removed successfully, reloading profile...");
+        // Reload profile to ensure sync
+        await loadProfile();
+      }
+    } catch (e: any) {
+      console.error("Error removing photo:", e);
+      Alert.alert("Error", "Failed to remove photo. Please try again.");
+      // Revert the state change
+      setPhotos(photos);
+    }
+  };
+
+  const handleReorder = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+
+    const newPhotos = [...photos];
+    const [movedPhoto] = newPhotos.splice(fromIndex, 1);
+    newPhotos.splice(toIndex, 0, movedPhoto);
+
+    setPhotos(newPhotos);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const locationPoint = profile?.location &&
+          typeof profile.location === 'object' &&
+          typeof profile.location.lon === 'number' &&
+          typeof profile.location.lat === 'number' &&
+          !isNaN(profile.location.lon) &&
+          !isNaN(profile.location.lat)
+          ? `SRID=4326;POINT(${profile.location.lon} ${profile.location.lat})`
+          : null;
+
+        const updatePayload: any = {
+          photos: newPhotos,
+          last_active_at: new Date().toISOString(),
+        };
+
+        if (locationPoint) {
+          updatePayload.location = locationPoint;
+        }
+
+        const { error: updateError } = await supabase
+          .from("users")
+          .update(updatePayload)
+          .eq("id", user.id);
+
         if (updateError) {
           console.error("Error reordering photos:", updateError);
           // Revert the state change
           setPhotos(photos);
           return;
         }
-        
+
         console.log("Photos reordered successfully");
-        
+
         // Update Zustand store to instantly sync tab bar icon (no network latency)
         useUserStore.getState().setMainPhoto(newPhotos[0]);
       }
@@ -758,7 +758,7 @@ export default function ProfileScreen() {
           <Text className="text-white text-3xl font-bold mb-4">
             {fullName}
           </Text>
-          
+
           {/* Action Buttons */}
           <View className="flex-row gap-3 items-center justify-center">
             {/* Edit Profile Button */}
@@ -770,7 +770,7 @@ export default function ProfileScreen() {
                 Edit Profile
               </Text>
             </Pressable>
-            
+
             {/* Preview Profile Button */}
             <Pressable
               onPress={() => router.push("/(main)/profile/preview")}
@@ -783,7 +783,7 @@ export default function ProfileScreen() {
           </View>
 
           {/* My Subscription */}
-          <View className="w-full items-center mt-4">
+          {/* <View className="w-full items-center mt-4">
             <Pressable
               onPress={() => router.push("/(main)/profile/subscription")}
               className="w-full max-w-sm px-6 py-3 rounded-full items-center justify-center"
@@ -803,14 +803,14 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </Pressable>
-          </View>
+          </View> */}
         </View>
 
         {/* Photos Section */}
         <View className="mb-6">
           {/* Section Title */}
           {/* <Text className="text-white text-xl font-bold mb-4">My Photos</Text> */}
-          
+
           {/* 2x2 Grid Layout */}
           <View className="flex-row flex-wrap gap-4">
             {/* New Photo Card - Always show if less than 6 photos */}
@@ -838,9 +838,9 @@ export default function ProfileScreen() {
                   disabled={uploading}
                   className="w-full h-full"
                 >
-                  <View 
+                  <View
                     className="rounded-3xl items-center justify-center w-full h-full"
-                    style={{ 
+                    style={{
                       backgroundColor: '#B8860B', // Gold color
                     }}
                   >
@@ -859,7 +859,7 @@ export default function ProfileScreen() {
                 </Pressable>
               </View>
             )}
-            
+
             {/* Existing Photo Cards */}
             {photos.map((photo, index) => (
               <DraggablePhotoCard

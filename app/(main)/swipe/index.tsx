@@ -396,14 +396,17 @@ export default function SwipeScreen() {
       }
       Alert.alert("Boost Activated", "Your profile is boosted for 30 minutes.");
     } catch (e: any) {
-      if (e?.message?.includes("NO_BOOSTS_REMAINING")) {
+      if (e?.message?.includes("DAILY_LIMIT_REACHED")) {
+        Alert.alert(
+          "Limit Reached",
+          e.message || "You can only use 1 boost per day. Try again tomorrow!",
+          [{ text: "OK" }]
+        );
+      } else if (e?.message?.includes("NO_BOOSTS_REMAINING")) {
         Alert.alert(
           "No Boosts Left",
-          e.message || "You've used your free boost. Upgrade to Premium for 5 boosts!",
-          [
-            { text: "Later", style: "cancel" },
-            { text: "Upgrade", onPress: () => router.push("/(main)/profile/subscription") }
-          ]
+          e.message || "You've used your boost for today.",
+          [{ text: "OK" }]
         );
       } else {
         console.error("Boost activation error:", e);

@@ -42,29 +42,24 @@ serve(async (req) => {
     const minutesRaw = typeof body?.minutes === "number" ? body.minutes : 30;
     const minutes = Math.max(1, Math.min(60, Math.floor(minutesRaw))); // clamp 1..60
 
-    // --- SUBSCRIPTION & BOOST COUNT CHECK ---
-    const { data: userData, error: userDataError } = await supabaseClient
-      .from("users")
-      .select("is_premium, boost_count")
-      .eq("id", user.id)
-      .single();
+    // --- DAILY BOOST LIMIT CHECK (1 per day) ---
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
 
-    if (userDataError || !userData) {
-      console.error("Error fetching user data:", userDataError);
-      return new Response(JSON.stringify({ error: "Could not verify boost balance" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { count: dailyBoostCount, error: boostCountErr } = await supabaseClient
+      .from("profile_boosts")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", today.toISOString());
 
-    if (userData.boost_count <= 0) {
+    if (boostCountErr) {
+      console.error("Error checking daily boost count:", boostCountErr);
+    } else if (dailyBoostCount && dailyBoostCount >= 1) {
       return new Response(JSON.stringify({
-        error: "NO_BOOSTS_REMAINING",
-        message: userData.is_premium
-          ? "You've used all your premium boosts for this period."
-          : "You've used your free boost. Upgrade to Premium for 5 boosts!"
+        error: "DAILY_LIMIT_REACHED",
+        message: "You can only use 1 boost per day. Try again tomorrow!"
       }), {
-        status: 403,
+        status: 429,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -92,19 +87,6 @@ serve(async (req) => {
     const now = new Date();
     const expiresAt = addMinutes(now, minutes);
 
-    // Decrement boost count first
-    const { error: decrementError } = await supabaseClient
-      .from("users")
-      .update({ boost_count: userData.boost_count - 1 })
-      .eq("id", user.id);
-
-    if (decrementError) {
-      console.error("Error decrementing boost count:", decrementError);
-      return new Response(JSON.stringify({ error: "Failed to update boost balance" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const { data: created, error: insertErr } = await supabaseClient
       .from("profile_boosts")

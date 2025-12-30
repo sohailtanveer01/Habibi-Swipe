@@ -86,6 +86,28 @@ serve(async (req) => {
       );
     }
 
+    // 1. Check daily limit (3 compliments per day)
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    const { count: dailyCount, error: countError } = await supabaseClient
+      .from("compliments")
+      .select("*", { count: "exact", head: true })
+      .eq("sender_id", user.id)
+      .gte("created_at", today.toISOString());
+
+    if (countError) {
+      console.error("Error checking daily compliment count:", countError);
+    } else if (dailyCount && dailyCount >= 3) {
+      return new Response(
+        JSON.stringify({
+          error: "DAILY_LIMIT_REACHED",
+          message: "You have reached your daily limit of 3 compliments. Try again tomorrow!"
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Check if user is trying to send to themselves
     if (user.id === recipientId) {
       return new Response(
@@ -250,8 +272,8 @@ serve(async (req) => {
     console.log("✅ Compliment sent:", { complimentId: compliment.id, senderId: user.id, recipientId });
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         compliment: {
           id: compliment.id,
           message: compliment.message,
