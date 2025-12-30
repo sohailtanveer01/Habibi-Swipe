@@ -124,8 +124,34 @@ export default function SettingsScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            // TODO: Implement account deletion
-            Alert.alert("Coming Soon", "Account deletion will be available soon. Please contact support for now.");
+            setLoading(true);
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session) throw new Error("No active session");
+
+              const { data, error } = await supabase.functions.invoke('delete-account', {
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+              });
+
+              if (error) throw error;
+              if (data?.error) throw new Error(data.error);
+
+              // Sign out locally
+              await supabase.auth.signOut();
+
+              Alert.alert(
+                "Account Deleted",
+                "Your account and all associated data have been permanently removed.",
+                [{ text: "OK", onPress: () => router.replace("/(auth)/login") }]
+              );
+            } catch (error: any) {
+              console.error("Error deleting account:", error);
+              Alert.alert("Error", error.message || "Failed to delete account. Please try again or contact support.");
+            } finally {
+              setLoading(false);
+            }
           },
         },
       ]
