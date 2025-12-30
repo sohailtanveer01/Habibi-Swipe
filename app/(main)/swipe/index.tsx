@@ -380,38 +380,46 @@ export default function SwipeScreen() {
 
     setBoostActivating(true);
     try {
-      const { data, error } = await supabase.functions.invoke(
+      const { data, error: invokeError } = await supabase.functions.invoke(
         "activate_profile_boost",
         {
           body: { minutes: 30 },
         }
       );
-      if (error) throw error;
 
-      const expiresAt = data?.boost?.expires_at ?? null;
+      if (invokeError) {
+        console.error("Boost activation error:", invokeError);
+        Alert.alert("Error", invokeError.message || "Failed to activate boost.");
+        return;
+      }
+
+      const body = data;
+      if (body?.error) {
+        if (body.error === "DAILY_LIMIT_REACHED") {
+          Alert.alert(
+            "Limit Reached",
+            body.message || "You can only use 1 boost per day. Try again tomorrow!",
+            [{ text: "OK" }]
+          );
+        } else if (body.error === "NO_BOOSTS_REMAINING") {
+          Alert.alert(
+            "No Boosts Left",
+            body.message || "You've used your boost for today.",
+            [{ text: "OK" }]
+          );
+        } else {
+          Alert.alert("Error", body.message || "Failed to activate boost.");
+        }
+        return;
+      }
+
+      const expiresAt = body?.boost?.expires_at ?? null;
       if (expiresAt) {
         setBoostExpiresAt(expiresAt);
       } else {
         await refreshActiveBoost();
       }
       Alert.alert("Boost Activated", "Your profile is boosted for 30 minutes.");
-    } catch (e: any) {
-      if (e?.message?.includes("DAILY_LIMIT_REACHED")) {
-        Alert.alert(
-          "Limit Reached",
-          e.message || "You can only use 1 boost per day. Try again tomorrow!",
-          [{ text: "OK" }]
-        );
-      } else if (e?.message?.includes("NO_BOOSTS_REMAINING")) {
-        Alert.alert(
-          "No Boosts Left",
-          e.message || "You've used your boost for today.",
-          [{ text: "OK" }]
-        );
-      } else {
-        console.error("Boost activation error:", e);
-        Alert.alert("Error", e?.message || "Failed to activate boost.");
-      }
     } finally {
       setBoostActivating(false);
     }
@@ -707,17 +715,26 @@ export default function SwipeScreen() {
 
     setSendingCompliment(true);
     try {
-      const { error } = await supabase.functions.invoke("send-compliment", {
+      const { data, error: invokeError } = await supabase.functions.invoke("send-compliment", {
         body: {
           recipientId: currentProfile.id,
           message: complimentMessage.trim(),
         },
       });
 
-      if (error) {
+      // Handle actual network or invocation errors
+      if (invokeError) {
+        Alert.alert("Error", invokeError.message || "Failed to send compliment. Please try again.");
+        setSendingCompliment(false);
+        return;
+      }
+
+      // Handle "business logic" errors returned as 200 OK with error field
+      if (data?.error) {
+        const isLimitReached = data.error === "DAILY_LIMIT_REACHED";
         Alert.alert(
-          "Error",
-          error.message || "Failed to send compliment. Please try again."
+          isLimitReached ? "Limit Reached" : "Error",
+          data.message || "Failed to send compliment. Please try again."
         );
         setSendingCompliment(false);
         return;

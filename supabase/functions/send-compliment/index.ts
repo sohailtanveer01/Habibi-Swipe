@@ -99,12 +99,19 @@ serve(async (req) => {
     if (countError) {
       console.error("Error checking daily compliment count:", countError);
     } else if (dailyCount && dailyCount >= 3) {
+      const now = new Date();
+      const tonight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+      const diffMs = tonight.getTime() - now.getTime();
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const timeRemaining = `${hours}h:${minutes}m`;
+
       return new Response(
         JSON.stringify({
           error: "DAILY_LIMIT_REACHED",
-          message: "You have reached your daily limit of 3 compliments. Try again tomorrow!"
+          message: `You have used all 3 compliments for today. You can try again after ${timeRemaining}.`
         }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

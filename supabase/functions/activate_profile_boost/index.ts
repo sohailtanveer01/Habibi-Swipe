@@ -55,11 +55,18 @@ serve(async (req) => {
     if (boostCountErr) {
       console.error("Error checking daily boost count:", boostCountErr);
     } else if (dailyBoostCount && dailyBoostCount >= 1) {
+      const now = new Date();
+      const tonight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+      const diffMs = tonight.getTime() - now.getTime();
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const timeRemaining = `${hours}h:${minutes}m`;
+
       return new Response(JSON.stringify({
         error: "DAILY_LIMIT_REACHED",
-        message: "You can only use 1 boost per day. Try again tomorrow!"
+        message: `You have used your boost for today. You can try again after ${timeRemaining}.`
       }), {
-        status: 429,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
