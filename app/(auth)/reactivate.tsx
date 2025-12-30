@@ -72,12 +72,12 @@ export default function Reactivate() {
                     </Text>
                 </Pressable>
 
-                <Pressable
+                {/* <Pressable
                     style={styles.backButton}
                     onPress={() => router.back()}
                 >
                     <Text style={styles.backButtonText}>Use a different email</Text>
-                </Pressable>
+                </Pressable> */}
             </View>
         </View>
     );
