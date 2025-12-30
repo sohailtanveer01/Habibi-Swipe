@@ -201,6 +201,7 @@ serve(async (req) => {
       .select("*")
       .neq("id", user.id)
       .eq("gender", oppositeGender) // Only show opposite gender
+      .eq("account_active", true) // Only show active profiles
       .order("last_active_at", { ascending: false })
       .limit(limit * 5); // Get more to account for filtering
 

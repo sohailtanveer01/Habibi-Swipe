@@ -89,7 +89,7 @@ serve(async (req) => {
       .from("blocks")
       .select("blocked_id")
       .eq("blocker_id", user.id);
-    
+
     const { data: blocksIAmBlocked } = await supabaseClient
       .from("blocks")
       .select("blocker_id")
@@ -102,7 +102,7 @@ serve(async (req) => {
     if (blocksIAmBlocked) {
       blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
     }
-    
+
     console.log("🔒 Blocking check:", {
       userId: user.id,
       blocksIBlocked: blocksIBlocked?.length || 0,
@@ -126,7 +126,8 @@ serve(async (req) => {
     const { data: viewers, error: viewersError } = await supabaseClient
       .from("users")
       .select("*")
-      .in("id", unblockedViewerIds);
+      .in("id", unblockedViewerIds)
+      .eq("account_active", true);
 
     if (viewersError) {
       console.error("❌ Error fetching viewer profiles:", viewersError);
@@ -148,7 +149,7 @@ serve(async (req) => {
           lastViewedAt: stats.lastViewedAt,
         };
       })
-      .sort((a, b) => 
+      .sort((a, b) =>
         new Date(b.lastViewedAt).getTime() - new Date(a.lastViewedAt).getTime()
       );
 

@@ -1,17 +1,18 @@
-import { useState, useEffect, useRef } from "react";
-import { View, Text, TextInput, Pressable, Alert, Keyboard, StyleSheet } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { supabase } from "../../lib/supabase";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Logo from "../../components/Logo";
+import { supabase } from "../../lib/supabase";
 
 export default function EmailOTP() {
-  const { email } = useLocalSearchParams();
+  const { email, isReactivating } = useLocalSearchParams();
   const router = useRouter();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
   const emailAddress = (email as string) || "";
+  const shouldReactivate = isReactivating === "true";
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export default function EmailOTP() {
   const handleCodeChange = (text: string, index: number) => {
     // Only allow numbers
     const numericText = text.replace(/[^0-9]/g, "");
-    
+
     if (numericText.length > 1) {
       // Handle paste: distribute digits across fields
       const digits = numericText.slice(0, 6).split("");
@@ -37,11 +38,11 @@ export default function EmailOTP() {
         }
       });
       setCode(newCode);
-      
+
       // Focus the next empty field or the last field
       const nextIndex = Math.min(index + digits.length, 5);
       inputRefs.current[nextIndex]?.focus();
-      
+
       // If all 6 digits are filled, dismiss keyboard
       if (newCode.every(d => d !== "")) {
         Keyboard.dismiss();
@@ -91,6 +92,26 @@ export default function EmailOTP() {
       setCode(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
       return;
+    }
+
+    // Handle account reactivation if needed
+    if (shouldReactivate) {
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser) {
+          const { error: activeError } = await supabase
+            .from("users")
+            .update({ account_active: true })
+            .eq("id", currentUser.id);
+
+          if (activeError) {
+            console.error("Error setting account to active:", activeError);
+            // Non-blocking: continue to login
+          }
+        }
+      } catch (err) {
+        console.error("Unexpected error reactivating account:", err);
+      }
     }
 
     // Check if user has completed onboarding

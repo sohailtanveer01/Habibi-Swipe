@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { supabase } from "../../lib/supabase";
 import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Logo from "../../components/Logo";
+import { supabase } from "../../lib/supabase";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -18,20 +18,51 @@ export default function Login() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: trimmed,
-      options: { shouldCreateUser: false }, // Don't create user on login, only signup
-    });
+    try {
+      // 1. Check if user is deactivated
+      const { data: statusData, error: statusError } = await supabase.functions.invoke("check-user-status", {
+        body: { email: trimmed }
+      });
 
-    setLoading(false);
+      console.log("User status check response:", { statusData, statusError });
 
-    if (error) {
-      Alert.alert("Error", error.message);
-      return;
+      if (statusError) {
+        console.error("Error checking user status:", statusError);
+        // Fallback: proceed to login if check fails
+      } else if (statusData && statusData.exists && statusData.account_active === false) {
+        setLoading(false);
+        // User is deactivated - go to reactivation screen
+        router.push({ pathname: "/(auth)/reactivate", params: { email: trimmed } });
+        return;
+      }
+
+      // 2. Proceed with OTP if active or doesn't exist
+      const { error } = await supabase.auth.signInWithOtp({
+        email: trimmed,
+        options: { shouldCreateUser: false }, // Don't create user on login, only signup
+      });
+
+      if (error) {
+        if (error.message.includes("signups are not allowed")) {
+          Alert.alert(
+            "Account Not Found",
+            "This email is not registered yet. Please click 'Sign Up' below to create a new account.",
+            [{ text: "OK" }]
+          );
+        } else {
+          Alert.alert("Error", error.message);
+        }
+        return;
+      }
+
+      // 3. Navigate to email OTP verification screen
+      router.push({ pathname: "/(auth)/email-otp", params: { email: trimmed } });
+    } catch (error) {
+      console.error("Unexpected error in login:", error);
+      Alert.alert("Error", "An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    // Navigate to email OTP verification screen
-    router.push({ pathname: "/(auth)/email-otp", params: { email: trimmed } });
   };
 
   return (
@@ -90,7 +121,7 @@ export default function Login() {
           </Text>
         </View>
 
-        <Pressable 
+        <Pressable
           style={styles.linkContainer}
           onPress={() => router.push("/(auth)/signup")}
         >

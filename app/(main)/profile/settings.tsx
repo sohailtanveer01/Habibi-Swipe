@@ -41,27 +41,29 @@ export default function SettingsScreen() {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [blurPhotos, setBlurPhotos] = useState(false);
+  const [accountActive, setAccountActive] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchBlurSetting();
+    fetchSettings();
   }, []);
 
-  const fetchBlurSetting = async () => {
+  const fetchSettings = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data, error } = await supabase
         .from("users")
-        .select("blur_photos")
+        .select("blur_photos, account_active")
         .eq("id", user.id)
         .single();
 
       if (error) throw error;
       setBlurPhotos(data?.blur_photos || false);
+      setAccountActive(data?.account_active ?? true);
     } catch (error) {
-      console.error("Error fetching blur setting:", error);
+      console.error("Error fetching settings:", error);
     } finally {
       setLoading(false);
     }
@@ -88,6 +90,63 @@ export default function SettingsScreen() {
     }
   };
 
+  const toggleAccountActive = async () => {
+    const newValue = !accountActive;
+
+    const title = newValue ? "Reactivate Account?" : "Take a break?";
+    const message = newValue
+      ? "Your profile will be visible to others again."
+      : "Your profile will be hidden from everyone. You will be logged out and can reactivate anytime by logging back in.";
+
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: newValue ? "Reactivate" : "Take a break",
+          onPress: async () => {
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) return;
+
+              const { error } = await supabase
+                .from("users")
+                .update({ account_active: newValue })
+                .eq("id", user.id);
+
+              if (error) throw error;
+
+              if (!newValue) {
+                // If taking a break, log out automatically without asking again
+                await performLogout();
+              } else {
+                setAccountActive(newValue);
+                Alert.alert("Success", "Account reactivated!");
+              }
+            } catch (error) {
+              console.error("Error updating account status:", error);
+              Alert.alert("Error", "Failed to update account status.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const performLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await supabase.auth.signOut();
+      router.replace("/(auth)/login");
+    } catch (error) {
+      console.error("Error logging out:", error);
+      Alert.alert("Error", "Failed to log out. Please try again.");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   const handleLogout = async () => {
     Alert.alert(
       "Log Out",
@@ -97,18 +156,7 @@ export default function SettingsScreen() {
         {
           text: "Log Out",
           style: "destructive",
-          onPress: async () => {
-            setLoggingOut(true);
-            try {
-              await supabase.auth.signOut();
-              router.replace("/(auth)/login");
-            } catch (error) {
-              console.error("Error logging out:", error);
-              Alert.alert("Error", "Failed to log out. Please try again.");
-            } finally {
-              setLoggingOut(false);
-            }
-          },
+          onPress: performLogout,
         },
       ]
     );
@@ -247,6 +295,14 @@ export default function SettingsScreen() {
           onPress={handleLogout}
           showChevron={false}
           danger
+        />
+
+        <SettingsItem
+          icon="pause-circle-outline"
+          title={accountActive ? "Take a break ?" : "Reactivate Account"}
+          subtitle={accountActive ? "Temporarily hide your profile" : "Make your profile visible again"}
+          onPress={toggleAccountActive}
+          showChevron={false}
         />
 
         <SettingsItem

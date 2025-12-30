@@ -49,12 +49,24 @@ serve(async (req) => {
             );
         }
 
-        console.log(`📍 Deleting account for user: ${user.id}`);
+        console.log(`📍 Deleting account for user: ${user.id} (${user.email})`);
 
-        // Perform manual cleanup if necessary (e.g., storage buckets, etc.)
-        // Note: Most data will be deleted via ON DELETE CASCADE in the database.
+        // 1. Delete from public.users using email (as requested, since no FK relation exists)
+        if (user.email) {
+            const { error: profileDeleteError } = await supabaseAdmin
+                .from("users")
+                .delete()
+                .eq("email", user.email);
 
-        // Delete the user from auth.users (this triggers cascading deletes in public schema)
+            if (profileDeleteError) {
+                console.error("⚠️ Error deleting user profile from public.users:", profileDeleteError);
+                // We continue anyway to ensure the auth user is deleted
+            } else {
+                console.log("✅ User profile deleted from public.users");
+            }
+        }
+
+        // 2. Delete the user from auth.users
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
 
         if (deleteError) {

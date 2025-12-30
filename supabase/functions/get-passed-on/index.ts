@@ -72,7 +72,7 @@ serve(async (req) => {
       .from("blocks")
       .select("blocked_id")
       .eq("blocker_id", user.id);
-    
+
     const { data: blocksIAmBlocked } = await supabaseClient
       .from("blocks")
       .select("blocker_id")
@@ -85,7 +85,7 @@ serve(async (req) => {
     if (blocksIAmBlocked) {
       blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
     }
-    
+
     console.log("🔒 Blocking check:", {
       userId: user.id,
       blocksIBlocked: blocksIBlocked?.length || 0,
@@ -111,7 +111,8 @@ serve(async (req) => {
     const { data: passedOnProfiles, error: profilesError } = await supabaseClient
       .from("users")
       .select("id, first_name, last_name, name, photos")
-      .in("id", unblockedPassedOnIds);
+      .in("id", unblockedPassedOnIds)
+      .eq("account_active", true);
 
     if (profilesError) {
       console.error("❌ Error fetching passed on user profiles:", profilesError);

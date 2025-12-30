@@ -82,7 +82,7 @@ serve(async (req) => {
       .from("blocks")
       .select("blocked_id")
       .eq("blocker_id", user.id);
-    
+
     const { data: blocksIAmBlocked } = await supabaseClient
       .from("blocks")
       .select("blocker_id")
@@ -95,7 +95,7 @@ serve(async (req) => {
     if (blocksIAmBlocked) {
       blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
     }
-    
+
     console.log("🔒 Blocking check:", {
       userId: user.id,
       blocksIBlocked: blocksIBlocked?.length || 0,
@@ -135,7 +135,8 @@ serve(async (req) => {
     const { data: likedProfiles, error: profilesError } = await supabaseClient
       .from("users")
       .select("id, first_name, last_name, name, photos")
-      .in("id", unmatchedLikedIds);
+      .in("id", unmatchedLikedIds)
+      .eq("account_active", true);
 
     if (profilesError) {
       console.error("❌ Error fetching liked user profiles:", profilesError);
@@ -148,7 +149,7 @@ serve(async (req) => {
     // Map profiles with their like timestamp (most recent like)
     // Also filter out any blocked users and matched users as a safety check
     const myLikesWithTimestamp = (likedProfiles || [])
-      .filter((profile) => 
+      .filter((profile) =>
         !blockedUserIds.has(profile.id) && !matchedUserIds.has(profile.id)
       )
       .map((profile) => {
@@ -164,7 +165,7 @@ serve(async (req) => {
         const dateB = b.likedAt ? new Date(b.likedAt).getTime() : 0;
         return dateB - dateA;
       });
-    
+
     console.log("✅ Matched users filter:", {
       totalLikedIds: likedUserIds.length,
       matchedUserIds: Array.from(matchedUserIds),

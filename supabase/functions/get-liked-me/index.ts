@@ -182,7 +182,8 @@ serve(async (req) => {
     const { data: likerProfiles, error: profilesError } = await supabaseClient
       .from("users")
       .select("id, first_name, last_name, name, photos, blur_photos, dob, height, marital_status, has_children, education, profession, sect, born_muslim, religious_practice, alcohol_habit, smoking_habit, ethnicity, nationality, hobbies, bio, location")
-      .in("id", unmatchedLikerIds);
+      .in("id", unmatchedLikerIds)
+      .eq("account_active", true);
 
     if (profilesError) {
       console.error("❌ Error fetching liker user profiles:", profilesError);

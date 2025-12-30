@@ -45,7 +45,7 @@ serve(async (req) => {
       .from("blocks")
       .select("blocked_id")
       .eq("blocker_id", user.id);
-    
+
     const { data: blocksIAmBlocked } = await supabaseClient
       .from("blocks")
       .select("blocker_id")
@@ -94,6 +94,7 @@ serve(async (req) => {
           .from("users")
           .select("*")
           .eq("id", otherUserId)
+          .eq("account_active", true)
           .single();
 
         if (userError || !otherUser) {
@@ -153,8 +154,8 @@ serve(async (req) => {
     if (pendingRematchRequests && pendingRematchRequests.length > 0) {
       const rematchMatches = await Promise.all(
         pendingRematchRequests.map(async (unmatch) => {
-          const otherUserId = unmatch.user1_id === user.id 
-            ? unmatch.user2_id 
+          const otherUserId = unmatch.user1_id === user.id
+            ? unmatch.user2_id
             : unmatch.user1_id;
 
           // Skip if user is blocked
@@ -167,6 +168,7 @@ serve(async (req) => {
             .from("users")
             .select("*")
             .eq("id", otherUserId)
+            .eq("account_active", true)
             .single();
 
           if (userError || !otherUser) {
@@ -222,19 +224,19 @@ serve(async (req) => {
     // Get pending compliments where current user is the recipient
     // Only show if status is pending (not accepted - accepted means they matched)
     console.log("🔍 Fetching compliments for recipient:", user.id);
-    
+
     // First, let's test if we can query compliments at all
     const { data: allComplimentsTest, error: testError } = await supabaseClient
       .from("compliments")
       .select("id, sender_id, recipient_id, status")
       .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
-    
+
     console.log("🧪 Test query - All compliments (sent or received):", {
       count: allComplimentsTest?.length || 0,
       compliments: allComplimentsTest,
       error: testError ? JSON.stringify(testError, null, 2) : null,
     });
-    
+
     const { data: pendingCompliments, error: complimentsError } = await supabaseClient
       .from("compliments")
       .select("*")
@@ -282,6 +284,7 @@ serve(async (req) => {
             .from("users")
             .select("*")
             .eq("id", senderId)
+            .eq("account_active", true)
             .single();
 
           if (userError || !senderProfile) {
@@ -356,6 +359,7 @@ serve(async (req) => {
             .from("users")
             .select("*")
             .eq("id", recipientId)
+            .eq("account_active", true)
             .single();
 
           if (userError || !recipientProfile) {
@@ -400,7 +404,7 @@ serve(async (req) => {
       compliments: validMatches.filter(m => m.isCompliment).length,
       rematchRequests: validMatches.filter(m => m.isUnmatched && m.hasPendingRematchRequest).length,
     });
-    
+
     // Log all compliment matches for debugging
     const complimentMatches = validMatches.filter(m => m.isCompliment);
     if (complimentMatches.length > 0) {
