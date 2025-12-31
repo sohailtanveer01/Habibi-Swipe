@@ -85,7 +85,7 @@ export default function Login() {
 
       {/* Logo at top */}
       <View style={styles.logoContainer}>
-        <Logo variant="transparent" width={150} />
+        <Logo variant="transparent" width={150} height={150} style="" />
       </View>
 
       {/* Content */}

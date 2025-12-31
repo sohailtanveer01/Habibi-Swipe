@@ -1,11 +1,12 @@
-import { useEffect, useCallback, useState } from "react";
-import { View, Text, FlatList, Pressable, Image, ActivityIndicator, RefreshControl } from "react-native";
-import { supabase } from "../../../lib/supabase";
-import { useRouter, useFocusEffect } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { isUserActive } from "../../../lib/useActiveStatus";
-import Logo from "../../../components/Logo";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Animated, FlatList, Image, Pressable, RefreshControl, Text, View } from "react-native";
+import { RectButton, Swipeable } from "react-native-gesture-handler";
 import DiamondIcon from "../../../components/DiamondIcon";
+import Logo from "../../../components/Logo";
+import { supabase } from "../../../lib/supabase";
+import { isUserActive } from "../../../lib/useActiveStatus";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -34,12 +35,12 @@ export default function ChatListScreen() {
       const { data, error } = await supabase.functions.invoke("get-chat-list");
 
       if (error) throw error;
-      
+
       if (data && data.matches) {
         // Log unread counts and active status for debugging
-        console.log("Chat list loaded:", 
-          data.matches.map((m: any) => ({ 
-            matchId: m.id, 
+        console.log("Chat list loaded:",
+          data.matches.map((m: any) => ({
+            matchId: m.id,
             unreadCount: m.unreadCount,
             otherUser: m.otherUser?.name || m.otherUser?.first_name,
             otherUserLastActive: m.otherUser?.last_active_at,
@@ -48,7 +49,7 @@ export default function ChatListScreen() {
             complimentId: m.complimentId,
           }))
         );
-        
+
         // Log compliments specifically
         const compliments = data.matches.filter((m: any) => m.isCompliment);
         if (compliments.length > 0) {
@@ -56,7 +57,7 @@ export default function ChatListScreen() {
         } else {
           console.log("ℹ️ No compliments found in chat list response");
         }
-        
+
         return data.matches;
       }
       return [];
@@ -72,7 +73,7 @@ export default function ChatListScreen() {
   // Real-time subscription for matches, messages, and user activity
   useEffect(() => {
     let userId: string | null = null;
-    
+
     // Get user ID first
     supabase.auth.getUser().then(({ data: { user } }) => {
       userId = user?.id || null;
@@ -98,9 +99,9 @@ export default function ChatListScreen() {
       )
       .on(
         "postgres_changes",
-        { 
-          event: "UPDATE", 
-          schema: "public", 
+        {
+          event: "UPDATE",
+          schema: "public",
           table: "messages"
         },
         (payload) => {
@@ -128,9 +129,9 @@ export default function ChatListScreen() {
       )
       .on(
         "postgres_changes",
-        { 
-          event: "INSERT", 
-          schema: "public", 
+        {
+          event: "INSERT",
+          schema: "public",
           table: "compliments"
         },
         (payload) => {
@@ -143,9 +144,9 @@ export default function ChatListScreen() {
       )
       .on(
         "postgres_changes",
-        { 
-          event: "UPDATE", 
-          schema: "public", 
+        {
+          event: "UPDATE",
+          schema: "public",
           table: "compliments"
         },
         (payload) => {
@@ -186,7 +187,7 @@ export default function ChatListScreen() {
         <Text className="text-red-500 text-center mb-4">
           Error loading chats: {error.message}
         </Text>
-        <Pressable 
+        <Pressable
           className="bg-[#B8860B] px-6 py-3 rounded-full"
           onPress={() => refetch()}
         >
@@ -225,133 +226,240 @@ export default function ChatListScreen() {
 
       <View className="flex-1 px-4">
 
-      {matches.length === 0 ? (
-        <View className="flex-1 items-center justify-center">
-          <View className="mb-6">
-            <Logo variant="colored" width={120} />
+        {matches.length === 0 ? (
+          <View className="flex-1 items-center justify-center">
+            <View className="mb-6">
+              <Logo variant="colored" width={120} height={120} style="" />
+            </View>
+            <Text className="text-white/60 text-base">No matches yet</Text>
+            <Text className="text-white/50 text-sm mt-2">Start swiping to find your Habibi! 💕</Text>
           </View>
-          <Text className="text-white/60 text-base">No matches yet</Text>
-          <Text className="text-white/50 text-sm mt-2">Start swiping to find your Habibi! 💕</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={matches}
-          keyExtractor={(m) => m.id}
-          refreshControl={
-            <RefreshControl
-              refreshing={isLoading}
-              onRefresh={() => refetch()}
-              tintColor="#B8860B"
-            />
-          }
-          renderItem={({ item }) => {
-            const mainPhoto = item.otherUser?.photos && item.otherUser.photos.length > 0
-              ? cleanPhotoUrl(item.otherUser.photos[0])
-              : null;
-            const fullName = item.otherUser?.first_name && item.otherUser?.last_name
-              ? `${item.otherUser.first_name} ${item.otherUser.last_name}`
-              : item.otherUser?.name || "Unknown";
-            
-            // Ensure unreadCount is a number
-            const unreadCount = typeof item.unreadCount === 'number' ? item.unreadCount : 0;
-            const hasUnread = unreadCount > 0;
-            
-            // Check if OTHER USER is active (not current user)
-            const otherUserLastActive = item.otherUser?.last_active_at;
-            const isOtherUserActive = isUserActive(otherUserLastActive);
-            
-            // Debug: Log active status for each user
-            if (__DEV__) {
-              console.log("👤 User active check:", {
-                userName: fullName,
-                lastActive: otherUserLastActive,
-                isActive: isOtherUserActive,
-              });
+        ) : (
+          <FlatList
+            data={matches}
+            keyExtractor={(m) => m.id}
+            refreshControl={
+              <RefreshControl
+                refreshing={isLoading}
+                onRefresh={() => refetch()}
+                tintColor="#B8860B"
+              />
             }
-
-            return (
-              <Pressable
-                className="bg-white/10 p-4 rounded-2xl mb-3 flex-row items-center border border-white/10"
-                onPress={() => router.push(`/(main)/chat/${item.id}`)}
-              >
-                <View className="relative mr-4">
-                  {mainPhoto ? (
-                    <Image
-                      source={{ uri: mainPhoto }}
-                      className="w-16 h-16 rounded-full border-2 border-[#B8860B]"
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View className="w-16 h-16 rounded-full bg-white/10 items-center justify-center border-2 border-[#B8860B]">
-                      <Text className="text-white/60 text-2xl">👤</Text>
-                    </View>
-                  )}
-                  {/* Active indicator - shows if OTHER USER is active */}
-                  {isOtherUserActive && (
-                    <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-black" />
-                  )}
-                </View>
-                <View className="flex-1">
-                  <View className="flex-row items-center gap-2">
-                    <Text 
-                      className={`text-lg ${hasUnread ? 'font-bold' : 'font-semibold'} text-white`}
-                      numberOfLines={1}
-                    >
-                      {fullName}
-                    </Text>
-                    {item.isCompliment && (
-                      <View className="bg-purple-500 rounded-full px-2 py-0.5">
-                        <DiamondIcon size={16} color="#FF0000" />
-                      </View>
-                    )}
-                    {hasUnread && (
-                      <View className="bg-[#B8860B] rounded-full px-2 py-0.5 min-w-[20px] items-center justify-center">
-                        <Text className="text-white text-xs font-bold">
-                          {unreadCount > 99 ? '99+' : unreadCount}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  {item.isCompliment ? (
-                    <Text 
-                      className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
-                      numberOfLines={1}
-                    >
-                      {item.isComplimentSender 
-                        ? (item.complimentStatus === 'declined' 
-                            ? 'Compliment declined' 
-                            : 'You sent a compliment')
-                        : `${fullName} sent you a compliment`}
-                    </Text>
-                  ) : item.lastMessage ? (
-                    <Text 
-                      className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
-                      numberOfLines={1}
-                    >
-                      {item.lastMessage.content || item.lastMessage.message}
-                    </Text>
-                  ) : (
-                    <Text className="text-[#B8860B] text-sm mt-1 italic">
-                      New match! Say salam 👋
-                    </Text>
-                  )}
-                </View>
-                <View className="items-end">
-                  {item.lastMessage && (
-                    <Text className="text-white/50 text-xs mb-1">
-                      {new Date(item.lastMessage.created_at).toLocaleTimeString([], { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </Text>
-                  )}
-                </View>
-              </Pressable>
-            );
-          }}
-        />
-      )}
+            renderItem={({ item }) => (
+              <ChatItem
+                item={item}
+                router={router}
+                queryClient={queryClient}
+              />
+            )}
+          />
+        )}
       </View>
     </View>
+  );
+}
+
+function ChatItem({ item, router, queryClient }: { item: any; router: any; queryClient: any }) {
+  const mainPhoto = item.otherUser?.photos && item.otherUser.photos.length > 0
+    ? cleanPhotoUrl(item.otherUser.photos[0])
+    : null;
+  const fullName = item.otherUser?.first_name && item.otherUser?.last_name
+    ? `${item.otherUser.first_name} ${item.otherUser.last_name}`
+    : item.otherUser?.name || "Unknown";
+
+  const unreadCount = typeof item.unreadCount === 'number' ? item.unreadCount : 0;
+  const hasUnread = unreadCount > 0;
+  const otherUserLastActive = item.otherUser?.last_active_at;
+  const isOtherUserActive = isUserActive(otherUserLastActive);
+
+  const handleUnmatch = async () => {
+    Alert.alert(
+      "Unmatch User",
+      `Are you sure you want to unmatch with ${fullName}? You won't be able to message them anymore.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Unmatch",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { error } = await supabase.functions.invoke("unmatch", {
+                body: { matchId: item.id },
+              });
+              if (error) throw error;
+              queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+            } catch (err: any) {
+              Alert.alert("Error", err.message || "Failed to unmatch.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleBlock = async () => {
+    Alert.alert(
+      "Block User",
+      `Are you sure you want to block ${fullName}? This will unmatch you and they won't be able to see your profile or message you again.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { error } = await supabase.functions.invoke("block-user", {
+                body: { userId: item.otherUser?.id, matchId: item.id },
+              });
+              if (error) throw error;
+              queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+            } catch (err: any) {
+              Alert.alert("Error", err.message || "Failed to block user.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    const scale = dragX.interpolate({
+      inputRange: [-160, 0],
+      outputRange: [1, 0.8],
+      extrapolate: 'clamp',
+    });
+
+    const opacity = dragX.interpolate({
+      inputRange: [-160, -80, 0],
+      outputRange: [1, 0.8, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View
+        style={{
+          flexDirection: 'row',
+          width: 160,
+          marginBottom: 12,
+          opacity,
+        }}
+      >
+        <RectButton
+          onPress={handleUnmatch}
+          style={{
+            flex: 1,
+            backgroundColor: '#B8860B',
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderRadius: 12,
+            marginRight: 8,
+          }}
+        >
+          <Animated.View style={{ transform: [{ scale }] }}>
+            <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Unmatch</Text>
+          </Animated.View>
+        </RectButton>
+        <RectButton
+          onPress={handleBlock}
+          style={{
+            flex: 1,
+            backgroundColor: '#EF4444',
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderRadius: 12,
+          }}
+        >
+          <Animated.View style={{ transform: [{ scale }] }}>
+            <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Block</Text>
+          </Animated.View>
+        </RectButton>
+      </Animated.View>
+    );
+  };
+
+  return (
+    <Swipeable
+      renderRightActions={renderRightActions}
+      rightThreshold={40}
+      overshootRight={false}
+      friction={1.5}
+    >
+      <Pressable
+        className="bg-white/10 p-4 rounded-2xl mb-3 flex-row items-center border border-white/10"
+        onPress={() => router.push(`/(main)/chat/${item.id}`)}
+      >
+        <View className="relative mr-4">
+          {mainPhoto ? (
+            <Image
+              source={{ uri: mainPhoto }}
+              className="w-16 h-16 rounded-full border-2 border-[#B8860B]"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="w-16 h-16 rounded-full bg-white/10 items-center justify-center border-2 border-[#B8860B]">
+              <Text className="text-white/60 text-2xl">👤</Text>
+            </View>
+          )}
+          {isOtherUserActive && (
+            <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-black" />
+          )}
+        </View>
+        <View className="flex-1">
+          <View className="flex-row items-center gap-2">
+            <Text
+              className={`text-lg ${hasUnread ? 'font-bold' : 'font-semibold'} text-white`}
+              numberOfLines={1}
+            >
+              {fullName}
+            </Text>
+            {item.isCompliment && (
+              <View className="bg-purple-500 rounded-full px-2 py-0.5">
+                <DiamondIcon size={16} color="#FF0000" style={{}} />
+              </View>
+            )}
+            {hasUnread && (
+              <View className="bg-[#B8860B] rounded-full px-2 py-0.5 min-w-[20px] items-center justify-center">
+                <Text className="text-white text-xs font-bold">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </View>
+          {item.isCompliment ? (
+            <Text
+              className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
+              numberOfLines={1}
+            >
+              {item.isComplimentSender
+                ? (item.complimentStatus === 'declined'
+                  ? 'Compliment declined'
+                  : 'You sent a compliment')
+                : `${fullName} sent you a compliment`}
+            </Text>
+          ) : item.lastMessage ? (
+            <Text
+              className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
+              numberOfLines={1}
+            >
+              {item.lastMessage.content || item.lastMessage.message}
+            </Text>
+          ) : (
+            <Text className="text-[#B8860B] text-sm mt-1 italic">
+              New match! Say salam 👋
+            </Text>
+          )}
+        </View>
+        <View className="items-end">
+          {item.lastMessage && (
+            <Text className="text-white/50 text-xs mb-1">
+              {new Date(item.lastMessage.created_at).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </Text>
+          )}
+        </View>
+      </Pressable>
+    </Swipeable>
   );
 }

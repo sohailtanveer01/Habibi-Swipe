@@ -1377,7 +1377,7 @@ export default function SwipeScreen() {
     return (
       <View className="flex-1 bg-black items-center justify-center px-6">
         <View className="mb-8">
-          <Logo variant="colored" width={120} />
+          <Logo variant="colored" width={120} height={120} style="" />
         </View>
         <Text className="text-white/70 text-center mb-4">
           {userId
@@ -2516,7 +2516,7 @@ function MatchCelebrationModal({
     <View style={matchModalStyles.container}>
       <View style={matchModalStyles.content}>
         <View style={matchModalStyles.logoContainer}>
-          <Logo variant="transparent" width={100} height={100} />
+          <Logo variant="transparent" width={80} height={80} style="" />
         </View>
         <Text style={matchModalStyles.congratsText}>It&apos;s a Match!</Text>
         <Text style={matchModalStyles.subtitle}>
