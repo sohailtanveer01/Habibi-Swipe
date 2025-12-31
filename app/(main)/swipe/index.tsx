@@ -2386,6 +2386,66 @@ export default function SwipeScreen() {
                         ))}
                     </View>
                   )}
+
+                {/* Block Button Section */}
+                <View style={{ marginTop: 32, marginBottom: 120, paddingHorizontal: 4 }}>
+                  <Pressable
+                    onPress={() => {
+                      const currentProfile = current;
+                      if (!currentProfile?.id) return;
+
+                      Alert.alert(
+                        "Block User",
+                        `Are you sure you want to block ${currentProfile.first_name || 'this user'}? They won't be able to see your profile or contact you.`,
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Block",
+                            style: "destructive",
+                            onPress: async () => {
+                              try {
+                                const { error } = await supabase.functions.invoke("block-user", {
+                                  body: { userId: currentProfile.id },
+                                });
+                                if (error) throw error;
+
+                                // Close the modal
+                                closeDetails();
+
+                                // Remove from stack and move to next
+                                setTimeout(() => {
+                                  moveToNextCard();
+                                }, 300);
+                              } catch (err: any) {
+                                Alert.alert("Error", err.message || "Failed to block user.");
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                    style={{
+                      backgroundColor: '#EF4444',
+                      paddingVertical: 16,
+                      paddingHorizontal: 24,
+                      borderRadius: 12,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
+                      Block User
+                    </Text>
+                  </Pressable>
+                  <Text style={{
+                    color: '#FFFFFF60',
+                    fontSize: 12,
+                    textAlign: 'center',
+                    marginTop: 8
+                  }}>
+                    Blocked users won't see your profile
+                  </Text>
+                </View>
               </View>
             </ScrollView>
 
