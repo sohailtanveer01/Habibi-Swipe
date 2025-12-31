@@ -4,6 +4,7 @@ import { Audio } from "expo-av";
 import { Image as ExpoImage } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import * as ScreenCapture from "expo-screen-capture";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -135,9 +136,8 @@ function MessageItem({
 
   return (
     <View
-      className={`mb-2 flex-row ${
-        isMe ? "justify-end" : "justify-start"
-      } items-end`}
+      className={`mb-2 flex-row ${isMe ? "justify-end" : "justify-start"
+        } items-end`}
     >
       {!isMe && (
         <View className="mr-2 mb-1">
@@ -159,11 +159,10 @@ function MessageItem({
         {/* Show replied-to message preview */}
         {item.reply_to && (
           <View
-            className={`mb-1 px-3 py-1.5 rounded-lg border-l-2 ${
-              isMe
-                ? "bg-white/10 border-[#B8860B]"
-                : "bg-white/5 border-white/30"
-            }`}
+            className={`mb-1 px-3 py-1.5 rounded-lg border-l-2 ${isMe
+              ? "bg-white/10 border-[#B8860B]"
+              : "bg-white/5 border-white/30"
+              }`}
           >
             <Text className="text-white/60 text-xs mb-0.5">
               {item.reply_to.sender_id === currentUser?.id
@@ -212,11 +211,10 @@ function MessageItem({
           <GestureDetector gesture={panGesture}>
             <Animated.View
               style={animatedStyle}
-              className={`rounded-2xl ${
-                isMe
-                  ? "bg-[#B8860B] rounded-br-sm"
-                  : "bg-white/10 rounded-bl-sm"
-              }`}
+              className={`rounded-2xl ${isMe
+                ? "bg-[#B8860B] rounded-br-sm"
+                : "bg-white/10 rounded-bl-sm"
+                }`}
             >
               {item.image_url && (
                 <Pressable
@@ -263,9 +261,8 @@ function MessageItem({
                   <View className="flex-row items-center">
                     <Pressable
                       onPress={() => onToggleVoice(item)}
-                      className={`w-10 h-10 rounded-full items-center justify-center ${
-                        isMe ? "bg-[#B8860B]" : "bg-white/15"
-                      }`}
+                      className={`w-10 h-10 rounded-full items-center justify-center ${isMe ? "bg-[#B8860B]" : "bg-white/15"
+                        }`}
                     >
                       <Ionicons
                         name={isVoicePlaying ? "pause" : "play"}
@@ -297,9 +294,8 @@ function MessageItem({
 
               {item.content && item.content.trim() && (
                 <Text
-                  className={`text-base px-4 py-2.5 ${
-                    isDeleted ? "text-white/50 italic" : "text-white"
-                  }`}
+                  className={`text-base px-4 py-2.5 ${isDeleted ? "text-white/50 italic" : "text-white"
+                    }`}
                 >
                   {item.content}
                 </Text>
@@ -311,9 +307,8 @@ function MessageItem({
         {showDeleteLabel && !isDeleted && (
           <Pressable
             onPress={onDeletePress}
-            className={`mt-1 ${
-              isMe ? "self-end" : "self-start"
-            } bg-red-500/15 border border-red-400/60 px-3 py-1.5 rounded-full`}
+            className={`mt-1 ${isMe ? "self-end" : "self-start"
+              } bg-red-500/15 border border-red-400/60 px-3 py-1.5 rounded-full`}
           >
             <Text className="text-xs font-semibold text-red-400">Delete this message ?</Text>
           </Pressable>
@@ -419,6 +414,9 @@ async function getChatMediaUrl(mediaUrl: string): Promise<string> {
 }
 
 export default function ChatScreen() {
+  // Prevent screenshots to keep chats safe
+  ScreenCapture.usePreventScreenCapture();
+
   const { chatId } = useLocalSearchParams();
   const router = useRouter();
   const [text, setText] = useState("");
@@ -647,7 +645,7 @@ export default function ChatScreen() {
       if (data?.blocked) {
         setHalalWarning(
           data.warning ||
-            "Please rephrase to keep the conversation halal and respectful."
+          "Please rephrase to keep the conversation halal and respectful."
         );
         return;
       }
@@ -919,10 +917,10 @@ export default function ChatScreen() {
       if (playingSoundRef.current) {
         try {
           await playingSoundRef.current.stopAsync();
-        } catch {}
+        } catch { }
         try {
           await playingSoundRef.current.unloadAsync();
-        } catch {}
+        } catch { }
         playingSoundRef.current = null;
         setPlayingMessageId(null);
       }
@@ -1194,10 +1192,10 @@ export default function ChatScreen() {
         if (playingSoundRef.current) {
           try {
             await playingSoundRef.current.stopAsync();
-          } catch {}
+          } catch { }
           try {
             await playingSoundRef.current.unloadAsync();
-          } catch {}
+          } catch { }
           playingSoundRef.current = null;
         }
 
@@ -1233,7 +1231,7 @@ export default function ChatScreen() {
               },
             }));
           }
-        } catch {}
+        } catch { }
 
         playingSoundRef.current = sound;
       } catch (e) {
@@ -1248,7 +1246,7 @@ export default function ChatScreen() {
   useEffect(() => {
     return () => {
       if (playingSoundRef.current) {
-        playingSoundRef.current.unloadAsync().catch(() => {});
+        playingSoundRef.current.unloadAsync().catch(() => { });
         playingSoundRef.current = null;
       }
     };
@@ -1306,7 +1304,7 @@ export default function ChatScreen() {
       acc.push({ ...msg, _index: acc.length });
       return acc;
     }, []);
-    }, [messages]);
+  }, [messages]);
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
@@ -1534,14 +1532,12 @@ export default function ChatScreen() {
           data={groupedMessages}
           keyExtractor={(item, index) => {
             if (item.type === "timestamp") {
-              return `timestamp-${
-                item._index !== undefined ? item._index : index
-              }`;
+              return `timestamp-${item._index !== undefined ? item._index : index
+                }`;
             }
             // Combine ID and index to ensure absolute uniqueness
-            return `msg-${item.id}-${
-              item._index !== undefined ? item._index : index
-            }`;
+            return `msg-${item.id}-${item._index !== undefined ? item._index : index
+              }`;
           }}
           contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
           onContentSizeChange={() =>
@@ -1554,7 +1550,7 @@ export default function ChatScreen() {
           initialNumToRender={20}
           windowSize={10}
           // Optimize scroll events
-          onScrollToIndexFailed={() => {}}
+          onScrollToIndexFailed={() => { }}
           renderItem={({ item }) => {
             if (item.type === "timestamp") {
               return (
@@ -2099,11 +2095,10 @@ export default function ChatScreen() {
             >
               <Animated.View style={micPulseStyle}>
                 <View
-                  className={`w-10 h-10 rounded-full items-center justify-center border ${
-                    isRecording
-                      ? "bg-red-500/20 border-red-500/50"
-                      : "bg-white/10 border-[#B8860B]/30"
-                  }`}
+                  className={`w-10 h-10 rounded-full items-center justify-center border ${isRecording
+                    ? "bg-red-500/20 border-red-500/50"
+                    : "bg-white/10 border-[#B8860B]/30"
+                    }`}
                 >
                   <Ionicons
                     name={isRecording ? "stop" : "mic"}
@@ -2142,12 +2137,11 @@ export default function ChatScreen() {
                 sendMessageMutation.isPending ||
                 uploadingMedia
               }
-              className={`w-10 h-10 rounded-full bg-[#B8860B] items-center justify-center ${
-                isRecording ||
+              className={`w-10 h-10 rounded-full bg-[#B8860B] items-center justify-center ${isRecording ||
                 ((!text || !text.trim()) && !selectedImage && !pendingVoice)
-                  ? "opacity-50"
-                  : ""
-              }`}
+                ? "opacity-50"
+                : ""
+                }`}
             >
               {uploadingMedia ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
