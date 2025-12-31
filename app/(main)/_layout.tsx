@@ -107,7 +107,6 @@ export default function MainLayout() {
 
       console.log("👤 Checking likes for user:", user.id);
 
-      // Get all swipes where someone liked the current user
       const { data: swipes, error: swipesError } = await supabase
         .from("swipes")
         .select("swiper_id, action")
@@ -115,14 +114,10 @@ export default function MainLayout() {
         .eq("action", "like");
 
       if (swipesError) {
-        console.error("❌ Error fetching swipes:", swipesError);
         return;
       }
 
-      console.log("📊 Found swipes:", swipes?.length || 0, swipes);
-
       if (!swipes || swipes.length === 0) {
-        console.log("💔 No swipes found, setting count to 0");
         setNewLikes(0);
         return;
       }
@@ -132,8 +127,6 @@ export default function MainLayout() {
         .from("matches")
         .select("user1, user2")
         .or(`user1.eq.${user.id},user2.eq.${user.id}`);
-
-      console.log("💑 Found matches:", matches?.length || 0);
 
       // Get blocked users (both ways)
       const { data: blocksIBlocked } = await supabase
@@ -166,17 +159,13 @@ export default function MainLayout() {
         blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
       }
 
-      console.log("🚫 Matched user IDs:", Array.from(matchedUserIds));
-      console.log("🚫 Blocked user IDs:", Array.from(blockedUserIds));
-
       // Filter out matched and blocked users
       const uniqueLikerIds = new Set(swipes.map(s => s.swiper_id));
-      const newLikes = Array.from(uniqueLikerIds).filter(
+      const newLikesCount = Array.from(uniqueLikerIds).filter(
         (id) => !matchedUserIds.has(id) && !blockedUserIds.has(id)
       );
 
-      console.log("💖 New likes count:", newLikes.length, "from likers:", newLikes);
-      setNewLikes(newLikes.length);
+      setNewLikes(newLikesCount.length);
     };
 
     // Store the function in a ref so subscription callbacks can access the latest version
@@ -206,12 +195,8 @@ export default function MainLayout() {
             table: "swipes",
           },
           (payload) => {
-            console.log("📨 Swipe INSERT event received:", payload.new);
-            console.log("📨 Action:", payload.new.action);
-            console.log("📨 Swiped ID:", payload.new.swiped_id, "Current user:", user.id);
             // Check if this swipe is for the current user
             if (payload.new.swiped_id === user.id && payload.new.action === "like") {
-              console.log("💖 New like received! Refreshing count...");
               if (checkNewLikesRef.current) {
                 checkNewLikesRef.current();
               }
@@ -225,8 +210,7 @@ export default function MainLayout() {
             schema: "public",
             table: "matches",
           },
-          (payload) => {
-            console.log("💑 Match INSERT event received:", payload.new);
+          () => {
             // Use the ref to get the latest function
             if (checkNewLikesRef.current) {
               checkNewLikesRef.current();
@@ -241,32 +225,15 @@ export default function MainLayout() {
             table: "swipes",
           },
           (payload) => {
-            console.log("📨 Swipe UPDATE event received:", payload.new);
-            console.log("📨 Action:", payload.new.action);
             // Check if this swipe is for the current user
             if (payload.new.swiped_id === user.id) {
-              console.log("🔄 Swipe updated for current user, refreshing count...");
               if (checkNewLikesRef.current) {
                 checkNewLikesRef.current();
               }
             }
           }
         )
-        .subscribe((status, err) => {
-          console.log("📡 Likes subscription status:", status);
-          if (status === "SUBSCRIBED") {
-            console.log("✅ Successfully subscribed to likes real-time");
-          } else if (status === "CHANNEL_ERROR") {
-            console.error("❌ Error subscribing to likes real-time:", err);
-            console.error("💡 FIX: Run in Supabase SQL Editor:");
-            console.error("   ALTER PUBLICATION supabase_realtime ADD TABLE public.swipes;");
-            console.error("   ALTER PUBLICATION supabase_realtime ADD TABLE public.matches;");
-          } else if (status === "TIMED_OUT") {
-            console.error("⏱️ Likes subscription timed out - check network connection");
-          } else if (status === "CLOSED") {
-            console.log("🔒 Subscription closed");
-          }
-        });
+        .subscribe();
 
       return newChannel;
     };
