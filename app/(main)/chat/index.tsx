@@ -377,6 +377,91 @@ function ChatItem({ item, router, queryClient }: { item: any; router: any; query
     );
   };
 
+  // Render the chat item content
+  const chatItemContent = (
+    <Pressable
+      className="bg-white/10 p-4 rounded-2xl mb-3 flex-row items-center border border-white/10"
+      onPress={() => router.push(`/(main)/chat/${item.id}`)}
+    >
+      <View className="relative mr-4">
+        {mainPhoto ? (
+          <Image
+            source={{ uri: mainPhoto }}
+            className="w-16 h-16 rounded-full border-2 border-[#B8860B]"
+            resizeMode="cover"
+          />
+        ) : (
+          <View className="w-16 h-16 rounded-full bg-white/10 items-center justify-center border-2 border-[#B8860B]">
+            <Text className="text-white/60 text-2xl">👤</Text>
+          </View>
+        )}
+        {isOtherUserActive && (
+          <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-black" />
+        )}
+      </View>
+      <View className="flex-1">
+        <View className="flex-row items-center gap-2">
+          <Text
+            className={`text-lg ${hasUnread ? 'font-bold' : 'font-semibold'} text-white`}
+            numberOfLines={1}
+          >
+            {fullName}
+          </Text>
+          {item.isCompliment && (
+            <View className="bg-purple-500 rounded-full px-2 py-0.5">
+              <DiamondIcon size={16} color="#FF0000" style={{}} />
+            </View>
+          )}
+          {hasUnread && (
+            <View className="bg-[#B8860B] rounded-full px-2 py-0.5 min-w-[20px] items-center justify-center">
+              <Text className="text-white text-xs font-bold">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Text>
+            </View>
+          )}
+        </View>
+        {item.isCompliment ? (
+          <Text
+            className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
+            numberOfLines={1}
+          >
+            {item.isComplimentSender
+              ? (item.complimentStatus === 'declined'
+                ? 'Compliment declined'
+                : 'You sent a compliment')
+              : `${fullName} sent you a compliment`}
+          </Text>
+        ) : item.lastMessage ? (
+          <Text
+            className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
+            numberOfLines={1}
+          >
+            {item.lastMessage.content || item.lastMessage.message}
+          </Text>
+        ) : (
+          <Text className="text-[#B8860B] text-sm mt-1 italic">
+            New match! Say salam 👋
+          </Text>
+        )}
+      </View>
+      <View className="items-end">
+        {item.lastMessage && (
+          <Text className="text-white/50 text-xs mb-1">
+            {new Date(item.lastMessage.created_at).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </Text>
+        )}
+      </View>
+    </Pressable>
+  );
+
+  // Only enable swipe actions for actual matches, not compliments
+  if (item.isCompliment) {
+    return chatItemContent;
+  }
+
   return (
     <Swipeable
       renderRightActions={renderRightActions}
@@ -384,82 +469,7 @@ function ChatItem({ item, router, queryClient }: { item: any; router: any; query
       overshootRight={false}
       friction={1.5}
     >
-      <Pressable
-        className="bg-white/10 p-4 rounded-2xl mb-3 flex-row items-center border border-white/10"
-        onPress={() => router.push(`/(main)/chat/${item.id}`)}
-      >
-        <View className="relative mr-4">
-          {mainPhoto ? (
-            <Image
-              source={{ uri: mainPhoto }}
-              className="w-16 h-16 rounded-full border-2 border-[#B8860B]"
-              resizeMode="cover"
-            />
-          ) : (
-            <View className="w-16 h-16 rounded-full bg-white/10 items-center justify-center border-2 border-[#B8860B]">
-              <Text className="text-white/60 text-2xl">👤</Text>
-            </View>
-          )}
-          {isOtherUserActive && (
-            <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-black" />
-          )}
-        </View>
-        <View className="flex-1">
-          <View className="flex-row items-center gap-2">
-            <Text
-              className={`text-lg ${hasUnread ? 'font-bold' : 'font-semibold'} text-white`}
-              numberOfLines={1}
-            >
-              {fullName}
-            </Text>
-            {item.isCompliment && (
-              <View className="bg-purple-500 rounded-full px-2 py-0.5">
-                <DiamondIcon size={16} color="#FF0000" style={{}} />
-              </View>
-            )}
-            {hasUnread && (
-              <View className="bg-[#B8860B] rounded-full px-2 py-0.5 min-w-[20px] items-center justify-center">
-                <Text className="text-white text-xs font-bold">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </Text>
-              </View>
-            )}
-          </View>
-          {item.isCompliment ? (
-            <Text
-              className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
-              numberOfLines={1}
-            >
-              {item.isComplimentSender
-                ? (item.complimentStatus === 'declined'
-                  ? 'Compliment declined'
-                  : 'You sent a compliment')
-                : `${fullName} sent you a compliment`}
-            </Text>
-          ) : item.lastMessage ? (
-            <Text
-              className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
-              numberOfLines={1}
-            >
-              {item.lastMessage.content || item.lastMessage.message}
-            </Text>
-          ) : (
-            <Text className="text-[#B8860B] text-sm mt-1 italic">
-              New match! Say salam 👋
-            </Text>
-          )}
-        </View>
-        <View className="items-end">
-          {item.lastMessage && (
-            <Text className="text-white/50 text-xs mb-1">
-              {new Date(item.lastMessage.created_at).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </Text>
-          )}
-        </View>
-      </Pressable>
+      {chatItemContent}
     </Swipeable>
   );
 }
