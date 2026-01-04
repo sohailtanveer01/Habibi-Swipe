@@ -365,6 +365,39 @@ serve(async (req) => {
       };
     }
 
+    // Check if this match was created from a compliment
+    // Look for an accepted compliment between these two users
+    let complimentInfo = null;
+    if (!isUnmatched && match) {
+      const { data: acceptedCompliment } = await supabaseClient
+        .from("compliments")
+        .select("*")
+        .eq("status", "accepted")
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${user.id})`)
+        .order("accepted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (acceptedCompliment) {
+        // Check if the match was created around the same time as the compliment was accepted
+        // (within 5 minutes) to ensure they're related
+        const matchCreatedAt = new Date(match.created_at).getTime();
+        const complimentAcceptedAt = new Date(acceptedCompliment.accepted_at).getTime();
+        const timeDiff = Math.abs(matchCreatedAt - complimentAcceptedAt);
+        const fiveMinutes = 5 * 60 * 1000;
+
+        if (timeDiff < fiveMinutes) {
+          complimentInfo = {
+            complimentId: acceptedCompliment.id,
+            complimentMessage: acceptedCompliment.message,
+            complimentCreatedAt: acceptedCompliment.created_at,
+            isComplimentSender: acceptedCompliment.sender_id === user.id,
+            isComplimentRecipient: acceptedCompliment.recipient_id === user.id,
+          };
+        }
+      }
+    }
+
     console.log("✅ Loaded chat:", updatedMessages.length, "messages");
 
     return new Response(
@@ -381,6 +414,16 @@ serve(async (req) => {
         unreadCount: unreadCount || 0, // Return count before marking as read
         isUnmatched: isUnmatched,
         rematchRequest: rematchRequestInfo,
+        // Include compliment info if this match was created from a compliment
+        ...(complimentInfo ? {
+          isCompliment: true,
+          complimentId: complimentInfo.complimentId,
+          complimentStatus: "accepted",
+          complimentMessage: complimentInfo.complimentMessage,
+          complimentCreatedAt: complimentInfo.complimentCreatedAt,
+          isComplimentSender: complimentInfo.isComplimentSender,
+          isComplimentRecipient: complimentInfo.isComplimentRecipient,
+        } : {}),
       }),
       {
         status: 200,

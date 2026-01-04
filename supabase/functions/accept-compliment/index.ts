@@ -102,26 +102,37 @@ serve(async (req) => {
     const user1 = user.id < compliment.sender_id ? user.id : compliment.sender_id;
     const user2 = user.id > compliment.sender_id ? user.id : compliment.sender_id;
 
-    const { data: newMatch, error: matchError } = await supabaseAdmin
+    let matchId: string;
+    
+    // Check if match already exists
+    const { data: existingMatch } = await supabaseAdmin
       .from("matches")
-      .insert({ user1, user2 })
-      .select()
-      .single();
+      .select("*")
+      .or(`and(user1.eq.${user1},user2.eq.${user2}),and(user1.eq.${user2},user2.eq.${user1})`)
+      .maybeSingle();
 
-    if (matchError) {
-      console.error("❌ Error creating match:", matchError);
-      // Check if it's a unique constraint violation (match already exists)
-      if (matchError.code === '23505') {
-         // Match already exists, proceed without error
-      } else {
+    if (existingMatch) {
+      // Match already exists, use it
+      console.log("ℹ️ Match already exists, using existing match:", existingMatch.id);
+      matchId = existingMatch.id;
+    } else {
+      // Create new match
+      const { data: newMatch, error: matchError } = await supabaseAdmin
+        .from("matches")
+        .insert({ user1, user2 })
+        .select()
+        .single();
+
+      if (matchError) {
+        console.error("❌ Error creating match:", matchError);
         return new Response(
           JSON.stringify({ error: "Failed to create match", details: matchError.message }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      
+      matchId = newMatch.id;
     }
-    
-    const matchId = newMatch.id;
 
     // Update compliment status
     await supabaseAdmin
@@ -159,14 +170,32 @@ serve(async (req) => {
       console.error("Push notification failed:", e);
     }
 
-    // Create the initial message in the chat
-    if (matchId) {
-      await supabaseAdmin.from("messages").insert({
+    // Create the initial message in the chat (only if it doesn't already exist)
+    // Check if a message with this compliment text already exists for this match
+    const { data: existingMessage } = await supabaseAdmin
+      .from("messages")
+      .select("id")
+      .eq("match_id", matchId)
+      .eq("sender_id", compliment.sender_id)
+      .eq("content", compliment.message)
+      .maybeSingle();
+
+    if (!existingMessage && matchId) {
+      const { error: messageError } = await supabaseAdmin.from("messages").insert({
         match_id: matchId,
         sender_id: compliment.sender_id,
-        message: compliment.message,
+        content: compliment.message,
         message_type: "text",
       });
+      
+      if (messageError) {
+        console.error("⚠️ Error inserting compliment message:", messageError);
+        // Don't fail the request if message insertion fails
+      } else {
+        console.log("✅ Compliment message inserted into chat");
+      }
+    } else if (existingMessage) {
+      console.log("ℹ️ Compliment message already exists in chat");
     }
 
     console.log("✅ Compliment accepted, match created:", { matchId, complimentId });

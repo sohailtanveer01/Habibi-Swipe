@@ -491,9 +491,23 @@ export default function ChatScreen() {
   });
 
   const otherUser = chatData?.otherUser || null;
-  const currentUser = chatData?.currentUserId
-    ? { id: chatData.currentUserId }
-    : null;
+  
+  // Get current user ID directly from auth to ensure accuracy
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    // Always get the current user ID from auth to ensure it's correct
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (user && !error) {
+        setCurrentUserId(user.id);
+      } else if (chatData?.currentUserId) {
+        // Fallback to chatData if auth fails
+        setCurrentUserId(chatData.currentUserId);
+      }
+    });
+  }, [chatData?.currentUserId]);
+  
+  const currentUser = currentUserId ? { id: currentUserId } : null;
   const messages = chatData?.messages || [];
   const isBlocked = chatData?.isBlocked || false;
   const iAmBlocked = chatData?.iAmBlocked || false;
@@ -1467,37 +1481,44 @@ export default function ChatScreen() {
           <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
         </Pressable>
       </View>
-      {/* Compliment Message Display - shown like a normal incoming message */}
+      {/* Compliment Message Display - shown like a normal message (left if received, right if sent) */}
+      {/* Show for both pending and accepted compliments (accepted means match was created) */}
       {isCompliment &&
-        complimentStatus === "pending" &&
+        (complimentStatus === "pending" || complimentStatus === "accepted") &&
         chatData?.complimentMessage && (
           <View className="px-4 pt-6">
-            <View className="mb-2 flex-row justify-start items-end">
-              {/* Sender Avatar */}
-              <View className="mr-2 mb-1">
-                {mainPhoto ? (
-                  <Image
-                    source={{ uri: mainPhoto }}
-                    className="w-8 h-8 rounded-full"
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
-                    <Text className="text-white/60 text-xs">👤</Text>
-                  </View>
-                )}
-              </View>
+            {/* If current user is the sender, show on right; if recipient, show on left */}
+            <View className={`mb-2 flex-row ${isComplimentSender ? "justify-end" : "justify-start"} items-end`}>
+              {/* Sender Avatar - only show if recipient (left side) */}
+              {!isComplimentSender && (
+                <View className="mr-2 mb-1">
+                  {mainPhoto ? (
+                    <Image
+                      source={{ uri: mainPhoto }}
+                      className="w-8 h-8 rounded-full"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
+                      <Text className="text-white/60 text-xs">👤</Text>
+                    </View>
+                  )}
+                </View>
+              )}
 
               {/* Message Bubble */}
-              <View className="max-w-[75%] items-start">
-                <View className="bg-white/10 rounded-2xl rounded-bl-sm px-4 py-3 border border-[#B8860B]/20">
+              <View className={`max-w-[75%] ${isComplimentSender ? "items-end" : "items-start"}`}>
+                <View className={`${isComplimentSender 
+                  ? "bg-[#B8860B] rounded-2xl rounded-br-sm" 
+                  : "bg-white/10 rounded-2xl rounded-bl-sm border border-[#B8860B]/20"
+                } px-4 py-3`}>
                   <Text className="text-white text-base leading-6">
                     {chatData.complimentMessage}
                   </Text>
                 </View>
 
                 {/* Timestamp */}
-                <Text className="text-white/40 text-xs mt-1 ml-1">
+                <Text className={`text-white/40 text-xs mt-1 ${isComplimentSender ? "mr-1" : "ml-1"}`}>
                   {new Date(
                     chatData.complimentCreatedAt || Date.now()
                   ).toLocaleDateString([], {
@@ -1936,8 +1957,8 @@ export default function ChatScreen() {
           </View>
         )}
 
-      {/* Compliment Sender Status */}
-      {isCompliment && isComplimentSender && (
+      {/* Compliment Sender Status - Only show if pending or declined, not if accepted (match created) */}
+      {isCompliment && isComplimentSender && complimentStatus !== "accepted" && (
         <View className="px-4 py-4 bg-purple-500/20 border-t border-purple-500/30">
           {complimentStatus === "pending" ? (
             <View className="items-center">
@@ -2060,8 +2081,9 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Input - Hide if blocked, unmatched, or compliment (until accepted) */}
-      {!isBlocked && !isUnmatched && !isCompliment && (
+      {/* Input - Hide if blocked, unmatched, or compliment (only if still pending) */}
+      {/* Show input if compliment is accepted (match created) */}
+      {!isBlocked && !isUnmatched && (!isCompliment || complimentStatus === "accepted") && (
         <View
           className="bg-black px-4 py-3"
           style={{ paddingBottom: Platform.OS === "ios" ? 20 : 10 }}
