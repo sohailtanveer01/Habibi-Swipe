@@ -1837,12 +1837,12 @@ export default function ChatScreen() {
       {isCompliment &&
         isComplimentRecipient &&
         complimentStatus === "pending" && (
-          <View className="px-4 py-4 bg-purple-500/20 border-t border-purple-500/30">
+          <View className="px-4 py-4 bg-white/5 border-t border-[#B8860B]/30">
             <View className="items-center mb-4">
               <Text className="text-white text-lg font-bold mb-1">
                 {fullName} sent you a compliment! 💬
               </Text>
-              <Text className="text-white/80 text-sm text-center">
+              <Text className="text-white/70 text-sm text-center">
                 View their profile and decide if you&apos;d like to match
               </Text>
             </View>
@@ -1959,13 +1959,13 @@ export default function ChatScreen() {
 
       {/* Compliment Sender Status - Only show if pending or declined, not if accepted (match created) */}
       {isCompliment && isComplimentSender && complimentStatus !== "accepted" && (
-        <View className="px-4 py-4 bg-purple-500/20 border-t border-purple-500/30">
+        <View className="px-4 py-4 bg-white/5 border-t border-[#B8860B]/30">
           {complimentStatus === "pending" ? (
             <View className="items-center">
-              <Text className="text-white/70 text-center text-base mb-2">
+              <Text className="text-white/80 text-center text-base mb-2">
                 Compliment sent! 💬
               </Text>
-              <Text className="text-white/50 text-center text-sm">
+              <Text className="text-white/60 text-center text-sm">
                 Waiting for {fullName} to respond...
               </Text>
             </View>

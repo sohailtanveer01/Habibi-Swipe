@@ -1463,7 +1463,7 @@ export default function SwipeScreen() {
         )}
       </Modal>
 
-        {source &&
+      {source &&
         (source === "myLikes" ||
           source === "likedMe" ||
           source === "viewers" ||
@@ -1473,11 +1473,10 @@ export default function SwipeScreen() {
             className="absolute left-4 z-50 bg-black/50 w-10 h-10 rounded-full items-center justify-center"
             style={{ top: insets.top + 8 }}
             onPress={() => {
-              // Navigate directly without clearing params to prevent navigation issues
+              router.setParams({ userId: undefined, source: undefined });
               if (source === "chat") {
-                router.push("/(main)/chat");
+                router.back();
               } else {
-                // For other sources (myLikes, likedMe, viewers, passedOn), navigate to likes
                 router.push("/(main)/likes");
               }
             }}
