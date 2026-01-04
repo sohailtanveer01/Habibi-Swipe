@@ -1437,9 +1437,9 @@ export default function ChatScreen() {
               );
               return;
             }
-            // Normal behavior: navigate to profile
+            // Normal behavior: navigate to profile preview
             if (otherUser?.id) {
-              router.push(`/(main)/swipe?userId=${otherUser.id}&source=chat`);
+              router.push(`/(main)/chat/user-profile?userId=${otherUser.id}`);
             }
           }}
         >

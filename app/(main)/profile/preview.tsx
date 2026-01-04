@@ -227,7 +227,7 @@ export default function ProfilePreviewScreen() {
             if (isViewingOwnProfile) {
               router.push("/(main)/profile");
             } else {
-              router.back();
+              router.push("/(main)/swipe");
             }
           }}
           style={styles.backButton}

@@ -429,6 +429,7 @@ export default function MainLayout() {
       <Tabs.Screen name="profile/settings" options={{ href: null }} />
       <Tabs.Screen name="profile/account-info" options={{ href: null }} />
       <Tabs.Screen name="profile/notifications" options={{ href: null }} />
+      <Tabs.Screen name="chat/user-profile" options={{ href: null }} />
     </Tabs>
   );
 }
