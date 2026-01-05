@@ -350,10 +350,15 @@ serve(async (req) => {
     let rematchRequestInfo = null;
     if (isUnmatched && unmatchRecord) {
       const hasPendingRequest = unmatchRecord.rematch_status === "pending";
+      const isRejected = unmatchRecord.rematch_status === "rejected";
       const isRequestRecipient =
         hasPendingRequest && unmatchRecord.rematch_requested_by !== user.id;
       const isRequestRequester =
         hasPendingRequest && unmatchRecord.rematch_requested_by === user.id;
+      // Check if current user has already requested (even if rejected)
+      const hasAlreadyRequested = unmatchRecord.rematch_requested_by === user.id;
+      // Check if rematch was rejected (by anyone)
+      const wasRejected = isRejected;
 
       rematchRequestInfo = {
         status: unmatchRecord.rematch_status,
@@ -362,6 +367,8 @@ serve(async (req) => {
         hasPendingRequest,
         isRequestRecipient, // Current user can accept/reject
         isRequestRequester, // Current user sent the request (waiting for response)
+        hasAlreadyRequested, // Current user has already requested (can't request again)
+        wasRejected, // Rematch was rejected (no more requests allowed)
       };
     }
 

@@ -133,6 +133,23 @@ serve(async (req) => {
       );
     }
 
+    // Check if user has already requested a rematch (even if rejected)
+    // Once a rematch is rejected, the requester cannot request again
+    if (unmatchRecord.rematch_requested_by === user.id) {
+      return new Response(
+        JSON.stringify({ error: "You have already requested a rematch. Rematch requests can only be sent once." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if rematch status is rejected (prevent any new requests after rejection)
+    if (unmatchRecord.rematch_status === 'rejected') {
+      return new Response(
+        JSON.stringify({ error: "Rematch request was rejected. You cannot request a rematch again." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Update unmatch record with rematch request
     const { error: updateError } = await supabaseClient
       .from("unmatches")
