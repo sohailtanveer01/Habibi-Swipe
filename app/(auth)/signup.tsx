@@ -11,10 +11,15 @@ import Logo from "../../components/Logo";
 WebBrowser.maybeCompleteAuthSession();
 
 export default function Signup() {
-  const [email, setEmail] = useState("");
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
+  
+  // Redirect to login screen since we unified login/signup
+  useEffect(() => {
+    router.replace("/(auth)/login");
+  }, [router]);
+
+  // This component is kept for backward compatibility but redirects immediately
+  return null;
 
   const continueWithEmail = async () => {
     const trimmed = email.trim().toLowerCase();
