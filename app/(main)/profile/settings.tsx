@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { supabase } from "../../../lib/supabase";
 
 interface SettingsItemProps {
@@ -277,13 +277,29 @@ export default function SettingsScreen() {
         <SettingsItem
           icon="document-text-outline"
           title="Terms of Service"
-          onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
+          onPress={async () => {
+            const url = "https://yourdomain.com/terms-of-service"; // Replace with your actual URL
+            const canOpen = await Linking.canOpenURL(url);
+            if (canOpen) {
+              await Linking.openURL(url);
+            } else {
+              Alert.alert("Error", "Unable to open Terms of Service. Please visit our website.");
+            }
+          }}
         />
 
         <SettingsItem
           icon="shield-outline"
           title="Privacy Policy"
-          onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
+          onPress={async () => {
+            const url = "https://yourdomain.com/privacy-policy"; // Replace with your actual URL
+            const canOpen = await Linking.canOpenURL(url);
+            if (canOpen) {
+              await Linking.openURL(url);
+            } else {
+              Alert.alert("Error", "Unable to open Privacy Policy. Please visit our website.");
+            }
+          }}
         />
 
         {/* Danger Zone */}
