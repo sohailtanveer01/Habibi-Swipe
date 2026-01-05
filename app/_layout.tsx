@@ -4,10 +4,7 @@ import { Stack, useRouter } from "expo-router";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { Platform } from "react-native";
-import "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import Purchases from "react-native-purchases";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "../global.css";
 import { LikesNotificationProvider } from "../lib/likesNotificationContext";
@@ -15,7 +12,6 @@ import { registerAndSyncPushToken } from "../lib/pushNotifications";
 import { supabase } from "../lib/supabase";
 
 // RevenueCat configuration
-const REVENUECAT_API_KEY = "test_PrYkXQQOqDKUcylpmHBHJZJzGtf";
 
 // Configure QueryClient with optimized cache settings
 const qc = new QueryClient({
@@ -53,10 +49,10 @@ export default function RootLayout() {
       }
     });
 
-    // Configure RevenueCat
-    if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      Purchases.configure({ apiKey: REVENUECAT_API_KEY });
-    }
+    // // Configure RevenueCat
+    // if (Platform.OS === 'ios' || Platform.OS === 'android') {
+    //   Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+    // }
 
     return () => {
       sub.remove();
