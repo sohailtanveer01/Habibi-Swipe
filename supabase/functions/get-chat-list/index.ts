@@ -163,6 +163,23 @@ serve(async (req) => {
             return null;
           }
 
+          // Check if a match already exists (rematch was accepted)
+          // This ensures rematch requests don't show up after acceptance
+          const user1 = user.id < otherUserId ? user.id : otherUserId;
+          const user2 = user.id > otherUserId ? user.id : otherUserId;
+          
+          const { data: existingMatch } = await supabaseClient
+            .from("matches")
+            .select("id")
+            .or(`and(user1.eq.${user1},user2.eq.${user2}),and(user1.eq.${user2},user2.eq.${user1})`)
+            .maybeSingle();
+
+          // If match exists, don't show rematch request (it was already accepted)
+          if (existingMatch) {
+            console.log("ℹ️ Match already exists for rematch request, skipping:", unmatch.match_id);
+            return null;
+          }
+
           // Get other user's profile
           const { data: otherUser, error: userError } = await supabaseClient
             .from("users")
