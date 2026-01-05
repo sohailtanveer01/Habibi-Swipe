@@ -115,23 +115,12 @@ export default function Signup() {
         .eq("id", user.id)
         .maybeSingle();
 
-      // If profile doesn't exist, create a basic one with Google info
+      // If profile doesn't exist, don't create it here - let onboarding handle it
+      // This prevents errors with required fields like gender, first_name, last_name
+      // The onboarding flow will create the profile with all required fields
       if (!profile) {
-        const { error: createError } = await supabase
-          .from("users")
-          .insert({
-            id: user.id,
-            email: user.email,
-            name: user.user_metadata?.full_name || user.user_metadata?.name || "",
-            account_active: true,
-            photos: user.user_metadata?.avatar_url ? [user.user_metadata.avatar_url] : [],
-            verified: false,
-            last_active_at: new Date().toISOString(),
-          });
-
-        if (createError) {
-          console.error("Error creating user profile:", createError);
-        }
+        // Profile will be created during onboarding with all required fields
+        // Just ensure email is set if we have it
       } else if (profile.email !== user.email) {
         // Update email if it changed
         await supabase
@@ -143,17 +132,22 @@ export default function Signup() {
       // Re-fetch profile to check onboarding status
       const { data: updatedProfile } = await supabase
         .from("users")
-        .select("id, name, photos")
+        .select("id, name, photos, gender, first_name, last_name")
         .eq("id", user.id)
         .maybeSingle();
 
       setGoogleLoading(false);
 
-      if (updatedProfile && updatedProfile.name && updatedProfile.photos?.length > 0) {
+      // Check if user has completed onboarding (has required fields filled)
+      if (updatedProfile && 
+          updatedProfile.first_name && 
+          updatedProfile.last_name && 
+          updatedProfile.gender && 
+          updatedProfile.photos?.length > 0) {
         // User has completed onboarding - go to main app
         router.replace("/(main)/swipe");
       } else {
-        // User needs to complete onboarding
+        // User needs to complete onboarding (new user or incomplete profile)
         router.replace("/(auth)/onboarding/step1-basic");
       }
     } catch (error: any) {
