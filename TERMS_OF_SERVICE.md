@@ -209,7 +209,7 @@ You agree to indemnify, defend, and hold harmless Habibi Swipe, its officers, di
 ## 14. Dispute Resolution
 
 **Governing Law:**
-- These Terms shall be governed by the laws of [Your Jurisdiction], without regard to conflict of law principles
+- These Terms shall be governed by the laws of State of Texas, without regard to conflict of law principles
 
 **Dispute Resolution:**
 - Any disputes arising from these Terms or the Service shall be resolved through:
@@ -218,7 +218,7 @@ You agree to indemnify, defend, and hold harmless Habibi Swipe, its officers, di
   3. Class action waivers apply
 
 **Jurisdiction:**
-- You agree that any legal action must be brought in the courts of [Your Jurisdiction]
+- You agree that Governing law shall be Texas, unless prohibited by local consumer protection laws.
 
 ## 15. Changes to Terms
 
@@ -245,17 +245,12 @@ Your continued use of the Service after such changes constitutes acceptance of t
 - We may assign these Terms without restriction
 
 **Contact Information:**
-- For questions about these Terms, please contact us at [your-email@habibiswipe.com]
+- For questions about these Terms, please contact us at support@habibiswipe.com
 
 ## 17. Contact Us
 
 If you have questions, concerns, or complaints about these Terms, please contact us at:
 
-**Email:** [your-email@habibiswipe.com]  
-**Address:** [Your Company Address]  
-**Website:** [https://yourdomain.com]
-
----
-
-**Note:** Please replace the placeholder information (email addresses, website URLs, company address, jurisdiction, arbitration rules) with your actual details before publishing these Terms of Service. You may also want to consult with a lawyer to ensure these Terms comply with all applicable laws in your jurisdiction.
+**Email:** support@habibiswipe.com  
+**Website:** https://habibiswipe.com
 

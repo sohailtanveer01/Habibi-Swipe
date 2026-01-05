@@ -271,19 +271,27 @@ export default function SettingsScreen() {
           icon="help-circle-outline"
           title="Help & Support"
           subtitle="FAQ, contact us"
-          onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
+          onPress={async () => {
+            const url = "https://habibiswipe.com";
+            const canOpen = await Linking.canOpenURL(url);
+            if (canOpen) {
+              await Linking.openURL(url);
+            } else {
+              Alert.alert("Error", "Unable to open website. Please visit https://habibiswipe.com");
+            }
+          }}
         />
 
         <SettingsItem
           icon="document-text-outline"
           title="Terms of Service"
           onPress={async () => {
-            const url = "https://yourdomain.com/terms-of-service"; // Replace with your actual URL
+            const url = "https://habibiswipe.com";
             const canOpen = await Linking.canOpenURL(url);
             if (canOpen) {
               await Linking.openURL(url);
             } else {
-              Alert.alert("Error", "Unable to open Terms of Service. Please visit our website.");
+              Alert.alert("Error", "Unable to open Terms of Service. Please visit https://habibiswipe.com");
             }
           }}
         />
@@ -292,12 +300,12 @@ export default function SettingsScreen() {
           icon="shield-outline"
           title="Privacy Policy"
           onPress={async () => {
-            const url = "https://yourdomain.com/privacy-policy"; // Replace with your actual URL
+            const url = "https://habibiswipe.com";
             const canOpen = await Linking.canOpenURL(url);
             if (canOpen) {
               await Linking.openURL(url);
             } else {
-              Alert.alert("Error", "Unable to open Privacy Policy. Please visit our website.");
+              Alert.alert("Error", "Unable to open Privacy Policy. Please visit https://habibiswipe.com");
             }
           }}
         />

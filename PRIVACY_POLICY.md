@@ -176,7 +176,7 @@ You have the following rights regarding your personal information:
 - You can control location sharing in the App settings
 
 **Data Portability:**
-- You can request a copy of your data by contacting us at [your-email@habibiswipe.com]
+- You can request a copy of your data by contacting us at support@habibiswipe.com
 
 **GDPR Rights (for EU users):**
 - Right to access your personal data
@@ -187,7 +187,7 @@ You have the following rights regarding your personal information:
 - Right to object to processing
 - Right to withdraw consent
 
-To exercise these rights, please contact us at [your-email@habibiswipe.com].
+To exercise these rights, please contact us at support@habibiswipe.com.
 
 ## 7. Children's Privacy
 
@@ -227,9 +227,8 @@ Your continued use of the App after such changes constitutes acceptance of the u
 
 If you have questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us at:
 
-**Email:** [your-email@habibiswipe.com]  
-**Address:** [Your Company Address]  
-**Website:** [https://yourdomain.com]
+**Email:** support@habibiswipe.com  
+**Website:** https://habibiswipe.com
 
 ## 13. California Privacy Rights (CCPA)
 
@@ -239,9 +238,8 @@ If you are a California resident, you have additional rights under the Californi
 - Right to opt-out of the sale of personal information (we do not sell personal information)
 - Right to non-discrimination for exercising your privacy rights
 
-To exercise these rights, please contact us at [your-email@habibiswipe.com].
+To exercise these rights, please contact us at support@habibiswipe.com
 
 ---
 
-**Note:** Please replace the placeholder contact information (email addresses, website URLs, company address) with your actual contact details before publishing this Privacy Policy.
 
