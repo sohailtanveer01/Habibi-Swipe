@@ -22,6 +22,7 @@ function cleanPhotoUrl(url: string | null | undefined): string | null {
 
 export default function ChatListScreen() {
   const [showNotificationBanner, setShowNotificationBanner] = useState(true);
+  const [unmatchesNotificationCount, setUnmatchesNotificationCount] = useState(0);
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -70,7 +71,51 @@ export default function ChatListScreen() {
 
   const matches = chatListData || [];
 
-  // Real-time subscription for matches, messages, and user activity
+  // Fetch unmatches notification count (unmatches where user was unmatched + declined compliments)
+  const { data: unmatchesCount } = useQuery({
+    queryKey: ["unmatches-notification-count"],
+    queryFn: async () => {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) return 0;
+
+      // Count unmatches where user was unmatched (not the one who initiated)
+      const { data: unmatches, error: unmatchesError } = await supabase
+        .from("unmatches")
+        .select("id")
+        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+        .neq("unmatched_by", user.id) // User was unmatched by someone else
+        .is("rematch_status", null); // Not a rematch request
+
+      if (unmatchesError) {
+        console.error("Error fetching unmatches count:", unmatchesError);
+      }
+
+      // Count declined compliments where user was the sender
+      const { data: declinedCompliments, error: complimentsError } = await supabase
+        .from("compliments")
+        .select("id")
+        .eq("sender_id", user.id)
+        .eq("status", "declined");
+
+      if (complimentsError) {
+        console.error("Error fetching declined compliments count:", complimentsError);
+      }
+
+      const unmatchesCount = unmatches?.length || 0;
+      const declinedCount = declinedCompliments?.length || 0;
+      
+      return unmatchesCount + declinedCount;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes - cache is fresh for 5 min
+  });
+
+  useEffect(() => {
+    if (unmatchesCount !== undefined) {
+      setUnmatchesNotificationCount(unmatchesCount);
+    }
+  }, [unmatchesCount]);
+
+  // Real-time subscription for matches, messages, user activity, unmatches, and declined compliments
   useEffect(() => {
     let userId: string | null = null;
 
@@ -87,6 +132,32 @@ export default function ChatListScreen() {
         () => {
           // Invalidate cache to refetch chat list
           queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "unmatches" },
+        (payload) => {
+          // Check if this unmatch affects the current user and they weren't the one who unmatched
+          if (userId && payload.new.unmatched_by !== userId) {
+            // User was unmatched by someone else - update notification count
+            queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "compliments",
+        },
+        (payload) => {
+          // Check if a compliment was declined and the current user was the sender
+          if (userId && payload.new.sender_id === userId && payload.new.status === "declined") {
+            // User's compliment was declined - update notification count
+            queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
+          }
         }
       )
       .on(
@@ -203,9 +274,12 @@ export default function ChatListScreen() {
         <Text className="text-white text-2xl font-bold">Chats</Text>
         <Pressable
           onPress={() => router.push("/(main)/chat/unmatches")}
-          className="px-4 py-2 bg-white/10 rounded-full border border-[#B8860B]/30"
+          className="px-4 py-2 bg-white/10 rounded-full border border-[#B8860B]/30 relative"
         >
           <Text className="text-[#B8860B] text-sm font-semibold">Unmatches</Text>
+          {unmatchesNotificationCount > 0 && (
+            <View className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border border-black" />
+          )}
         </Pressable>
       </View>
 

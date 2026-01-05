@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { View, Text, FlatList, Pressable, Image, ActivityIndicator, RefreshControl } from "react-native";
 import { supabase } from "../../../lib/supabase";
 import { useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import Logo from "../../../components/Logo";
 
@@ -20,6 +20,13 @@ function cleanPhotoUrl(url: string | null | undefined): string | null {
 
 export default function UnmatchesScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  // Refresh notification count when user views this screen
+  useEffect(() => {
+    // Invalidate the notification count query to refresh it
+    queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
+  }, [queryClient]);
 
   // Fetch unmatches with React Query
   const { data: unmatchesData, isLoading, error, refetch } = useQuery({
