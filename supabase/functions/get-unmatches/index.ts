@@ -66,13 +66,16 @@ serve(async (req) => {
     }
 
     // Filter out pending rematch requests (they appear in chat list instead)
+    // Filter out accepted rematches (they've been rematched, so remove from unmatches)
     // AND filter out users I blocked (user 1 shouldn't see user 2)
     const unmatches = allUnmatches?.filter(
       (unmatch) => {
         const otherUserId = unmatch.user1_id === user.id 
           ? unmatch.user2_id 
           : unmatch.user1_id;
-        return unmatch.rematch_status !== 'pending' && !blockedUserIds.has(otherUserId);
+        return unmatch.rematch_status !== 'pending' 
+          && unmatch.rematch_status !== 'accepted' 
+          && !blockedUserIds.has(otherUserId);
       }
     ) || [];
 

@@ -79,12 +79,17 @@ export default function ChatListScreen() {
       if (!user) return 0;
 
       // Count unmatches where user was unmatched (not the one who initiated)
+      // Exclude pending and accepted rematches (pending shows in chat list, accepted means rematched)
       const { data: unmatches, error: unmatchesError } = await supabase
         .from("unmatches")
-        .select("id")
+        .select("id, rematch_status")
         .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-        .neq("unmatched_by", user.id) // User was unmatched by someone else
-        .is("rematch_status", null); // Not a rematch request
+        .neq("unmatched_by", user.id); // User was unmatched by someone else
+
+      // Filter out pending and accepted rematches in code
+      const filteredUnmatches = unmatches?.filter(
+        (unmatch) => unmatch.rematch_status !== 'pending' && unmatch.rematch_status !== 'accepted'
+      ) || [];
 
       if (unmatchesError) {
         console.error("Error fetching unmatches count:", unmatchesError);
@@ -101,7 +106,7 @@ export default function ChatListScreen() {
         console.error("Error fetching declined compliments count:", complimentsError);
       }
 
-      const unmatchesCount = unmatches?.length || 0;
+      const unmatchesCount = filteredUnmatches.length;
       const declinedCount = declinedCompliments?.length || 0;
       
       return unmatchesCount + declinedCount;
@@ -117,15 +122,18 @@ export default function ChatListScreen() {
 
   // Real-time subscription for matches, messages, user activity, unmatches, and declined compliments
   useEffect(() => {
+    let channel: any = null;
     let userId: string | null = null;
 
-    // Get user ID first
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    const setupSubscription = async () => {
+      // Get user ID first
+      const { data: { user } } = await supabase.auth.getUser();
       userId = user?.id || null;
-    });
+      
+      if (!userId) return;
 
-    const channel = supabase
-      .channel("chat-list-updates")
+      channel = supabase
+        .channel("chat-list-updates")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "matches" },
@@ -139,9 +147,43 @@ export default function ChatListScreen() {
         { event: "INSERT", schema: "public", table: "unmatches" },
         (payload) => {
           // Check if this unmatch affects the current user and they weren't the one who unmatched
-          if (userId && payload.new.unmatched_by !== userId) {
+          if (payload.new.unmatched_by !== userId) {
             // User was unmatched by someone else - update notification count
+            console.log("🔄 New unmatch detected, updating notification count");
             queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
+            queryClient.invalidateQueries({ queryKey: ["unmatches"] });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "unmatches",
+        },
+        (payload) => {
+          console.log("🔄 Unmatch UPDATE event:", {
+            user1_id: payload.new.user1_id,
+            user2_id: payload.new.user2_id,
+            rematch_status: payload.new.rematch_status,
+            old_status: payload.old?.rematch_status,
+            currentUserId: userId,
+          });
+          
+          // Check if this unmatch affects the current user
+          if (payload.new.user1_id === userId || payload.new.user2_id === userId) {
+            // Check if rematch status changed to accepted
+            if (payload.new.rematch_status === "accepted") {
+              console.log("✅ Rematch accepted, updating notification count and unmatches list");
+              // Rematch was accepted - remove from unmatches and update notification count
+              queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
+              queryClient.invalidateQueries({ queryKey: ["unmatches"] });
+            } else if (payload.old?.rematch_status !== payload.new.rematch_status) {
+              // Any other rematch status change - update notification count
+              console.log("🔄 Rematch status changed, updating notification count");
+              queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
+            }
           }
         }
       )
@@ -230,9 +272,14 @@ export default function ChatListScreen() {
       .subscribe((status) => {
         console.log("📡 Real-time subscription status:", status);
       });
+    };
+
+    setupSubscription();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [queryClient]);
 

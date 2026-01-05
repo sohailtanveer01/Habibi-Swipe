@@ -28,6 +28,78 @@ export default function UnmatchesScreen() {
     queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
   }, [queryClient]);
 
+  // Real-time subscription for unmatches updates
+  useEffect(() => {
+    let channel: any = null;
+    let userId: string | null = null;
+
+    const setupSubscription = async () => {
+      // Get user ID first
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id || null;
+      
+      if (!userId) return;
+
+      channel = supabase
+        .channel("unmatches-updates")
+        .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "unmatches",
+        },
+        (payload) => {
+          console.log("🔄 Unmatch UPDATE event in unmatches screen:", {
+            user1_id: payload.new.user1_id,
+            user2_id: payload.new.user2_id,
+            rematch_status: payload.new.rematch_status,
+            old_status: payload.old?.rematch_status,
+            currentUserId: userId,
+          });
+          
+          // Check if this unmatch affects the current user
+          if (userId && (payload.new.user1_id === userId || payload.new.user2_id === userId)) {
+            // If rematch status changed to accepted, remove from list
+            if (payload.new.rematch_status === "accepted") {
+              console.log("✅ Rematch accepted, refreshing unmatches list");
+              queryClient.invalidateQueries({ queryKey: ["unmatches"] });
+              queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
+            } else if (payload.old?.rematch_status !== payload.new.rematch_status) {
+              // Any rematch status change - refresh the list
+              console.log("🔄 Rematch status changed, refreshing unmatches list");
+              queryClient.invalidateQueries({ queryKey: ["unmatches"] });
+              queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
+            }
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "unmatches" },
+        (payload) => {
+          // Check if this unmatch affects the current user
+          if (userId && (payload.new.user1_id === userId || payload.new.user2_id === userId)) {
+            console.log("🔄 New unmatch detected, refreshing unmatches list");
+            queryClient.invalidateQueries({ queryKey: ["unmatches"] });
+            queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("📡 Unmatches real-time subscription status:", status);
+      });
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [queryClient]);
+
   // Fetch unmatches with React Query
   const { data: unmatchesData, isLoading, error, refetch } = useQuery({
     queryKey: ["unmatches"],
