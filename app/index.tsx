@@ -300,6 +300,10 @@ export default function Home() {
       {/* Logo at top */}
       <View style={styles.logoContainer}>
         <Logo variant="transparent" width={150} height={150} style="" />
+        <Text style={styles.tagline}>
+          <Text style={styles.taglineGold}>From a Swipe to </Text>
+          <Text style={styles.taglineWhite}>Niqah</Text>
+        </Text>
       </View>
 
       {/* Content - Buttons at bottom */}
@@ -373,6 +377,20 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: "center",
     zIndex: 10,
+  },
+  tagline: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 16,
+    textAlign: "center",
+    letterSpacing: 0.5,
+    fontFamily: "System",
+  },
+  taglineGold: {
+    color: "#B8860B",
+  },
+  taglineWhite: {
+    color: "#FFFFFF",
   },
   content: {
     flex: 1,
