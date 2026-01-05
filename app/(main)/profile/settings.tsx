@@ -219,7 +219,7 @@ export default function SettingsScreen() {
         <Text className="text-white text-xl font-bold ml-4">Settings</Text>
       </View>
 
-      <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 px-6 pb-18" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Account Section */}
         <Text className="text-gray-400 text-sm font-medium mb-3 mt-4">ACCOUNT</Text>
 
