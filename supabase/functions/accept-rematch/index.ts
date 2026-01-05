@@ -48,7 +48,7 @@ serve(async (req) => {
 
     console.log("📍 Accept rematch:", { matchId, userId: user.id });
 
-    // Find the unmatch record
+    // Find the unmatch record (we need to get it before deletion to know who requested)
     const { data: unmatchRecord, error: unmatchError } = await supabaseClient
       .from("unmatches")
       .select("*")
@@ -165,15 +165,23 @@ serve(async (req) => {
       newMatch = createdMatch;
     }
 
-    // Remove unmatch record
-    const { error: deleteError } = await supabaseClient
+    // Store who requested the rematch before updating the record
+    const rematchRequesterId = unmatchRecord.rematch_requested_by;
+
+    // Mark unmatch record as accepted instead of deleting immediately
+    // This allows us to show "Your rematch request has been accepted" in chat list
+    // We'll delete it after a short delay (handled by a cleanup job or after 5 minutes)
+    const { error: updateError } = await supabaseClient
       .from("unmatches")
-      .delete()
+      .update({ 
+        rematch_status: 'accepted',
+        // Keep the rematch_requested_by so we can identify who requested it
+      })
       .eq("match_id", matchId);
 
-    if (deleteError) {
-      console.error("⚠️ Error deleting unmatch record:", deleteError);
-      // Don't fail the request if deletion fails, match is already created
+    if (updateError) {
+      console.error("⚠️ Error updating unmatch record:", updateError);
+      // Don't fail the request if update fails, match is already created
     }
 
     console.log("✅ Rematch accepted, match created:", newMatch.id);
@@ -182,6 +190,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         matchId: newMatch.id,
+        rematchRequesterId, // Include who requested the rematch so frontend can show message
       }),
       {
         status: 200,

@@ -435,6 +435,10 @@ function ChatItem({ item, router, queryClient }: { item: any; router: any; query
           <Text className="text-[#B8860B] text-sm mt-1 italic">
             {fullName} requested a rematch
           </Text>
+        ) : item.isRematchAccepted ? (
+          <Text className="text-[#B8860B] text-sm mt-1 italic">
+            Your rematch request has been accepted
+          </Text>
         ) : item.lastMessage ? (
           <Text
             className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}

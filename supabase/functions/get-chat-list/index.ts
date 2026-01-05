@@ -102,14 +102,35 @@ serve(async (req) => {
           return null;
         }
 
-        // Get last message
+        // Get last message first (we'll use this for both rematch check and display)
         const { data: lastMessage } = await supabaseClient
           .from("messages")
           .select("*")
           .eq("match_id", match.id)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
+
+        // Check if this match was created from accepting a rematch request
+        // Check if there's an unmatch record with status "accepted" where current user requested the rematch
+        const { data: acceptedRematch } = await supabaseClient
+          .from("unmatches")
+          .select("rematch_requested_by, rematch_status")
+          .eq("rematch_status", "accepted")
+          .eq("rematch_requested_by", user.id)
+          .or(`and(user1_id.eq.${user.id},user2_id.eq.${otherUserId}),and(user1_id.eq.${otherUserId},user2_id.eq.${user.id})`)
+          .maybeSingle();
+        
+        // Only show rematch accepted message if match is recent (within 10 minutes) or has no messages
+        // This prevents showing the message for old matches
+        const matchCreatedAt = new Date(match.created_at).getTime();
+        const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+        const isRecentMatch = matchCreatedAt > tenMinutesAgo;
+        const hasNoMessages = !lastMessage;
+        
+        // Only show rematch accepted if there's an accepted rematch record AND
+        // (match is recent OR there are no messages yet)
+        const isRematchAccepted = !!acceptedRematch && (isRecentMatch || hasNoMessages);
 
         // Count unread messages (messages from other user that are not read)
         const { count: unreadCount, error: countError } = await supabaseClient
@@ -130,6 +151,7 @@ serve(async (req) => {
           lastMessage: lastMessage || null,
           unreadCount: Number(unreadCount) || 0, // Ensure it's a number
           lastMessageTime: lastMessage?.created_at || match.created_at,
+          isRematchAccepted, // Flag to indicate this match was created from accepting rematch
         };
       })
     ) : [];
@@ -139,6 +161,7 @@ serve(async (req) => {
     validMatches.push(...validRegularMatches);
 
     // Get unmatched users with pending rematch requests where current user is the recipient
+    // Exclude "accepted" status - those are shown as regular matches with special message
     const { data: pendingRematchRequests, error: rematchError } = await supabaseClient
       .from("unmatches")
       .select("*")
