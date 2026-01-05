@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, StyleSheet, Image } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
@@ -302,7 +302,7 @@ export default function Home() {
         <Logo variant="transparent" width={150} height={150} style="" />
       </View>
 
-      {/* Content */}
+      {/* Content - Buttons at bottom */}
       <View style={styles.content}>
         <View style={styles.buttonsContainer}>
           {/* Email Button */}
@@ -333,7 +333,11 @@ export default function Home() {
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <>
-                <Text style={styles.googleIcon}>🔍</Text>
+                <Image
+                  source={{ uri: "https://www.google.com/favicon.ico" }}
+                  style={styles.googleLogo}
+                  resizeMode="contain"
+                />
                 <Text style={styles.googleButtonText}>
                   Continue with Google
                 </Text>
@@ -378,8 +382,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-end",
     paddingHorizontal: 24,
+    paddingBottom: 60,
   },
   buttonsContainer: {
     width: "100%",
@@ -440,8 +445,10 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
-  googleIcon: {
-    fontSize: 20,
+  googleLogo: {
+    width: 20,
+    height: 20,
+    marginRight: 8,
   },
   googleButtonText: {
     fontSize: 16,
