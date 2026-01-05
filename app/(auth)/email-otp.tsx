@@ -171,7 +171,7 @@ export default function EmailOTP() {
 
       {/* Logo at top */}
       <View style={styles.logoContainer}>
-        <Logo variant="transparent" width={150} />
+        <Logo variant="transparent" width={150} height={150} style="" />
       </View>
 
       {/* Content */}
@@ -192,7 +192,7 @@ export default function EmailOTP() {
           {code.map((digit, index) => (
             <TextInput
               key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
+              ref={(ref) => { inputRefs.current[index] = ref; }}
               style={[styles.input, digit ? styles.inputFilled : null]}
               value={digit}
               onChangeText={(text) => handleCodeChange(text, index)}
@@ -200,6 +200,7 @@ export default function EmailOTP() {
               keyboardType="number-pad"
               maxLength={1}
               selectTextOnFocus
+              placeholder="•"
               placeholderTextColor="rgba(255, 255, 255, 0.2)"
             />
           ))}
