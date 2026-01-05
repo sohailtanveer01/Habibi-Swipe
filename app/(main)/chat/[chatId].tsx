@@ -1772,16 +1772,24 @@ export default function ChatScreen() {
                 Waiting for {fullName} to respond...
               </Text>
             </View>
-          ) : rematchRequest?.hasAlreadyRequested || rematchRequest?.wasRejected ? (
-            // User has already requested or rematch was rejected - show message
+          ) : rematchRequest?.wasRejected && rematchRequest?.requestedBy === currentUserId ? (
+            // User's rematch request was rejected - show rejection message
+            <View className="items-center px-4">
+              <Text className="text-red-400 text-center text-base mb-2 font-semibold">
+                Your rematch request has been rejected
+              </Text>
+              <Text className="text-white/60 text-center text-sm">
+                You can&apos;t contact them anymore
+              </Text>
+            </View>
+          ) : rematchRequest?.hasAlreadyRequested ? (
+            // User has already requested (but not rejected yet) - show message
             <View className="items-center">
               <Text className="text-white/70 text-center text-base mb-2">
                 Rematch request unavailable
               </Text>
               <Text className="text-white/50 text-center text-sm">
-                {rematchRequest.hasAlreadyRequested 
-                  ? "You have already requested a rematch."
-                  : "This rematch request was rejected."}
+                You have already requested a rematch.
               </Text>
             </View>
           ) : (

@@ -179,6 +179,11 @@ export default function ChatListScreen() {
               // Rematch was accepted - remove from unmatches and update notification count
               queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
               queryClient.invalidateQueries({ queryKey: ["unmatches"] });
+              queryClient.invalidateQueries({ queryKey: ["chat-list"] }); // Refresh chat list
+            } else if (payload.new.rematch_status === "rejected" && payload.old?.rematch_status !== "rejected") {
+              // Rematch was rejected - refresh chat list to show rejection message
+              console.log("❌ Rematch rejected, refreshing chat list");
+              queryClient.invalidateQueries({ queryKey: ["chat-list"] });
             } else if (payload.old?.rematch_status !== payload.new.rematch_status) {
               // Any other rematch status change - update notification count
               console.log("🔄 Rematch status changed, updating notification count");
@@ -555,6 +560,10 @@ function ChatItem({ item, router, queryClient }: { item: any; router: any; query
         ) : item.hasPendingRematchRequest ? (
           <Text className="text-[#B8860B] text-sm mt-1 italic">
             {fullName} requested a rematch
+          </Text>
+        ) : item.isRematchRejected ? (
+          <Text className="text-red-400 text-sm mt-1 italic">
+            Your rematch request has been rejected
           </Text>
         ) : item.isRematchAccepted ? (
           <Text className="text-[#B8860B] text-sm mt-1 italic">
