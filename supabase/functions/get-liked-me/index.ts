@@ -151,6 +151,28 @@ serve(async (req) => {
       blockedUserIds: Array.from(blockedUserIds),
     });
 
+    // Get unmatched users (both ways - users I unmatched and users who unmatched me)
+    const { data: unmatches, error: unmatchesError } = await supabaseClient
+      .from("unmatches")
+      .select("user1_id, user2_id")
+      .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+
+    if (unmatchesError) {
+      console.error("❌ Error fetching unmatches:", unmatchesError);
+    }
+
+    // Extract unmatched user IDs
+    const unmatchedUserIds = new Set<string>();
+    if (unmatches) {
+      unmatches.forEach((unmatch) => {
+        if (unmatch.user1_id === user.id) {
+          unmatchedUserIds.add(unmatch.user2_id);
+        } else {
+          unmatchedUserIds.add(unmatch.user1_id);
+        }
+      });
+    }
+
     // Extract matched user IDs
     const matchedUserIds = new Set<string>();
     if (matches) {
@@ -163,9 +185,9 @@ serve(async (req) => {
       });
     }
 
-    // Filter out matched users and blocked users (both ways) from likerUserIds
+    // Filter out matched users, unmatched users, and blocked users (both ways) from likerUserIds
     const unmatchedLikerIds = likerUserIds.filter(
-      (id) => !matchedUserIds.has(id) && !blockedUserIds.has(id)
+      (id) => !matchedUserIds.has(id) && !blockedUserIds.has(id) && !unmatchedUserIds.has(id)
     );
 
     if (unmatchedLikerIds.length === 0) {
@@ -194,10 +216,10 @@ serve(async (req) => {
     }
 
     // Map profiles with their like timestamp (most recent like)
-    // Also filter out any blocked users and matched users as a safety check
+    // Also filter out any blocked users, matched users, and unmatched users as a safety check
     const likedMeWithTimestamp = (likerProfiles || [])
       .filter((profile) =>
-        !blockedUserIds.has(profile.id) && !matchedUserIds.has(profile.id)
+        !blockedUserIds.has(profile.id) && !matchedUserIds.has(profile.id) && !unmatchedUserIds.has(profile.id)
       )
       .map((profile) => {
         const mostRecentSwipe = swipes.find((swipe) => swipe.swiper_id === profile.id);
@@ -217,6 +239,7 @@ serve(async (req) => {
     console.log("✅ Matched users filter:", {
       totalLikerIds: likerUserIds.length,
       matchedUserIds: Array.from(matchedUserIds),
+      unmatchedUserIds: Array.from(unmatchedUserIds),
       unmatchedLikerIds: unmatchedLikerIds.length,
       finalProfilesCount: likedMeWithTimestamp.length,
     });

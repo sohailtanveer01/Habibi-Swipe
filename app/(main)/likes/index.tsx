@@ -336,6 +336,24 @@ export default function LikesScreen() {
             }
           }
         )
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "unmatches",
+          },
+          (payload) => {
+            const newUnmatch = payload.new;
+            // Check if this unmatch involves the current user
+            if (newUnmatch.user1_id === user.id || newUnmatch.user2_id === user.id) {
+              console.log("🔄 New unmatch detected, refreshing likes lists");
+              // Refresh both "my likes" and "liked me" since an unmatch affects both
+              loadMyLikes();
+              loadLikes();
+            }
+          }
+        )
         .subscribe();
     };
 
