@@ -1,9 +1,14 @@
-import { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert, Linking, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, TextInput, Pressable, Alert, StyleSheet, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "expo-router";
 import Logo from "../../components/Logo";
+
+// Complete OAuth session in web browser
+WebBrowser.maybeCompleteAuthSession();
 
 export default function Signup() {
   const [email, setEmail] = useState("");
@@ -33,24 +38,147 @@ export default function Signup() {
     router.push({ pathname: "/(auth)/email-otp", params: { email: trimmed } });
   };
 
+  // Handle OAuth callback from deep links
+  useEffect(() => {
+    const handleDeepLink = async (event: { url: string }) => {
+      try {
+        const url = new URL(event.url);
+        
+        // Supabase OAuth redirects use hash fragments
+        const hash = url.hash.substring(1); // Remove #
+        const hashParams = new URLSearchParams(hash);
+        let accessToken = hashParams.get("access_token");
+        let refreshToken = hashParams.get("refresh_token");
+
+        // Fallback to query params
+        if (!accessToken || !refreshToken) {
+          accessToken = url.searchParams.get("access_token");
+          refreshToken = url.searchParams.get("refresh_token");
+        }
+
+        if (accessToken && refreshToken) {
+          // Set the session
+          const { data: { session }, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) {
+            Alert.alert("Error", "Failed to sign in with Google. Please try again.");
+            setGoogleLoading(false);
+            return;
+          }
+
+          if (session?.user) {
+            await handlePostGoogleSignIn(session.user);
+          }
+        } else {
+          // If no tokens in URL, check if Supabase already set the session
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (!sessionError && session?.user) {
+            await handlePostGoogleSignIn(session.user);
+          }
+        }
+      } catch (error) {
+        console.error("Error handling deep link:", error);
+        setGoogleLoading(false);
+      }
+    };
+
+    // Listen for deep links
+    const subscription = Linking.addEventListener("url", handleDeepLink);
+
+    // Check if app was opened with a deep link
+    Linking.getInitialURL().then((url) => {
+      if (url && url.includes("auth/callback")) {
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const handlePostGoogleSignIn = async (user: any) => {
+    try {
+      // Check if user profile exists
+      const { data: profile } = await supabase
+        .from("users")
+        .select("id, name, photos, email")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      // If profile doesn't exist, create a basic one with Google info
+      if (!profile) {
+        const { error: createError } = await supabase
+          .from("users")
+          .insert({
+            id: user.id,
+            email: user.email,
+            name: user.user_metadata?.full_name || user.user_metadata?.name || "",
+            account_active: true,
+            photos: user.user_metadata?.avatar_url ? [user.user_metadata.avatar_url] : [],
+            verified: false,
+            last_active_at: new Date().toISOString(),
+          });
+
+        if (createError) {
+          console.error("Error creating user profile:", createError);
+        }
+      } else if (profile.email !== user.email) {
+        // Update email if it changed
+        await supabase
+          .from("users")
+          .update({ email: user.email })
+          .eq("id", user.id);
+      }
+
+      // Re-fetch profile to check onboarding status
+      const { data: updatedProfile } = await supabase
+        .from("users")
+        .select("id, name, photos")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setGoogleLoading(false);
+
+      if (updatedProfile && updatedProfile.name && updatedProfile.photos?.length > 0) {
+        // User has completed onboarding - go to main app
+        router.replace("/(main)/swipe");
+      } else {
+        // User needs to complete onboarding
+        router.replace("/(auth)/onboarding/step1-basic");
+      }
+    } catch (error: any) {
+      console.error("Error in post-Google sign-in:", error);
+      Alert.alert("Error", "An error occurred. Please try again.");
+      setGoogleLoading(false);
+    }
+  };
+
   const continueWithGoogle = async () => {
     try {
       setGoogleLoading(true);
 
-      // Use Supabase OAuth for Google Sign-In
-      // The redirectTo is your app's deep link scheme
-      // Supabase will use its callback URL when talking to Google
       const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
       if (!supabaseUrl) {
         throw new Error("Supabase URL not configured");
       }
 
+      // Use a simple deep link format that Supabase can handle
+      // The scheme is "habibiswipe" as defined in app.config.js
+      const redirectUrl = "habibiswipe://auth/callback";
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: "habibiswipe://",
-          // The actual redirect URI sent to Google will be: ${supabaseUrl}/auth/v1/callback
-          // Make sure this URL is added to Google OAuth authorized redirect URIs
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       });
 
@@ -60,11 +188,58 @@ export default function Signup() {
 
       if (data?.url) {
         // Open the OAuth URL in browser
-        await Linking.openURL(data.url);
-        Alert.alert(
-          "Continue in Browser",
-          "Please complete the sign-in process in your browser, then return to the app."
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUrl
         );
+
+        if (result.type === "success" && result.url) {
+          // Supabase redirects with hash fragments, not query params
+          // Parse the URL to extract tokens from hash
+          const url = new URL(result.url);
+          
+          // Check hash fragment first (Supabase uses this)
+          const hash = url.hash.substring(1); // Remove #
+          const hashParams = new URLSearchParams(hash);
+          let accessToken = hashParams.get("access_token");
+          let refreshToken = hashParams.get("refresh_token");
+
+          // Fallback to query params if hash doesn't have tokens
+          if (!accessToken || !refreshToken) {
+            accessToken = url.searchParams.get("access_token");
+            refreshToken = url.searchParams.get("refresh_token");
+          }
+
+          if (accessToken && refreshToken) {
+            // Set the session
+            const { data: { session }, error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (sessionError) {
+              throw sessionError;
+            }
+
+            if (session?.user) {
+              await handlePostGoogleSignIn(session.user);
+            }
+          } else {
+            // If no tokens in URL, try to get session from Supabase
+            // This handles cases where Supabase sets the session automatically
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            
+            if (!sessionError && session?.user) {
+              await handlePostGoogleSignIn(session.user);
+            } else {
+              throw new Error("Failed to get authentication tokens");
+            }
+          }
+        } else if (result.type === "cancel") {
+          setGoogleLoading(false);
+        } else {
+          setGoogleLoading(false);
+        }
       }
     } catch (error: any) {
       const errorMessage = error.message || "Failed to sign in with Google";
@@ -72,12 +247,11 @@ export default function Signup() {
       if (errorMessage.includes("redirect_uri_mismatch")) {
         Alert.alert(
           "Configuration Error",
-          `Redirect URI mismatch. Please add this URL to Google OAuth settings:\n\n${process.env.EXPO_PUBLIC_SUPABASE_URL}/auth/v1/callback\n\nAlso add it to Supabase Dashboard > Authentication > URL Configuration > Redirect URLs`
+          `Please add this URL to Supabase Dashboard > Authentication > URL Configuration > Redirect URLs:\n\nhabibiswipe://auth/callback`
         );
       } else {
         Alert.alert("Error", errorMessage);
       }
-    } finally {
       setGoogleLoading(false);
     }
   };
@@ -135,16 +309,24 @@ export default function Signup() {
           We&apos;ll send a 6-digit code to verify your email.
         </Text>
 
-        {/* <Pressable
-          className="bg-white p-4 rounded-2xl items-center mb-6 flex-row justify-center gap-2"
+        {/* Divider */}
+        <View style={styles.dividerContainer}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Google Sign-In Button */}
+        <Pressable
+          style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
           onPress={continueWithGoogle}
-          disabled={googleLoading}
+          disabled={googleLoading || emailLoading}
         >
-          <Text className="text-2xl">🔍</Text>
-          <Text className="text-gray-900 font-semibold text-base">
+          <Text style={styles.googleIcon}>🔍</Text>
+          <Text style={styles.googleButtonText}>
             {googleLoading ? "Signing in..." : "Continue with Google"}
           </Text>
-        </Pressable> */}
+        </Pressable>
 
         <Pressable 
           style={styles.linkContainer}
@@ -254,6 +436,42 @@ const styles = StyleSheet.create({
   linkHighlight: {
     color: "#B8860B",
     fontWeight: "600",
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: "#9CA3AF",
+    fontWeight: "500",
+  },
+  googleButton: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    marginBottom: 16,
+  },
+  googleIcon: {
+    fontSize: 20,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });
 
