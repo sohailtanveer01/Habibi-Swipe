@@ -1,9 +1,10 @@
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
 import { Redirect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import Logo from "../components/Logo";
 import { supabase } from "../lib/supabase";
 
@@ -32,70 +33,7 @@ export default function Home() {
     checkSession();
   }, []);
 
-  // Handle OAuth callback from deep links
-  useEffect(() => {
-    const handleDeepLink = async (event: { url: string }) => {
-      try {
-        const url = new URL(event.url);
-        
-        // Supabase OAuth redirects use hash fragments
-        const hash = url.hash.substring(1); // Remove #
-        const hashParams = new URLSearchParams(hash);
-        let accessToken = hashParams.get("access_token");
-        let refreshToken = hashParams.get("refresh_token");
-
-        // Fallback to query params
-        if (!accessToken || !refreshToken) {
-          accessToken = url.searchParams.get("access_token");
-          refreshToken = url.searchParams.get("refresh_token");
-        }
-
-        if (accessToken && refreshToken) {
-          // Set the session
-          const { data: { session }, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-
-          if (error) {
-            Alert.alert("Error", "Failed to sign in with Google. Please try again.");
-            setGoogleLoading(false);
-            return;
-          }
-
-          if (session?.user) {
-            await handlePostGoogleSignIn(session.user);
-          }
-        } else {
-          // If no tokens in URL, check if Supabase already set the session
-          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-          
-          if (!sessionError && session?.user) {
-            await handlePostGoogleSignIn(session.user);
-          }
-        }
-      } catch (error) {
-        console.error("Error handling deep link:", error);
-        setGoogleLoading(false);
-      }
-    };
-
-    // Listen for deep links
-    const subscription = Linking.addEventListener("url", handleDeepLink);
-
-    // Check if app was opened with a deep link
-    Linking.getInitialURL().then((url) => {
-      if (url && url.includes("auth/callback")) {
-        handleDeepLink({ url });
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  const handlePostGoogleSignIn = async (user: any) => {
+  const handlePostGoogleSignIn = useCallback(async (user: any) => {
     try {
       // Check if user is deactivated
       const { data: statusData, error: statusError } = await supabase.functions.invoke("check-user-status", {
@@ -170,7 +108,70 @@ export default function Home() {
       Alert.alert("Error", "An error occurred. Please try again.");
       setGoogleLoading(false);
     }
-  };
+  }, [router]);
+
+  // Handle OAuth callback from deep links
+  useEffect(() => {
+    const handleDeepLink = async (event: { url: string }) => {
+      try {
+        const url = new URL(event.url);
+        
+        // Supabase OAuth redirects use hash fragments
+        const hash = url.hash.substring(1); // Remove #
+        const hashParams = new URLSearchParams(hash);
+        let accessToken = hashParams.get("access_token");
+        let refreshToken = hashParams.get("refresh_token");
+
+        // Fallback to query params
+        if (!accessToken || !refreshToken) {
+          accessToken = url.searchParams.get("access_token");
+          refreshToken = url.searchParams.get("refresh_token");
+        }
+
+        if (accessToken && refreshToken) {
+          // Set the session
+          const { data: { session }, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) {
+            Alert.alert("Error", "Failed to sign in with Google. Please try again.");
+            setGoogleLoading(false);
+            return;
+          }
+
+          if (session?.user) {
+            await handlePostGoogleSignIn(session.user);
+          }
+        } else {
+          // If no tokens in URL, check if Supabase already set the session
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (!sessionError && session?.user) {
+            await handlePostGoogleSignIn(session.user);
+          }
+        }
+      } catch (error) {
+        console.error("Error handling deep link:", error);
+        setGoogleLoading(false);
+      }
+    };
+
+    // Listen for deep links
+    const subscription = Linking.addEventListener("url", handleDeepLink);
+
+    // Check if app was opened with a deep link
+    Linking.getInitialURL().then((url) => {
+      if (url && url.includes("auth/callback")) {
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [handlePostGoogleSignIn]);
 
   const continueWithEmail = () => {
     // Navigate to email input screen
@@ -296,6 +297,7 @@ export default function Home() {
         end={{ x: 1, y: 1 }}
         pointerEvents="none"
       />
+      
 
       {/* Logo at top */}
       <View style={styles.logoContainer}>
@@ -308,6 +310,28 @@ export default function Home() {
 
       {/* Content - Buttons at bottom */}
       <View style={styles.content}>
+        {/* Feature highlights */}
+        <View style={styles.featuresContainer}>
+          <View style={styles.featureItem}>
+            <View style={styles.featureIcon}>
+              <Ionicons name="heart" size={24} color="#B8860B" />
+            </View>
+            <Text style={styles.featureText}>Find Your Match</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <View style={styles.featureIcon}>
+              <Ionicons name="shield-checkmark" size={24} color="#B8860B" />
+            </View>
+            <Text style={styles.featureText}>Safe & Secure</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <View style={styles.featureIcon}>
+              <Ionicons name="people" size={24} color="#B8860B" />
+            </View>
+            <Text style={styles.featureText}>Muslim Community</Text>
+          </View>
+        </View>
+
         <View style={styles.buttonsContainer}>
           {/* Email Button */}
           <Pressable
@@ -315,11 +339,11 @@ export default function Home() {
             onPress={continueWithEmail}
             disabled={googleLoading}
           >
+            <Ionicons name="mail" size={20} color="#FFFFFF" style={styles.buttonIcon} />
             <Text style={styles.buttonText}>
               Continue with Email
             </Text>
           </Pressable>
-
 
           {/* Google Sign-In Button */}
           <Pressable
@@ -397,6 +421,34 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     paddingHorizontal: 24,
     paddingBottom: 60,
+    zIndex: 10,
+  },
+  featuresContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 40,
+    paddingHorizontal: 8,
+  },
+  featureItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  featureIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(184, 134, 11, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "rgba(184, 134, 11, 0.3)",
+  },
+  featureText: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.8)",
+    fontWeight: "500",
+    textAlign: "center",
   },
   buttonsContainer: {
     width: "100%",
@@ -405,6 +457,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#B8860B",
     borderRadius: 16,
     paddingVertical: 16,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -413,6 +466,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
   buttonDisabled: {
     opacity: 0.6,
