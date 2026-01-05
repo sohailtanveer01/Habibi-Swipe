@@ -814,12 +814,6 @@ export default function LikesScreen() {
                 ? `${item.first_name} ${item.last_name}`
                 : item.name || "Unknown";
 
-                name: fullName,
-                hasPhotos: item.photos?.length || 0,
-                mainPhoto: mainPhoto ? "valid" : "none",
-                rawPhotos: item.photos
-              });
-
               return (
                 <Pressable
                   className="bg-white/5 rounded-3xl overflow-hidden"

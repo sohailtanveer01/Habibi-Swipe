@@ -1,11 +1,11 @@
-import { View, Text, Pressable, ActivityIndicator, StyleSheet, Image } from "react-native";
-import { Redirect, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
-import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
-import { supabase } from "../lib/supabase";
+import { Redirect, useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import Logo from "../components/Logo";
+import { supabase } from "../lib/supabase";
 
 // Complete OAuth session in web browser
 WebBrowser.maybeCompleteAuthSession();
@@ -316,12 +316,6 @@ export default function Home() {
             </Text>
           </Pressable>
 
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
-          </View>
 
           {/* Google Sign-In Button */}
           <Pressable
