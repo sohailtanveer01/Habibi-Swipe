@@ -106,11 +106,96 @@ export default function Step1Basic() {
     }
   };
 
+  const validateInputs = (): string | null => {
+    // Validate first name
+    const trimmedFirstName = firstName.trim();
+    if (!trimmedFirstName) {
+      return "First name is required.";
+    }
+    if (trimmedFirstName.length < 2) {
+      return "First name must be at least 2 characters.";
+    }
+    if (trimmedFirstName.length > 50) {
+      return "First name must be less than 50 characters.";
+    }
+    if (!/^[a-zA-Z\s'-]+$/.test(trimmedFirstName)) {
+      return "First name can only contain letters, spaces, hyphens, and apostrophes.";
+    }
+
+    // Validate last name
+    const trimmedLastName = lastName.trim();
+    if (!trimmedLastName) {
+      return "Last name is required.";
+    }
+    if (trimmedLastName.length < 2) {
+      return "Last name must be at least 2 characters.";
+    }
+    if (trimmedLastName.length > 50) {
+      return "Last name must be less than 50 characters.";
+    }
+    if (!/^[a-zA-Z\s'-]+$/.test(trimmedLastName)) {
+      return "Last name can only contain letters, spaces, hyphens, and apostrophes.";
+    }
+
+    // Validate gender
+    if (!gender) {
+      return "Please select your gender.";
+    }
+
+    // Validate date of birth
+    const today = new Date();
+    const age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    const dayDiff = today.getDate() - dob.getDate();
+    const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+    
+    if (actualAge < 18) {
+      return "You must be at least 18 years old to use this app.";
+    }
+    if (actualAge > 120) {
+      return "Please enter a valid date of birth.";
+    }
+    if (dob > today) {
+      return "Date of birth cannot be in the future.";
+    }
+
+    // Validate height
+    if (!feet || !inches) {
+      return "Please enter your height.";
+    }
+    const feetNum = parseInt(feet, 10);
+    const inchesNum = parseInt(inches, 10);
+    
+    if (isNaN(feetNum) || isNaN(inchesNum)) {
+      return "Please enter valid height values.";
+    }
+    if (feetNum < 4 || feetNum > 7) {
+      return "Height must be between 4 and 7 feet.";
+    }
+    if (inchesNum < 0 || inchesNum > 11) {
+      return "Inches must be between 0 and 11.";
+    }
+
+    // Validate marital status
+    if (!maritalStatus) {
+      return "Please select your marital status.";
+    }
+
+    // Validate has children
+    if (hasChildren === null) {
+      return "Please indicate whether you have children.";
+    }
+
+    return null;
+  };
+
   const next = () => {
-    if (!firstName.trim() || !lastName.trim() || !gender || !height || !maritalStatus || hasChildren === null) {
-      alert("Please fill all fields.");
+    const validationError = validateInputs();
+    if (validationError) {
+      alert(validationError);
       return;
     }
+    
     setData((d) => ({ 
       ...d, 
       firstName: firstName.trim(), 
@@ -195,8 +280,13 @@ export default function Step1Basic() {
                   placeholder="First Name"
                   placeholderTextColor="#999"
                   value={firstName}
-                  onChangeText={setFirstName}
+                  onChangeText={(text) => {
+                    // Limit to 50 characters and allow letters, spaces, hyphens, apostrophes
+                    const cleaned = text.replace(/[^a-zA-Z\s'-]/g, '').slice(0, 50);
+                    setFirstName(cleaned);
+                  }}
                   autoCapitalize="words"
+                  maxLength={50}
                   style={{ fontSize: 16 }}
                 />
               </View>
@@ -206,8 +296,13 @@ export default function Step1Basic() {
                   placeholder="Last Name"
                   placeholderTextColor="#999"
                   value={lastName}
-                  onChangeText={setLastName}
+                  onChangeText={(text) => {
+                    // Limit to 50 characters and allow letters, spaces, hyphens, apostrophes
+                    const cleaned = text.replace(/[^a-zA-Z\s'-]/g, '').slice(0, 50);
+                    setLastName(cleaned);
+                  }}
                   autoCapitalize="words"
+                  maxLength={50}
                   style={{ fontSize: 16 }}
                 />
               </View>
@@ -302,8 +397,15 @@ export default function Step1Basic() {
                   // placeholder="5"
                   placeholderTextColor="#999"
                   value={feet}
-                  onChangeText={setFeet}
+                  onChangeText={(text) => {
+                    // Only allow digits, max 1 digit (4-7)
+                    const numericValue = text.replace(/[^0-9]/g, '');
+                    if (numericValue === '' || (parseInt(numericValue, 10) >= 4 && parseInt(numericValue, 10) <= 7)) {
+                      setFeet(numericValue);
+                    }
+                  }}
                   keyboardType="number-pad"
+                  maxLength={1}
                   style={{ fontSize: 18, fontWeight: "600" }}
                 />
                 <Text className="text-white/70 text-center mt-2 text-sm">Feet</Text>
@@ -315,8 +417,15 @@ export default function Step1Basic() {
                   // placeholder="10"
                   placeholderTextColor="#999"
                   value={inches}
-                  onChangeText={setInches}
+                  onChangeText={(text) => {
+                    // Only allow digits, max 2 digits (0-11)
+                    const numericValue = text.replace(/[^0-9]/g, '');
+                    if (numericValue === '' || parseInt(numericValue, 10) <= 11) {
+                      setInches(numericValue);
+                    }
+                  }}
                   keyboardType="number-pad"
+                  maxLength={2}
                   style={{ fontSize: 18, fontWeight: "600" }}
                 />
                 <Text className="text-white/70 text-center mt-2 text-sm">Inches</Text>

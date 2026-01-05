@@ -277,6 +277,98 @@ export default function ProfileEditScreen() {
     }
   };
 
+  const validateField = (field: string): string | null => {
+    switch (field) {
+      case 'name':
+        const trimmedFirstName = firstName.trim();
+        const trimmedLastName = lastName.trim();
+        if (!trimmedFirstName || !trimmedLastName) {
+          return "Both first and last name are required.";
+        }
+        if (trimmedFirstName.length < 2 || trimmedLastName.length < 2) {
+          return "Names must be at least 2 characters.";
+        }
+        if (trimmedFirstName.length > 50 || trimmedLastName.length > 50) {
+          return "Names must be less than 50 characters.";
+        }
+        if (!/^[a-zA-Z\s'-]+$/.test(trimmedFirstName) || !/^[a-zA-Z\s'-]+$/.test(trimmedLastName)) {
+          return "Names can only contain letters, spaces, hyphens, and apostrophes.";
+        }
+        break;
+      
+      case 'height':
+        const feetNum = parseInt(feet, 10);
+        const inchesNum = parseInt(inches, 10);
+        if (isNaN(feetNum) || isNaN(inchesNum)) {
+          return "Please enter valid height values.";
+        }
+        if (feetNum < 4 || feetNum > 7) {
+          return "Height must be between 4 and 7 feet.";
+        }
+        if (inchesNum < 0 || inchesNum > 11) {
+          return "Inches must be between 0 and 11.";
+        }
+        break;
+      
+      case 'dob':
+        if (!dob) {
+          return "Date of birth is required.";
+        }
+        const dobDate = new Date(dob);
+        const today = new Date();
+        const age = today.getFullYear() - dobDate.getFullYear();
+        const monthDiff = today.getMonth() - dobDate.getMonth();
+        const dayDiff = today.getDate() - dobDate.getDate();
+        const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+        
+        if (actualAge < 18) {
+          return "You must be at least 18 years old.";
+        }
+        if (actualAge > 120) {
+          return "Please enter a valid date of birth.";
+        }
+        if (dobDate > today) {
+          return "Date of birth cannot be in the future.";
+        }
+        break;
+      
+      case 'education':
+        const trimmedEducation = education.trim();
+        if (trimmedEducation.length > 100) {
+          return "Education must be less than 100 characters.";
+        }
+        break;
+      
+      case 'profession':
+        const trimmedProfession = profession.trim();
+        if (trimmedProfession.length > 100) {
+          return "Profession must be less than 100 characters.";
+        }
+        break;
+      
+      case 'bio':
+        const trimmedBio = bio.trim();
+        if (trimmedBio.length > 1000) {
+          return "Bio must be less than 1000 characters.";
+        }
+        break;
+      
+      case 'prompts':
+        const filledPrompts = prompts.filter((p) => p.question.trim() && p.answer.trim());
+        for (const prompt of filledPrompts) {
+          const trimmedAnswer = prompt.answer.trim();
+          if (trimmedAnswer.length < 10) {
+            return "Each prompt answer must be at least 10 characters long.";
+          }
+          if (trimmedAnswer.length > 500) {
+            return "Each prompt answer must be less than 500 characters.";
+          }
+        }
+        break;
+    }
+    return null;
+  };
+
   const handleSave = async (overrideValues?: {
     sect?: string;
     bornMuslim?: boolean | null;
@@ -291,6 +383,15 @@ export default function ProfileEditScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Validate the field being edited
+      if (editingField) {
+        const validationError = validateField(editingField);
+        if (validationError) {
+          Alert.alert("Validation Error", validationError);
+          return;
+        }
+      }
 
       setSaving(true);
 
@@ -1068,15 +1169,25 @@ export default function ProfileEditScreen() {
                 <Text className="text-white text-base font-medium">Education</Text>
               </View>
               {editingField === 'education' ? (
-                <TextInput
-                  className="bg-white/10 border border-[#B8860B]/30 text-white px-4 py-2.5 rounded-xl text-right min-w-[140] flex-1 ml-4 focus:border-[#B8860B]"
-                  placeholder="Enter education"
-                  placeholderTextColor="#9CA3AF"
-                  value={education}
-                  onChangeText={setEducation}
-                  autoCapitalize="words"
-                  autoFocus
-                />
+                <View className="flex-1 ml-4">
+                  <TextInput
+                    className="bg-white/10 border border-[#B8860B]/30 text-white px-4 py-2.5 rounded-xl text-right min-w-[140] focus:border-[#B8860B]"
+                    placeholder="Enter education"
+                    placeholderTextColor="#9CA3AF"
+                    value={education}
+                    onChangeText={(text) => {
+                      setEducation(text.slice(0, 100));
+                    }}
+                    autoCapitalize="words"
+                    maxLength={100}
+                    autoFocus
+                  />
+                  {education.length > 0 && (
+                    <Text className="text-white/50 text-xs mt-1 text-right">
+                      {education.length}/100 characters
+                    </Text>
+                  )}
+                </View>
               ) : (
                 <View className="flex-row items-center">
                   <Text className="text-white text-base mr-2 font-medium">{education || "Not set"}</Text>
@@ -1097,15 +1208,25 @@ export default function ProfileEditScreen() {
                 <Text className="text-white text-base font-medium">Profession</Text>
               </View>
               {editingField === 'profession' ? (
-                <TextInput
-                  className="bg-white/10 border border-[#B8860B]/30 text-white px-4 py-2.5 rounded-xl text-right min-w-[140] flex-1 ml-4 focus:border-[#B8860B]"
-                  placeholder="Enter profession"
-                  placeholderTextColor="#9CA3AF"
-                  value={profession}
-                  onChangeText={setProfession}
-                  autoCapitalize="words"
-                  autoFocus
-                />
+                <View className="flex-1 ml-4">
+                  <TextInput
+                    className="bg-white/10 border border-[#B8860B]/30 text-white px-4 py-2.5 rounded-xl text-right min-w-[140] focus:border-[#B8860B]"
+                    placeholder="Enter profession"
+                    placeholderTextColor="#9CA3AF"
+                    value={profession}
+                    onChangeText={(text) => {
+                      setProfession(text.slice(0, 100));
+                    }}
+                    autoCapitalize="words"
+                    maxLength={100}
+                    autoFocus
+                  />
+                  {profession.length > 0 && (
+                    <Text className="text-white/50 text-xs mt-1 text-right">
+                      {profession.length}/100 characters
+                    </Text>
+                  )}
+                </View>
               ) : (
                 <View className="flex-row items-center">
                   <Text className="text-white text-base mr-2 font-medium">{profession || "Not set"}</Text>
@@ -1364,12 +1485,18 @@ export default function ProfileEditScreen() {
                     placeholder="Tell us about yourself..."
                     placeholderTextColor="#9CA3AF"
                     value={bio}
-                    onChangeText={setBio}
+                    onChangeText={(text) => {
+                      setBio(text.slice(0, 1000));
+                    }}
                     multiline
                     textAlignVertical="top"
+                    maxLength={1000}
                     style={{ fontSize: 16 }}
                     autoFocus
                   />
+                  <Text className="text-white/50 text-xs mt-2">
+                    {bio.length}/1000 characters
+                  </Text>
                   <View className="flex-row gap-3 mt-6">
                     <Pressable
                       className="flex-1 bg-white/10 px-4 py-3 rounded-xl border border-white/20 active:bg-white/15"
@@ -1462,14 +1589,19 @@ export default function ProfileEditScreen() {
                       placeholderTextColor="#9CA3AF"
                       value={prompt.answer}
                       onChangeText={(text) => {
+                        const limited = text.slice(0, 500);
                         const newPrompts = [...prompts];
-                        newPrompts[index].answer = text;
+                        newPrompts[index].answer = limited;
                         setPrompts(newPrompts);
                       }}
                       multiline
                       textAlignVertical="top"
+                      maxLength={500}
                       style={{ fontSize: 16 }}
                     />
+                    <Text className="text-white/50 text-xs mt-2">
+                      {prompt.answer.length}/500 characters
+                    </Text>
                   </View>
                 ))}
                 <View className="flex-row gap-3 mt-6">

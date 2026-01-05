@@ -78,7 +78,35 @@ export default function Step8Background() {
     router.push("/onboarding/done");
   };
 
+  const validateInputs = (): string | null => {
+    // Validate education (optional but if provided, should be reasonable)
+    const trimmedEducation = education.trim();
+    if (trimmedEducation.length > 100) {
+      return "Education must be less than 100 characters.";
+    }
+
+    // Validate profession (optional but if provided, should be reasonable)
+    const trimmedProfession = profession.trim();
+    if (trimmedProfession.length > 100) {
+      return "Profession must be less than 100 characters.";
+    }
+
+    // Validate bio (optional but if provided, should be reasonable)
+    const trimmedBio = bio.trim();
+    if (trimmedBio.length > 1000) {
+      return "Bio must be less than 1000 characters.";
+    }
+
+    return null;
+  };
+
   const next = () => {
+    const validationError = validateInputs();
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
+
     setData((d) => ({
       ...d,
       education: education.trim(),
@@ -156,9 +184,18 @@ export default function Step8Background() {
             placeholder="e.g., Bachelor's in Computer Science"
             placeholderTextColor="#999"
             value={education}
-            onChangeText={setEducation}
+            onChangeText={(text) => {
+              // Limit to 100 characters
+              setEducation(text.slice(0, 100));
+            }}
             multiline={false}
+            maxLength={100}
           />
+          {education.length > 0 && (
+            <Text className="text-white/50 text-xs mt-2 ml-1">
+              {education.length}/100 characters
+            </Text>
+          )}
         </View>
 
         {/* Profession Dropdown */}
@@ -220,14 +257,18 @@ export default function Step8Background() {
             placeholder="Tell us about yourself..."
             placeholderTextColor="#999"
             value={bio}
-            onChangeText={setBio}
+            onChangeText={(text) => {
+              // Limit to 1000 characters
+              setBio(text.slice(0, 1000));
+            }}
             multiline
             numberOfLines={6}
             textAlignVertical="top"
+            maxLength={1000}
             style={{ minHeight: 120 }}
           />
           <Text className="text-white/50 text-xs mt-2 ml-1">
-            {bio.length} characters
+            {bio.length}/1000 characters
           </Text>
         </View>
       </View>

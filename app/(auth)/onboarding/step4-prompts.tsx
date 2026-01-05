@@ -96,7 +96,7 @@ export default function Step5Prompts() {
     );
   };
 
-  const next = () => {
+  const validatePrompts = (): string | null => {
     // Filter out empty prompts (where both question and answer are empty)
     const filledPrompts = prompts.filter(
       (p) => p.question.trim() && p.answer.trim()
@@ -108,9 +108,37 @@ export default function Step5Prompts() {
     );
     
     if (incompletePrompts.length > 0) {
-      alert("Please fill in both the prompt and answer for all prompts you've started.");
+      return "Please fill in both the prompt and answer for all prompts you've started.";
+    }
+
+    // Validate answer lengths
+    for (const prompt of filledPrompts) {
+      const trimmedAnswer = prompt.answer.trim();
+      if (trimmedAnswer.length < 10) {
+        return "Each prompt answer must be at least 10 characters long.";
+      }
+      if (trimmedAnswer.length > 500) {
+        return "Each prompt answer must be less than 500 characters.";
+      }
+    }
+
+    return null;
+  };
+
+  const next = () => {
+    const validationError = validatePrompts();
+    if (validationError) {
+      alert(validationError);
       return;
     }
+
+    // Filter out empty prompts (where both question and answer are empty)
+    const filledPrompts = prompts.filter(
+      (p) => p.question.trim() && p.answer.trim()
+    ).map((p) => ({
+      ...p,
+      answer: p.answer.trim(),
+    }));
 
     // Save only filled prompts
     setData((d) => ({
@@ -282,12 +310,20 @@ export default function Step5Prompts() {
                         placeholder="Write your answer here..."
                         placeholderTextColor="#999"
                         value={prompt.answer}
-                        onChangeText={(text) => updatePromptAnswer(prompt.id, text)}
+                        onChangeText={(text) => {
+                          // Limit to 500 characters
+                          const limited = text.slice(0, 500);
+                          updatePromptAnswer(prompt.id, limited);
+                        }}
                         multiline
                         numberOfLines={4}
                         textAlignVertical="top"
+                        maxLength={500}
                         style={{ minHeight: 100 }}
                       />
+                      <Text className="text-white/50 text-xs mt-2 ml-1">
+                        {prompt.answer.length}/500 characters
+                      </Text>
                     </View>
                   )}
                 </View>
