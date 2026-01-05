@@ -431,6 +431,10 @@ function ChatItem({ item, router, queryClient }: { item: any; router: any; query
                 : 'You sent a compliment')
               : `${fullName} sent you a compliment`}
           </Text>
+        ) : item.hasPendingRematchRequest ? (
+          <Text className="text-[#B8860B] text-sm mt-1 italic">
+            {fullName} requested a rematch
+          </Text>
         ) : item.lastMessage ? (
           <Text
             className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
