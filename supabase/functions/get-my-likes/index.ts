@@ -36,7 +36,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("Fetching users liked by:", user.id);
 
     // Get all swipes where the current user liked someone (action = 'like')
     const { data: swipes, error: swipesError } = await supabaseClient
@@ -96,13 +95,6 @@ serve(async (req) => {
       blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
     }
 
-    console.log("🔒 Blocking check:", {
-      userId: user.id,
-      blocksIBlocked: blocksIBlocked?.length || 0,
-      blocksIAmBlocked: blocksIAmBlocked?.length || 0,
-      totalBlockedUserIds: blockedUserIds.size,
-      blockedUserIds: Array.from(blockedUserIds),
-    });
 
     // Get unmatched users (both ways - users I unmatched and users who unmatched me)
     const { data: unmatches, error: unmatchesError } = await supabaseClient
@@ -188,15 +180,7 @@ serve(async (req) => {
         return dateB - dateA;
       });
 
-    console.log("✅ Matched users filter:", {
-      totalLikedIds: likedUserIds.length,
-      matchedUserIds: Array.from(matchedUserIds),
-      unmatchedUserIds: Array.from(unmatchedUserIds),
-      unmatchedLikedIds: unmatchedLikedIds.length,
-      finalProfilesCount: myLikesWithTimestamp.length,
-    });
 
-    console.log("✅ Fetched my likes:", myLikesWithTimestamp.length);
 
     return new Response(
       JSON.stringify({ myLikes: myLikesWithTimestamp }),

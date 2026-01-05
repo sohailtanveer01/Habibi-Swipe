@@ -125,7 +125,6 @@ export default function UserProfileScreen() {
         await supabase.functions.invoke("create-profile-view", {
           body: { viewed_id: userId },
         });
-        console.log("✅ Profile view recorded for:", userId);
       } catch (viewError) {
         console.error("Error recording profile view:", viewError);
       }

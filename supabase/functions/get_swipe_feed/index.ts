@@ -188,11 +188,6 @@ serve(async (req) => {
 
     const likerIdsSet = new Set(likers?.map((l: any) => l.swiper_id) || []);
 
-    console.log("🔒 Compliment filter:", {
-      userId: user.id,
-      receivedComplimentsCount: receivedCompliments?.length || 0,
-      complimentSenderIds: Array.from(complimentSenderIds),
-    });
 
     // Build query for profiles - get more to account for filtering
     // Filter by opposite gender (constant filter - users can't change gender)
@@ -285,19 +280,12 @@ serve(async (req) => {
             searchLat = parseFloat(searchMatch[2]);
             // Convert miles to meters
             searchRadiusMeters = (preferences.search_radius_miles || 50) * 1609.34;
-            console.log("Distance filter enabled:", {
-              lat: searchLat,
-              lon: searchLon,
-              radiusMiles: preferences.search_radius_miles,
-              radiusMeters: searchRadiusMeters,
-            });
           }
         } catch (error) {
           console.error("Error parsing search location:", error);
         }
       } else if (preferences.location_filter_type === "country" && preferences?.search_country) {
         searchCountry = preferences.search_country;
-        console.log("Country filter enabled:", searchCountry);
       }
     }
 

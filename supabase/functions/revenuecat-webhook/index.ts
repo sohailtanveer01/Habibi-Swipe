@@ -18,7 +18,6 @@ serve(async (req) => {
         );
 
         const body = await req.json();
-        console.log("RevenueCat Webhook received:", body);
 
         const { event } = body;
         const {

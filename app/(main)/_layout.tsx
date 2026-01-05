@@ -98,14 +98,11 @@ export default function MainLayout() {
 
   useEffect(() => {
     const checkNewLikes = async () => {
-      console.log("🔍 checkNewLikes() called");
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.log("⚠️ No user found");
         return;
       }
 
-      console.log("👤 Checking likes for user:", user.id);
 
       const { data: swipes, error: swipesError } = await supabase
         .from("swipes")
@@ -179,11 +176,9 @@ export default function MainLayout() {
     const setupSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.log("⚠️ No user found for subscription");
         return null;
       }
 
-      console.log("📡 Setting up real-time subscription for user:", user.id);
 
       const newChannel = supabase
         .channel("new-likes")

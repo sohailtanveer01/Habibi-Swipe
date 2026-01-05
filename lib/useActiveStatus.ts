@@ -29,17 +29,6 @@ export function isUserActive(lastActiveAt: string | null | undefined): boolean {
     // 2. They were active within the last 5 minutes (diffMinutes <= 5)
     const isActive = diffMs >= 0 && diffMinutes <= 5;
     
-    // Debug logging
-    if (__DEV__) {
-      console.log("🔍 Active status check:", {
-        lastActiveAt,
-        lastActiveISO: lastActive.toISOString(),
-        nowISO: now.toISOString(),
-        diffMs,
-        diffMinutes: diffMinutes.toFixed(2),
-        isActive,
-      });
-    }
     
     return isActive;
   } catch (error) {

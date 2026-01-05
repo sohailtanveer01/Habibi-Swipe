@@ -96,7 +96,6 @@ serve(async (req) => {
       );
     }
 
-    console.log(`✅ Profile view created: ${user.id} viewed ${viewed_id}`);
 
     return new Response(
       JSON.stringify({ 

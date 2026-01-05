@@ -25,7 +25,6 @@ export default function Login() {
         body: { email: trimmed }
       });
 
-      console.log("User status check response:", { statusData, statusError });
 
       if (statusError) {
         console.error("Error checking user status:", statusError);

@@ -276,7 +276,6 @@ serve(async (req) => {
       }
     }
 
-    console.log("✅ Compliment sent:", { complimentId: compliment.id, senderId: user.id, recipientId });
 
     return new Response(
       JSON.stringify({

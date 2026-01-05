@@ -37,7 +37,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("📍 Fetching viewers for user:", user.id);
 
     // Get all profile views for the current user (where they were viewed)
     // Group by viewer_id to get view counts and last viewed time
@@ -103,14 +102,6 @@ serve(async (req) => {
       blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
     }
 
-    console.log("🔒 Blocking check:", {
-      userId: user.id,
-      blocksIBlocked: blocksIBlocked?.length || 0,
-      blocksIAmBlocked: blocksIAmBlocked?.length || 0,
-      totalBlockedUserIds: blockedUserIds.size,
-      blockedUserIds: Array.from(blockedUserIds),
-      viewerIdsBeforeFilter: viewerIds.length,
-    });
 
     // Filter out blocked users from viewer IDs
     const unblockedViewerIds = viewerIds.filter(id => !blockedUserIds.has(id));
@@ -153,7 +144,6 @@ serve(async (req) => {
         new Date(b.lastViewedAt).getTime() - new Date(a.lastViewedAt).getTime()
       );
 
-    console.log(`✅ Found ${viewersWithStats.length} unique viewers`);
 
     return new Response(
       JSON.stringify({ viewers: viewersWithStats }),

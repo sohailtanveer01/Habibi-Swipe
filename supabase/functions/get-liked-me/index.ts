@@ -36,7 +36,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("Fetching users who liked:", user.id);
 
     // First, let's check all swipes where the current user was swiped on (for debugging)
     const { data: allSwipes, error: allSwipesError } = await supabaseClient
@@ -44,7 +43,6 @@ serve(async (req) => {
       .select("swiper_id, swiped_id, action, created_at")
       .eq("swiped_id", user.id);
 
-    console.log("📊 All swipes where current user was swiped:", JSON.stringify(allSwipes, null, 2));
     if (allSwipesError) {
       console.error("❌ Error fetching all swipes:", allSwipesError);
     }
@@ -58,14 +56,10 @@ serve(async (req) => {
       .eq("action", "like")
       .order("created_at", { ascending: false });
 
-    console.log("📊 Swipes with action='like' (exact match):", JSON.stringify(swipes, null, 2));
-    console.log("📊 Number of swipes found:", swipes?.length || 0);
 
     // If no results, try case-insensitive or check what actions exist
     if ((!swipes || swipes.length === 0) && allSwipes && allSwipes.length > 0) {
-      console.log("⚠️ No exact 'like' matches, checking all actions...");
       const uniqueActions = [...new Set(allSwipes.map(s => s.action))];
-      console.log("📊 Unique actions found:", uniqueActions);
 
       // Try filtering in memory - check for 'like' in any case
       const filteredSwipes = allSwipes
@@ -73,7 +67,6 @@ serve(async (req) => {
         .map(s => ({ swiper_id: s.swiper_id, created_at: s.created_at }));
 
       if (filteredSwipes.length > 0) {
-        console.log("✅ Found swipes with case-insensitive match:", filteredSwipes.length);
         swipes = filteredSwipes;
         swipesError = null; // Clear error since we found results
       }
@@ -94,7 +87,6 @@ serve(async (req) => {
     }
 
     if (!swipes || swipes.length === 0) {
-      console.log("⚠️ No swipes found for user:", user.id);
       return new Response(
         JSON.stringify({
           likedMe: [],
@@ -143,13 +135,6 @@ serve(async (req) => {
       blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
     }
 
-    console.log("🔒 Blocking check:", {
-      userId: user.id,
-      blocksIBlocked: blocksIBlocked?.length || 0,
-      blocksIAmBlocked: blocksIAmBlocked?.length || 0,
-      totalBlockedUserIds: blockedUserIds.size,
-      blockedUserIds: Array.from(blockedUserIds),
-    });
 
     // Get unmatched users (both ways - users I unmatched and users who unmatched me)
     const { data: unmatches, error: unmatchesError } = await supabaseClient
@@ -236,15 +221,7 @@ serve(async (req) => {
         return dateB - dateA;
       });
 
-    console.log("✅ Matched users filter:", {
-      totalLikerIds: likerUserIds.length,
-      matchedUserIds: Array.from(matchedUserIds),
-      unmatchedUserIds: Array.from(unmatchedUserIds),
-      unmatchedLikerIds: unmatchedLikerIds.length,
-      finalProfilesCount: likedMeWithTimestamp.length,
-    });
 
-    console.log("✅ Fetched liked me:", likedMeWithTimestamp.length);
 
     return new Response(
       JSON.stringify({ likedMe: likedMeWithTimestamp }),

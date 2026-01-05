@@ -609,7 +609,6 @@ export default function ProfileScreen() {
           return;
         }
 
-        console.log("Photo removed successfully, reloading profile...");
         // Reload profile to ensure sync
         await loadProfile();
       }
@@ -663,7 +662,6 @@ export default function ProfileScreen() {
           return;
         }
 
-        console.log("Photos reordered successfully");
 
         // Update Zustand store to instantly sync tab bar icon (no network latency)
         useUserStore.getState().setMainPhoto(newPhotos[0]);

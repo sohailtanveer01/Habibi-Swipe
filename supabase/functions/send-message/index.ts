@@ -158,7 +158,6 @@ serve(async (req) => {
     // Get message data from request
     const { matchId, content, mediaUrl, mediaType, replyToId } = await req.json();
 
-    console.log("📍 Received request:", { matchId, content, mediaUrl, mediaType, replyToId });
 
     if (!matchId) {
       return new Response(
@@ -175,7 +174,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("📍 Sending message for match:", matchId, "user:", user.id);
 
     // Verify match exists and user is part of it
     const { data: match, error: matchError } = await supabaseClient
@@ -240,11 +238,6 @@ serve(async (req) => {
 
       messageData.media_type = finalMediaType;
 
-      console.log("📸 Adding media to message:", {
-        image_url: finalMediaType === "image" ? mediaUrl : null,
-        voice_url: (finalMediaType === "audio" || finalMediaType === "voice") ? mediaUrl : null,
-        media_type: finalMediaType
-      });
     }
 
     // Add reply_to_id if provided
@@ -272,10 +265,8 @@ serve(async (req) => {
       }
 
       messageData.reply_to_id = replyToId;
-      console.log("💬 Adding reply to message:", replyToId);
     }
 
-    console.log("📤 Message data to insert:", JSON.stringify(messageData, null, 2));
 
     const { data: message, error: messageError } = await supabaseClient
       .from("messages")
@@ -352,15 +343,12 @@ serve(async (req) => {
             });
           }
         } else {
-          console.log("Push notification skipped - user preferences disabled");
         }
       }
     } catch (e) {
       console.error("Push notify failed:", e);
     }
 
-    console.log("✅ Message sent successfully:", message.id);
-    console.log("✅ Message data returned:", JSON.stringify(message, null, 2));
 
     return new Response(
       JSON.stringify({

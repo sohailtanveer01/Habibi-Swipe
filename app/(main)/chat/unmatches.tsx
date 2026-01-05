@@ -1,10 +1,10 @@
-import { useEffect } from "react";
-import { View, Text, FlatList, Pressable, Image, ActivityIndicator, RefreshControl } from "react-native";
-import { supabase } from "../../../lib/supabase";
-import { useRouter } from "expo-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, Text, View } from "react-native";
 import Logo from "../../../components/Logo";
+import { supabase } from "../../../lib/supabase";
 
 // Clean photo URLs
 function cleanPhotoUrl(url: string | null | undefined): string | null {
@@ -50,24 +50,15 @@ export default function UnmatchesScreen() {
           table: "unmatches",
         },
         (payload) => {
-          console.log("🔄 Unmatch UPDATE event in unmatches screen:", {
-            user1_id: payload.new.user1_id,
-            user2_id: payload.new.user2_id,
-            rematch_status: payload.new.rematch_status,
-            old_status: payload.old?.rematch_status,
-            currentUserId: userId,
-          });
           
           // Check if this unmatch affects the current user
           if (userId && (payload.new.user1_id === userId || payload.new.user2_id === userId)) {
             // If rematch status changed to accepted, remove from list
             if (payload.new.rematch_status === "accepted") {
-              console.log("✅ Rematch accepted, refreshing unmatches list");
               queryClient.invalidateQueries({ queryKey: ["unmatches"] });
               queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
             } else if (payload.old?.rematch_status !== payload.new.rematch_status) {
               // Any rematch status change - refresh the list
-              console.log("🔄 Rematch status changed, refreshing unmatches list");
               queryClient.invalidateQueries({ queryKey: ["unmatches"] });
               queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
             }
@@ -80,14 +71,12 @@ export default function UnmatchesScreen() {
         (payload) => {
           // Check if this unmatch affects the current user
           if (userId && (payload.new.user1_id === userId || payload.new.user2_id === userId)) {
-            console.log("🔄 New unmatch detected, refreshing unmatches list");
             queryClient.invalidateQueries({ queryKey: ["unmatches"] });
             queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
           }
         }
       )
       .subscribe((status) => {
-        console.log("📡 Unmatches real-time subscription status:", status);
       });
     };
 

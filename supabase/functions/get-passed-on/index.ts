@@ -36,7 +36,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("Fetching users passed on by:", user.id);
 
     // Get all swipes where the current user passed on someone (action = 'pass')
     const { data: swipes, error: swipesError } = await supabaseClient
@@ -86,13 +85,6 @@ serve(async (req) => {
       blocksIAmBlocked.forEach(block => blockedUserIds.add(block.blocker_id));
     }
 
-    console.log("🔒 Blocking check:", {
-      userId: user.id,
-      blocksIBlocked: blocksIBlocked?.length || 0,
-      blocksIAmBlocked: blocksIAmBlocked?.length || 0,
-      totalBlockedUserIds: blockedUserIds.size,
-      blockedUserIds: Array.from(blockedUserIds),
-    });
 
     // Filter out blocked users from passed on user IDs
     const unblockedPassedOnIds = passedOnUserIds.filter(id => !blockedUserIds.has(id));
@@ -140,7 +132,6 @@ serve(async (req) => {
         return dateB - dateA;
       });
 
-    console.log("✅ Fetched passed on:", passedOnWithTimestamp.length);
 
     return new Response(
       JSON.stringify({ passedOn: passedOnWithTimestamp }),

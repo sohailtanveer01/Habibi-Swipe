@@ -83,7 +83,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("✅ Message soft-deleted:", { messageId });
 
     return new Response(
       JSON.stringify({ success: true, message: "Message deleted successfully" }),

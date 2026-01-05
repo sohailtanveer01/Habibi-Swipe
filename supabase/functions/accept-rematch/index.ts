@@ -46,7 +46,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("📍 Accept rematch:", { matchId, userId: user.id });
 
     // Find the unmatch record (we need to get it before deletion to know who requested)
     const { data: unmatchRecord, error: unmatchError } = await supabaseClient
@@ -136,7 +135,6 @@ serve(async (req) => {
     let newMatch;
     if (existingMatch) {
       // Match already exists, use it
-      console.log("ℹ️ Match already exists, using existing match:", existingMatch.id);
       newMatch = existingMatch;
     } else {
       // Create new match (RLS policy will allow this if rematch request is pending)
@@ -184,7 +182,6 @@ serve(async (req) => {
       // Don't fail the request if update fails, match is already created
     }
 
-    console.log("✅ Rematch accepted, match created:", newMatch.id);
 
     return new Response(
       JSON.stringify({

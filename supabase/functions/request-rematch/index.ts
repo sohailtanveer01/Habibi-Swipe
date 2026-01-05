@@ -46,7 +46,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("📍 Request rematch:", { matchId, otherUserId, userId: user.id });
 
     // Check if match already exists (they might have already rematched)
     const { data: existingMatch } = await supabaseClient
@@ -168,7 +167,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("✅ Rematch request created successfully");
 
     return new Response(
       JSON.stringify({

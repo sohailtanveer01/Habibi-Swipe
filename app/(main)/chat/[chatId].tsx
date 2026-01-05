@@ -247,10 +247,6 @@ function MessageItem({
                       console.error("❌ Image URL:", item.image_url);
                     }}
                     onLoad={() => {
-                      console.log(
-                        "✅ Image loaded successfully:",
-                        item.image_url
-                      );
                     }}
                   />
                 </Pressable>
@@ -527,11 +523,6 @@ export default function ChatScreen() {
     if (otherUser?.last_active_at) {
       const active = isUserActive(otherUser.last_active_at);
       setOtherUserActive(active);
-      console.log("🔍 Other user active status:", {
-        userId: otherUser.id,
-        lastActiveAt: otherUser.last_active_at,
-        isActive: active,
-      });
     } else {
       setOtherUserActive(false);
     }
@@ -548,10 +539,6 @@ export default function ChatScreen() {
         // Only update if it's from the OTHER user
         if (payload.payload.userId === otherUser.id) {
           setOtherUserActive(payload.payload.isActive);
-          console.log("🔄 Active status broadcast received:", {
-            userId: payload.payload.userId,
-            isActive: payload.payload.isActive,
-          });
         }
       })
       .subscribe();
@@ -574,22 +561,6 @@ export default function ChatScreen() {
         (msg: any) => msg.image_url || msg.voice_url
       );
       if (messagesWithMedia.length > 0) {
-        console.log("📸 Messages with media:", messagesWithMedia.length);
-        console.log(
-          "📸 Sample message with media:",
-          JSON.stringify(messagesWithMedia[0], null, 2)
-        );
-      } else {
-        console.log(
-          "⚠️ No messages with media found. Total messages:",
-          messages.length
-        );
-        if (messages.length > 0) {
-          console.log(
-            "📝 Sample message structure:",
-            JSON.stringify(messages[0], null, 2)
-          );
-        }
       }
     }
   }, [messages]);
@@ -625,10 +596,6 @@ export default function ChatScreen() {
         requestBody.replyToId = replyToId;
       }
 
-      console.log(
-        "📤 Request body to Edge Function:",
-        JSON.stringify(requestBody, null, 2)
-      );
 
       const { data, error } = await supabase.functions.invoke("send-message", {
         body: requestBody,
@@ -639,7 +606,6 @@ export default function ChatScreen() {
         throw error;
       }
 
-      console.log("✅ Send message response:", JSON.stringify(data, null, 2));
 
       // If strict halal filter blocked the message, return it (no optimistic clear)
       if (data?.blocked) {
@@ -648,9 +614,6 @@ export default function ChatScreen() {
 
       // Check if the response includes media
       if (data?.message) {
-        console.log("📸 Response message image_url:", data.message.image_url);
-        console.log("🎤 Response message voice_url:", data.message.voice_url);
-        console.log("📸 Response message media_type:", data.message.media_type);
       }
 
       return data;
@@ -728,20 +691,13 @@ export default function ChatScreen() {
 
           // For sender's own messages, skip - onSuccess will handle it
           if (newMessage.sender_id === user.id) {
-            console.log("📨 Skipping real-time handler for own message");
             return;
           }
 
           // If screen is focused, mark messages as read (receiver is actively viewing)
           if (isScreenFocusedRef.current) {
-            console.log(
-              "📨 New message received while screen focused - marking as read"
-            );
             shouldMarkAsReadRef.current = true;
           } else {
-            console.log(
-              "📨 New message received while screen not focused - keeping unread"
-            );
           }
 
           // Refetch to get complete data with reply_to
@@ -767,7 +723,6 @@ export default function ChatScreen() {
             payload.new.read === true && payload.old?.read === false;
 
           if (wasMarkedAsRead) {
-            console.log("✅ Message marked as read:", payload.new.id);
           }
 
           // SIMPLE STRATEGY: Always refetch to get updated data
@@ -1154,12 +1109,6 @@ export default function ChatScreen() {
     }
 
     // Send message with text and/or media
-    console.log("📤 Sending message:", {
-      hasText,
-      hasMedia: !!mediaUrl,
-      mediaUrl,
-      mediaType,
-    });
 
     sendMessageMutation.mutate({
       content: hasText ? text.trim() : undefined,

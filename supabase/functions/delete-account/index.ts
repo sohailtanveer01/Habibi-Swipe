@@ -49,7 +49,6 @@ serve(async (req) => {
             );
         }
 
-        console.log(`📍 Deleting account for user: ${user.id} (${user.email})`);
 
         // 1. Delete from public.users using email (as requested, since no FK relation exists)
         if (user.email) {
@@ -62,7 +61,6 @@ serve(async (req) => {
                 console.error("⚠️ Error deleting user profile from public.users:", profileDeleteError);
                 // We continue anyway to ensure the auth user is deleted
             } else {
-                console.log("✅ User profile deleted from public.users");
             }
         }
 
@@ -77,7 +75,6 @@ serve(async (req) => {
             );
         }
 
-        console.log("✅ User account deleted successfully");
         return new Response(
             JSON.stringify({ success: true, message: "Account deleted successfully" }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

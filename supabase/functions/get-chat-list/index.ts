@@ -37,8 +37,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("📍 Loading chat list for user:", user.id);
-    console.log("📍 User authenticated:", !!user);
 
     // Get list of blocked users (both ways - users I blocked and users who blocked me)
     const { data: blocksIBlocked } = await supabaseClient
@@ -199,7 +197,6 @@ serve(async (req) => {
 
           // If match exists, don't show rematch request (it was already accepted)
           if (existingMatch) {
-            console.log("ℹ️ Match already exists for rematch request, skipping:", unmatch.match_id);
             return null;
           }
 
@@ -280,7 +277,6 @@ serve(async (req) => {
 
           // If match exists, don't show rejected rematch (shouldn't happen, but safety check)
           if (existingMatch) {
-            console.log("ℹ️ Match already exists for rejected rematch, skipping:", unmatch.match_id);
             return null;
           }
 
@@ -344,7 +340,6 @@ serve(async (req) => {
 
     // Get pending compliments where current user is the recipient
     // Only show if status is pending (not accepted - accepted means they matched)
-    console.log("🔍 Fetching compliments for recipient:", user.id);
 
     // First, let's test if we can query compliments at all
     const { data: allComplimentsTest, error: testError } = await supabaseClient
@@ -352,11 +347,6 @@ serve(async (req) => {
       .select("id, sender_id, recipient_id, status")
       .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
 
-    console.log("🧪 Test query - All compliments (sent or received):", {
-      count: allComplimentsTest?.length || 0,
-      compliments: allComplimentsTest,
-      error: testError ? JSON.stringify(testError, null, 2) : null,
-    });
 
     const { data: pendingCompliments, error: complimentsError } = await supabaseClient
       .from("compliments")
@@ -372,15 +362,7 @@ serve(async (req) => {
       console.error("❌ Error details:", complimentsError.details);
       console.error("❌ Error hint:", complimentsError.hint);
     } else {
-      console.log("✅ Found pending compliments:", pendingCompliments?.length || 0);
       if (pendingCompliments && pendingCompliments.length > 0) {
-        console.log("✅ Compliment details:", pendingCompliments.map(c => ({
-          id: c.id,
-          sender_id: c.sender_id,
-          recipient_id: c.recipient_id,
-          status: c.status,
-          message: c.message?.substring(0, 50) + "...",
-        })));
       }
     }
 
@@ -413,7 +395,6 @@ serve(async (req) => {
             return null;
           }
 
-          console.log("✅ Successfully fetched sender profile:", senderProfile.id, senderProfile.name || senderProfile.first_name);
 
           // Create a fake "last message" from the compliment
           const complimentMessage = {
@@ -441,10 +422,8 @@ serve(async (req) => {
       );
 
       const validComplimentMatches = complimentMatches.filter((match) => match !== null);
-      console.log("✅ Added", validComplimentMatches.length, "compliment matches to chat list");
       validMatches.push(...validComplimentMatches);
     } else {
-      console.log("ℹ️ No pending compliments found for user:", user.id);
     }
 
     // Also show compliments I sent (only pending or declined - not accepted, since accepted means they matched)
@@ -519,22 +498,10 @@ serve(async (req) => {
       validMatches.push(...validSentComplimentMatches);
     }
 
-    console.log("✅ Loaded chat list:", validMatches.length, "matches (including rematch requests and compliments)");
-    console.log("📊 Breakdown:", {
-      regularMatches: validMatches.filter(m => !m.isCompliment && !m.isUnmatched).length,
-      compliments: validMatches.filter(m => m.isCompliment).length,
-      rematchRequests: validMatches.filter(m => m.isUnmatched && m.hasPendingRematchRequest).length,
-    });
 
     // Log all compliment matches for debugging
     const complimentMatches = validMatches.filter(m => m.isCompliment);
     if (complimentMatches.length > 0) {
-      console.log("💬 Compliment matches in response:", complimentMatches.map(m => ({
-        id: m.id,
-        otherUserId: m.otherUser?.id,
-        otherUserName: m.otherUser?.name || m.otherUser?.first_name,
-        complimentId: m.complimentId,
-      })));
     }
 
     // Sort all matches by the most recent message time

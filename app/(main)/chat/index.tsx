@@ -38,26 +38,6 @@ export default function ChatListScreen() {
       if (error) throw error;
 
       if (data && data.matches) {
-        // Log unread counts and active status for debugging
-        console.log("Chat list loaded:",
-          data.matches.map((m: any) => ({
-            matchId: m.id,
-            unreadCount: m.unreadCount,
-            otherUser: m.otherUser?.name || m.otherUser?.first_name,
-            otherUserLastActive: m.otherUser?.last_active_at,
-            isOtherUserActive: isUserActive(m.otherUser?.last_active_at),
-            isCompliment: m.isCompliment,
-            complimentId: m.complimentId,
-          }))
-        );
-
-        // Log compliments specifically
-        const compliments = data.matches.filter((m: any) => m.isCompliment);
-        if (compliments.length > 0) {
-          console.log("💬 Compliments in chat list:", compliments.length, compliments);
-        } else {
-          console.log("ℹ️ No compliments found in chat list response");
-        }
 
         return data.matches;
       }
@@ -149,7 +129,6 @@ export default function ChatListScreen() {
           // Check if this unmatch affects the current user and they weren't the one who unmatched
           if (payload.new.unmatched_by !== userId) {
             // User was unmatched by someone else - update notification count
-            console.log("🔄 New unmatch detected, updating notification count");
             queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
             queryClient.invalidateQueries({ queryKey: ["unmatches"] });
           }
@@ -163,30 +142,20 @@ export default function ChatListScreen() {
           table: "unmatches",
         },
         (payload) => {
-          console.log("🔄 Unmatch UPDATE event:", {
-            user1_id: payload.new.user1_id,
-            user2_id: payload.new.user2_id,
-            rematch_status: payload.new.rematch_status,
-            old_status: payload.old?.rematch_status,
-            currentUserId: userId,
-          });
           
           // Check if this unmatch affects the current user
           if (payload.new.user1_id === userId || payload.new.user2_id === userId) {
             // Check if rematch status changed to accepted
             if (payload.new.rematch_status === "accepted") {
-              console.log("✅ Rematch accepted, updating notification count and unmatches list");
               // Rematch was accepted - remove from unmatches and update notification count
               queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
               queryClient.invalidateQueries({ queryKey: ["unmatches"] });
               queryClient.invalidateQueries({ queryKey: ["chat-list"] }); // Refresh chat list
             } else if (payload.new.rematch_status === "rejected" && payload.old?.rematch_status !== "rejected") {
               // Rematch was rejected - refresh chat list to show rejection message
-              console.log("❌ Rematch rejected, refreshing chat list");
               queryClient.invalidateQueries({ queryKey: ["chat-list"] });
             } else if (payload.old?.rematch_status !== payload.new.rematch_status) {
               // Any other rematch status change - update notification count
-              console.log("🔄 Rematch status changed, updating notification count");
               queryClient.invalidateQueries({ queryKey: ["unmatches-notification-count"] });
             }
           }
@@ -253,8 +222,6 @@ export default function ChatListScreen() {
           table: "compliments"
         },
         (payload) => {
-          console.log("🔔 Real-time: New compliment inserted:", payload);
-          console.log("🔔 Compliment recipient_id:", payload.new?.recipient_id);
           // Invalidate cache when a new compliment is inserted
           // RLS will ensure only relevant compliments are shown
           queryClient.invalidateQueries({ queryKey: ["chat-list"] });
@@ -268,14 +235,12 @@ export default function ChatListScreen() {
           table: "compliments"
         },
         (payload) => {
-          console.log("🔔 Real-time: Compliment updated:", payload);
           // Invalidate cache when compliment status changes (accepted/declined)
           // This will refresh the list to remove accepted compliments and show match instead
           queryClient.invalidateQueries({ queryKey: ["chat-list"] });
         }
       )
       .subscribe((status) => {
-        console.log("📡 Real-time subscription status:", status);
       });
     };
 

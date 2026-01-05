@@ -130,7 +130,6 @@ export default function ProfilePreviewScreen() {
           await supabase.functions.invoke("create-profile-view", {
             body: { viewed_id: profileUserId },
           });
-          console.log("✅ Profile view recorded for:", profileUserId);
         } catch (viewError) {
           console.error("Error recording profile view:", viewError);
           // Don't fail the profile load if view tracking fails

@@ -39,7 +39,6 @@ serve(async (req) => {
 
         // 2. Fallback: If not found by email, find in auth.users and then check public.users by ID
         if (!profile) {
-            console.log("🔍 Email not found in public.users, falling back to auth.admin...");
             const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
 
             if (listError) {
@@ -48,7 +47,6 @@ serve(async (req) => {
                 const authUser = users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
 
                 if (authUser) {
-                    console.log("✅ Found user in auth.users by email:", authUser.id);
                     // Check public.users by ID
                     const { data: idProfile, error: idError } = await supabaseAdmin
                         .from("users")
@@ -62,7 +60,6 @@ serve(async (req) => {
                         profile = idProfile;
 
                         // Repair: Update public.users with the email for future direct lookups
-                        console.log("🛠️ Repairing public.users record with email...");
                         await supabaseAdmin
                             .from("users")
                             .update({ email: email.toLowerCase() })

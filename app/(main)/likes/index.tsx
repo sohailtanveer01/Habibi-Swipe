@@ -46,12 +46,9 @@ export default function LikesScreen() {
     setLoading(true);
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) {
-      console.log("No user found");
       setLoading(false);
       return;
     }
-
-    console.log("Fetching users who liked me for user:", user.id);
 
     const { data, error } = await supabase.functions.invoke("get-liked-me");
 
@@ -62,14 +59,11 @@ export default function LikesScreen() {
       return;
     }
 
-    console.log("Liked me response:", data);
-
     // Parse the response if it's a string
     let parsedData = data;
     if (typeof data === 'string') {
       try {
         parsedData = JSON.parse(data);
-        console.log("Parsed response:", parsedData);
       } catch (e) {
         console.error("Error parsing response:", e);
         setLoading(false);
@@ -95,8 +89,6 @@ export default function LikesScreen() {
       }
     }
 
-    console.log("Parsed liked me array:", likesArray.length);
-    console.log("First liked me item:", likesArray[0] ? JSON.stringify(likesArray[0], null, 2) : "none");
 
     setLikes(likesArray);
     setLoading(false);
@@ -106,12 +98,9 @@ export default function LikesScreen() {
     setLoading(true);
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) {
-      console.log("No user found");
       setLoading(false);
       return;
     }
-
-    console.log("Fetching my likes for user:", user.id);
 
     const { data, error } = await supabase.functions.invoke("get-my-likes");
 
@@ -122,7 +111,6 @@ export default function LikesScreen() {
       return;
     }
 
-    console.log("My likes response:", data);
 
     // Parse the response if it's a string
     let parsedData = data;
@@ -148,8 +136,6 @@ export default function LikesScreen() {
       }
     }
 
-    console.log("Parsed my likes array:", myLikesArray.length);
-    console.log("First my like item:", myLikesArray[0] ? JSON.stringify(myLikesArray[0], null, 2) : "none");
     setMyLikes(myLikesArray);
     setLoading(false);
   };
@@ -158,12 +144,9 @@ export default function LikesScreen() {
     setLoading(true);
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) {
-      console.log("No user found");
       setLoading(false);
       return;
     }
-
-    console.log("Fetching viewers for user:", user.id);
 
     const { data, error } = await supabase.functions.invoke("get-viewers");
 
@@ -174,7 +157,6 @@ export default function LikesScreen() {
       return;
     }
 
-    console.log("Viewers response:", data);
 
     // Parse the response if it's a string
     let parsedData = data;
@@ -200,7 +182,6 @@ export default function LikesScreen() {
       }
     }
 
-    console.log("Parsed viewers array:", viewersArray.length);
     setViewers(viewersArray);
     setLoading(false);
   };
@@ -209,12 +190,10 @@ export default function LikesScreen() {
     setLoading(true);
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) {
-      console.log("No user found");
       setLoading(false);
       return;
     }
 
-    console.log("Fetching users passed on by user:", user.id);
 
     const { data, error } = await supabase.functions.invoke("get-passed-on");
 
@@ -225,14 +204,12 @@ export default function LikesScreen() {
       return;
     }
 
-    console.log("Passed on response:", data);
 
     // Parse the response if it's a string
     let parsedData = data;
     if (typeof data === 'string') {
       try {
         parsedData = JSON.parse(data);
-        console.log("Parsed response:", parsedData);
       } catch (e) {
         console.error("Error parsing response:", e);
         setLoading(false);
@@ -252,7 +229,6 @@ export default function LikesScreen() {
       }
     }
 
-    console.log("Parsed passed on array:", passedOnArray.length);
     setPassedOn(passedOnArray);
     setLoading(false);
   };
@@ -291,7 +267,6 @@ export default function LikesScreen() {
             filter: `viewed_id=eq.${user.id}`, // Only listen for views of current user
           },
           (payload) => {
-            console.log("🔄 New profile view detected, refreshing viewers list");
             // Refresh viewers list to get updated counts
             loadViewers();
           }
@@ -329,7 +304,6 @@ export default function LikesScreen() {
             const newMatch = payload.new;
             // Check if this match involves the current user
             if (newMatch.user1 === user.id || newMatch.user2 === user.id) {
-              console.log("🔄 New match detected, refreshing likes lists");
               // Refresh both "my likes" and "liked me" since a match affects both
               loadMyLikes();
               loadLikes();
@@ -347,7 +321,6 @@ export default function LikesScreen() {
             const newUnmatch = payload.new;
             // Check if this unmatch involves the current user
             if (newUnmatch.user1_id === user.id || newUnmatch.user2_id === user.id) {
-              console.log("🔄 New unmatch detected, refreshing likes lists");
               // Refresh both "my likes" and "liked me" since an unmatch affects both
               loadMyLikes();
               loadLikes();
@@ -468,7 +441,6 @@ export default function LikesScreen() {
                       await supabase.functions.invoke("create-profile-view", {
                         body: { viewed_id: item.id },
                       });
-                      console.log("✅ Profile view recorded from my likes tab:", item.id);
                     } catch (error) {
                       console.error("Error recording profile view from my likes tab:", error);
                       // Continue with navigation even if view tracking fails
@@ -601,7 +573,6 @@ export default function LikesScreen() {
                       await supabase.functions.invoke("create-profile-view", {
                         body: { viewed_id: item.id },
                       });
-                      console.log("✅ Profile view recorded from viewers tab:", item.id);
                     } catch (error) {
                       console.error("Error recording profile view from viewers tab:", error);
                       // Continue with navigation even if view tracking fails
@@ -843,7 +814,6 @@ export default function LikesScreen() {
                 ? `${item.first_name} ${item.last_name}`
                 : item.name || "Unknown";
 
-              console.log("Rendering like card:", {
                 name: fullName,
                 hasPhotos: item.photos?.length || 0,
                 mainPhoto: mainPhoto ? "valid" : "none",
@@ -870,7 +840,6 @@ export default function LikesScreen() {
                       await supabase.functions.invoke("create-profile-view", {
                         body: { viewed_id: item.id },
                       });
-                      console.log("✅ Profile view recorded from likes tab:", item.id);
                     } catch (error) {
                       console.error("Error recording profile view from likes tab:", error);
                       // Continue with navigation even if view tracking fails

@@ -182,7 +182,6 @@ export default function SwipeScreen() {
 
   useEffect(() => {
     if (profiles[index]) {
-      console.log("Current profile prompts:", profiles[index]);
     }
   }, [index, profiles]);
 
@@ -589,10 +588,6 @@ export default function SwipeScreen() {
         await supabase.functions.invoke("create-profile-view", {
           body: { viewed_id: currentProfile.id },
         });
-        console.log(
-          "✅ Profile view recorded for swipe feed:",
-          currentProfile.id
-        );
       } catch (error) {
         console.error("Error recording profile view from swipe feed:", error);
         viewedProfileIds.current.delete(currentProfile.id);
@@ -816,7 +811,6 @@ export default function SwipeScreen() {
         }
       }
 
-      console.log("Swipe response:", responseData);
 
       // ================================================================
       // REWIND: Track last pass (left swipe) for ONE rewind only
@@ -835,11 +829,6 @@ export default function SwipeScreen() {
       }
 
       if (responseData?.matched && responseData?.matchId) {
-        console.log(
-          "🎉 MATCHED with",
-          currentProfile.name || currentProfile.first_name
-        );
-        console.log("Match data:", responseData);
         setMatchData({
           matchId: responseData.matchId,
           otherUser: responseData.otherUser || currentProfile,
@@ -1417,7 +1406,6 @@ export default function SwipeScreen() {
   const handleMatchCelebrationClose = (navigateToChat: boolean) => {
     if (navigateToChat && matchData?.matchId) {
       const matchIdToNavigate = matchData.matchId;
-      console.log("Navigating to chat with matchId:", matchIdToNavigate);
       setMatchData(null);
       if (userId) {
         setTimeout(() => {

@@ -83,7 +83,6 @@ export default function SubscriptionScreen() {
       return;
     }
 
-    console.log("Starting purchase for package:", pkg.identifier, pkg.product.identifier);
     setSubscribing(true);
 
     try {
@@ -93,19 +92,14 @@ export default function SubscriptionScreen() {
         return;
       }
 
-      console.log("Identifying user in RevenueCat:", user.id);
       await Purchases.logIn(user.id);
 
-      console.log("Invoking native purchase sheet...");
       const { customerInfo } = await Purchases.purchasePackage(pkg);
-      console.log("Native purchase sheet closed. customerInfo received.");
 
-      console.log("Active entitlements:", customerInfo.entitlements.active);
       const activeEntitlementIds = Object.keys(customerInfo.entitlements.active);
       const hasPremium = customerInfo.entitlements.active['Habibi Swipe Pro'] !== undefined;
 
       if (hasPremium) {
-        console.log("Premium entitlement confirmed. Updating Supabase...");
         const { error } = await supabase
           .from("users")
           .update({
@@ -127,9 +121,7 @@ export default function SubscriptionScreen() {
         );
       }
     } catch (error: any) {
-      console.log("Purchase flow error caught:", error);
       if (error.userCancelled) {
-        console.log("User cancelled the purchase.");
       } else {
         console.error("Purchase error detail:", error);
         Alert.alert("Purchase Failed", error.message || "An unknown error occurred during purchase.");

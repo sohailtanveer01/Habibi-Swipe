@@ -48,8 +48,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("📍 Updating profile for user:", user.id);
-    console.log("📍 Update payload:", JSON.stringify(updatePayload, null, 2));
 
     // Ensure mandatory fields are not null
     // Get current profile to use as fallback for mandatory fields
@@ -97,7 +95,6 @@ serve(async (req) => {
 
     // Handle prompts update if provided
     if (prompts && Array.isArray(prompts)) {
-      console.log("📍 Updating prompts for user:", user.id);
 
       // Delete existing prompts
       const { error: deleteError } = await supabaseClient
@@ -132,11 +129,9 @@ serve(async (req) => {
           );
         }
 
-        console.log("✅ Successfully updated", promptsToInsert.length, "prompts");
       }
     }
 
-    console.log("✅ Profile updated successfully");
 
     return new Response(
       JSON.stringify({

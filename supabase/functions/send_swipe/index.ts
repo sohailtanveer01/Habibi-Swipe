@@ -184,11 +184,9 @@ serve(async (req) => {
             }
 
             await sendExpoPush(tokens, { title, body, data });
-            console.log(`📱 Sent ${reverseSwipe ? "match" : "like"} notification to user:`, swiped_id);
           }
         }
       } else {
-        console.log("Push notification skipped - user preferences disabled");
       }
     } catch (e) {
       console.error("Push notification failed:", e);

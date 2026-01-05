@@ -66,7 +66,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("📍 Block user request:", { userId, matchId, blockerId: user.id });
 
     // Check if already blocked
     const { data: existingBlock, error: checkError } = await supabaseClient
@@ -87,7 +86,6 @@ serve(async (req) => {
 
     if (existingBlock) {
       // Already blocked
-      console.log("ℹ️ User already blocked");
     } else {
       // Create block record
       const { error: insertError } = await supabaseClient
@@ -126,13 +124,11 @@ serve(async (req) => {
             console.error("⚠️ Error deleting match:", deleteMatchError);
             // Don't fail the request if match deletion fails
           } else {
-            console.log("✅ Match deleted after blocking (messages preserved)");
           }
         }
       }
     }
 
-    console.log("✅ User blocked successfully");
     return new Response(
       JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

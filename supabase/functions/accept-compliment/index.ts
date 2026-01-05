@@ -113,7 +113,6 @@ serve(async (req) => {
 
     if (existingMatch) {
       // Match already exists, use it
-      console.log("ℹ️ Match already exists, using existing match:", existingMatch.id);
       matchId = existingMatch.id;
     } else {
       // Create new match
@@ -164,7 +163,6 @@ serve(async (req) => {
           body: `${accepterName} accepted your compliment. It's a match!`,
           data: { type: "match", matchId: matchId },
         });
-        console.log("📱 Sent compliment acceptance notification to user:", compliment.sender_id);
       }
     } catch (e) {
       console.error("Push notification failed:", e);
@@ -192,13 +190,10 @@ serve(async (req) => {
         console.error("⚠️ Error inserting compliment message:", messageError);
         // Don't fail the request if message insertion fails
       } else {
-        console.log("✅ Compliment message inserted into chat");
       }
     } else if (existingMessage) {
-      console.log("ℹ️ Compliment message already exists in chat");
     }
 
-    console.log("✅ Compliment accepted, match created:", { matchId, complimentId });
 
     return new Response(
       JSON.stringify({ success: true, matchId, message: "Compliment accepted and match created" }),

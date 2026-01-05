@@ -92,7 +92,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("✅ Compliment declined:", { complimentId });
 
     return new Response(
       JSON.stringify({ 

@@ -59,7 +59,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("📍 Unmatch request:", { matchId, userId: user.id });
 
     // Verify the match exists and user is part of it
     const { data: match, error: matchError } = await supabaseClient
@@ -115,7 +114,6 @@ serve(async (req) => {
         );
       }
 
-      console.log("✅ Unmatch record created");
     }
 
     // Delete the match (preserve messages for future rematch feature)
@@ -132,7 +130,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("✅ Match deleted successfully");
     return new Response(
       JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

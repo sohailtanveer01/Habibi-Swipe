@@ -36,7 +36,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("📍 Loading unmatches for user:", user.id);
 
     // Get list of users I blocked (user 1 shouldn't see user 2)
     const { data: blocksIBlocked, error: blocksError1 } = await supabaseClient
@@ -170,7 +169,6 @@ serve(async (req) => {
 
     const result = Array.from(allUsers.values());
 
-    console.log("✅ Loaded unmatches:", result.length, "users");
 
     return new Response(
       JSON.stringify({

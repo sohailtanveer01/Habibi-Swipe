@@ -46,7 +46,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("📍 Reject rematch:", { matchId, userId: user.id });
 
     // Find the unmatch record
     const { data: unmatchRecord, error: unmatchError } = await supabaseClient
@@ -101,7 +100,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("✅ Rematch request rejected");
 
     return new Response(
       JSON.stringify({

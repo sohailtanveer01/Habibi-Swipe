@@ -102,7 +102,6 @@ export async function registerAndSyncPushToken(): Promise<void> {
   if (error) {
     console.warn("[Push] Failed to upsert push token:", error);
   } else {
-    console.log("[Push] Synced Expo push token:", token);
   }
 }
 
