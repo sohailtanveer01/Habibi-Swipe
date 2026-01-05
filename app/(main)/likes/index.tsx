@@ -308,6 +308,46 @@ export default function LikesScreen() {
     };
   }, [activeTab]);
 
+  // Real-time subscription for matches - refresh likes when a match is created
+  useEffect(() => {
+    let channel: any = null;
+
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      channel = supabase
+        .channel("matches-updates-likes")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "matches",
+          },
+          (payload) => {
+            const newMatch = payload.new;
+            // Check if this match involves the current user
+            if (newMatch.user1 === user.id || newMatch.user2 === user.id) {
+              console.log("🔄 New match detected, refreshing likes lists");
+              // Refresh both "my likes" and "liked me" since a match affects both
+              loadMyLikes();
+              loadLikes();
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []); // Run once on mount, not dependent on activeTab
+
   const tabs = [
     { key: "myLikes", label: "My likes", count: myLikes.length },
     { key: "likedMe", label: "Liked me", count: likes.length },
