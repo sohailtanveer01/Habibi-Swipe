@@ -1,10 +1,11 @@
-import { View, Text, TextInput, Pressable, ScrollView, Platform, KeyboardAvoidingView, Keyboard } from "react-native";
-import { useRouter } from "expo-router";
-import { useOnboarding } from "../../../lib/onboardingStore";
-import { useState, useEffect } from "react";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Ionicons } from "@expo/vector-icons";
 import OnboardingBackground from "@/components/OnboardingBackground";
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useOnboarding } from "../../../lib/onboardingStore";
+import { supabase } from "../../../lib/supabase";
 
 const TOTAL_STEPS = 8;
 const CURRENT_STEP = 1;
@@ -221,7 +222,11 @@ export default function Step1Basic() {
         <View className="flex-row items-center justify-between mb-8">
           {/* Back Button */}
           <Pressable
-            onPress={() => router.back()}
+            onPress={async () => {
+              // Log out the user when pressing back on first onboarding step
+              await supabase.auth.signOut();
+              router.replace("/");
+            }}
             className="w-10 h-10 rounded-full border border-[#B8860B] items-center justify-center"
           >
             <Ionicons name="chevron-back" size={20} color="white" />
@@ -260,14 +265,14 @@ export default function Step1Basic() {
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="px-6 pt-6 pb-8">
+        <View className="px-6 pt-2 pb-4">
           {/* Header Section */}
           <View className="mb-8">
             <Text className="text-white text-4xl font-bold mb-3 leading-tight">
-              You are in !!
+              You are in Habibi !
             </Text>
             <Text className="text-white/80 text-xl font-medium">
-              Let&apos;s get to know you
+              Don&apos;t worry, your information is safe and secure.
             </Text>
           </View>
 
