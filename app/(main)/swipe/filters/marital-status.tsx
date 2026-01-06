@@ -41,7 +41,7 @@ export default function MaritalStatusFilterScreen() {
         setSelectedStatuses(data.marital_status_preferences);
       }
     } catch (error) {
-      console.error("Error loading preferences:", error);
+      // Error loading preferences
     } finally {
       setLoading(false);
     }
@@ -91,10 +91,9 @@ export default function MaritalStatusFilterScreen() {
       if (error) throw error;
 
       Alert.alert("Success", "Marital status filter saved!", [
-        { text: "OK", onPress: () => router.back() },
+        { text: "OK", onPress: () => router.push("/(main)/swipe/filters/") },
       ]);
     } catch (error: any) {
-      console.error("Error saving preferences:", error);
       Alert.alert("Error", error.message || "Failed to save preferences.");
     } finally {
       setSaving(false);
@@ -115,13 +114,49 @@ export default function MaritalStatusFilterScreen() {
       {/* Header */}
       <View className="pt-14 px-6 pb-6 flex-row items-center justify-between border-b border-white/10">
         <Pressable 
-          onPress={() => router.back()}
+          onPress={() => router.push("/(main)/swipe/filters/")}
           className="px-2 py-1"
         >
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
         <Text className="text-white text-2xl font-bold">Marital Status</Text>
-        <View style={{ width: 60 }} />
+        <Pressable 
+          onPress={async () => {
+            setSelectedStatuses([]);
+            // Save cleared values
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const { data: existingPrefs } = await supabase
+                .from("user_preferences")
+                .select("*")
+                .eq("user_id", user.id)
+                .single();
+              
+              await supabase.from("user_preferences").upsert(
+                {
+                  user_id: user.id,
+                  marital_status_preferences: null,
+                  location_enabled: existingPrefs?.location_enabled || false,
+                  location_filter_type: existingPrefs?.location_filter_type || null,
+                  search_radius_miles: existingPrefs?.search_radius_miles || null,
+                  search_location: existingPrefs?.search_location || null,
+                  search_country: existingPrefs?.search_country || null,
+                  age_min: existingPrefs?.age_min || null,
+                  age_max: existingPrefs?.age_max || null,
+                  height_min_cm: existingPrefs?.height_min_cm || null,
+                  ethnicity_preferences: existingPrefs?.ethnicity_preferences || null,
+                  children_preferences: existingPrefs?.children_preferences || null,
+                  religiosity_preferences: existingPrefs?.religiosity_preferences || null,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: "user_id" }
+              );
+            }
+          }}
+          className="px-2 py-1"
+        >
+          <Text className="text-white/70 text-base font-medium">Clear</Text>
+        </Pressable>
       </View>
 
       <ScrollView 

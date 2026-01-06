@@ -61,6 +61,7 @@ export default function AgeFilterScreen() {
 
   useEffect(() => {
     loadPreferences();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadPreferences = async () => {
@@ -118,7 +119,7 @@ export default function AgeFilterScreen() {
       if (error) throw error;
 
       Alert.alert("Success", "Age filter saved!", [
-        { text: "OK", onPress: () => router.back() },
+        { text: "OK", onPress: () => router.push("/(main)/swipe/filters/") },
       ]);
     } catch (e: any) {
       Alert.alert("Error", e.message || "Failed to save preferences.");
@@ -140,11 +141,45 @@ export default function AgeFilterScreen() {
     <View className="flex-1 bg-black">
       {/* Header */}
       <View className="pt-14 px-6 pb-6 flex-row items-center justify-between border-b border-white/10">
-        <Pressable onPress={() => router.back()} className="px-2 py-1">
+        <Pressable onPress={() => router.push("/(main)/swipe/filters/")} className="px-2 py-1">
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
         <Text className="text-white text-2xl font-bold">Age</Text>
-        <View style={{ width: 60 }} />
+        <Pressable 
+          onPress={async () => {
+            setAgeMin(MIN_AGE);
+            setAgeMax(MAX_AGE);
+            // Save cleared values
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const { data: existingPrefs } = await supabase
+                .from("user_preferences")
+                .select("*")
+                .eq("user_id", user.id)
+                .single();
+              
+              await supabase.from("user_preferences").upsert(
+                {
+                  user_id: user.id,
+                  age_min: null,
+                  age_max: null,
+                  location_enabled: existingPrefs?.location_enabled || false,
+                  location_filter_type: existingPrefs?.location_filter_type || null,
+                  search_radius_miles: existingPrefs?.search_radius_miles || null,
+                  search_location: existingPrefs?.search_location || null,
+                  search_country: existingPrefs?.search_country || null,
+                  height_min_cm: existingPrefs?.height_min_cm || null,
+                  ethnicity_preferences: existingPrefs?.ethnicity_preferences || null,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: "user_id" }
+              );
+            }
+          }}
+          className="px-2 py-1"
+        >
+          <Text className="text-white/70 text-base font-medium">Clear</Text>
+        </Pressable>
       </View>
 
       <ScrollView
@@ -186,13 +221,39 @@ export default function AgeFilterScreen() {
 
             <Pressable
               className="mt-5 bg-white/10 p-3 rounded-xl"
-              onPress={() => {
+              onPress={async () => {
                 setAgeMin(MIN_AGE);
                 setAgeMax(MAX_AGE);
+                // Save cleared values
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                  const { data: existingPrefs } = await supabase
+                    .from("user_preferences")
+                    .select("*")
+                    .eq("user_id", user.id)
+                    .single();
+                  
+                  await supabase.from("user_preferences").upsert(
+                    {
+                      user_id: user.id,
+                      age_min: null,
+                      age_max: null,
+                      location_enabled: existingPrefs?.location_enabled || false,
+                      location_filter_type: existingPrefs?.location_filter_type || null,
+                      search_radius_miles: existingPrefs?.search_radius_miles || null,
+                      search_location: existingPrefs?.search_location || null,
+                      search_country: existingPrefs?.search_country || null,
+                      height_min_cm: existingPrefs?.height_min_cm || null,
+                      ethnicity_preferences: existingPrefs?.ethnicity_preferences || null,
+                      updated_at: new Date().toISOString(),
+                    },
+                    { onConflict: "user_id" }
+                  );
+                }
               }}
             >
               <Text className="text-white/70 text-center font-medium">
-                Reset Age Range
+                Clear
               </Text>
             </Pressable>
           </View>
