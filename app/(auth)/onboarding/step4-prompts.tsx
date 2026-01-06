@@ -114,9 +114,6 @@ export default function Step5Prompts() {
     // Validate answer lengths
     for (const prompt of filledPrompts) {
       const trimmedAnswer = prompt.answer.trim();
-      if (trimmedAnswer.length < 10) {
-        return "Each prompt answer must be at least 10 characters long.";
-      }
       if (trimmedAnswer.length > 500) {
         return "Each prompt answer must be less than 500 characters.";
       }

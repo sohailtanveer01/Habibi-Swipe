@@ -442,6 +442,24 @@ export default function ProfileScreen() {
   };
 
   const pickImage = async (targetIndex?: number) => {
+    // Show content policy alert first
+    Alert.alert(
+      "Photo Guidelines",
+      "Please upload respectful photos only.\n\nWe do not allow nudity, sexually explicit, or inappropriate content.\n\nAccounts found violating this policy may be permanently banned without warning.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "I Understand",
+          onPress: () => proceedWithImagePick(targetIndex),
+        },
+      ]
+    );
+  };
+
+  const proceedWithImagePick = async (targetIndex?: number) => {
     try {
       const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
       let hasPermission = status === 'granted';
@@ -509,7 +527,6 @@ export default function ProfileScreen() {
             .eq("id", user.id);
 
           if (updateError) {
-            console.error("Error updating photos:", updateError);
             Alert.alert("Error", "Failed to save photo. Please try again.");
             // Revert the state change
             setPhotos(photos);
@@ -549,7 +566,6 @@ export default function ProfileScreen() {
             .eq("id", user.id);
 
           if (updateError) {
-            console.error("Error updating photos:", updateError);
             Alert.alert("Error", "Failed to save photo. Please try again.");
             // Revert the state change
             setPhotos(photos);

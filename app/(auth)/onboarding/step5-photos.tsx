@@ -42,8 +42,35 @@ export default function Step5Photos() {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [hoverTargetIndex, setHoverTargetIndex] = useState<number | null>(null);
   const [layoutPositions, setLayoutPositions] = useState<{ [key: number]: { x: number; y: number; width: number; height: number } }>({});
+  const [hasShownWarning, setHasShownWarning] = useState(false);
 
   const pickImage = async (index: number) => {
+    // Show content policy alert only on first photo upload
+    if (!hasShownWarning) {
+      Alert.alert(
+        "Photo Guidelines",
+        "Please upload respectful photos only.\n\nWe do not allow nudity, sexually explicit, or inappropriate content.\n\nAccounts found violating this policy may be permanently banned without warning.",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "I Understand",
+            onPress: () => {
+              setHasShownWarning(true);
+              proceedWithImagePick(index);
+            },
+          },
+        ]
+      );
+    } else {
+      // If warning already shown, proceed directly
+      proceedWithImagePick(index);
+    }
+  };
+
+  const proceedWithImagePick = async (index: number) => {
     try {
       // Check & request permission
       const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
@@ -96,7 +123,6 @@ export default function Step5Photos() {
         setData((d) => ({ ...d, photos: newPhotos }));
       }
     } catch (e: any) {
-      console.error("Error in pickImage:", e);
       Alert.alert("Error", e.message || "Failed to pick/upload photo. Please try again.");
     } finally {
       setUploading(false);
