@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -27,7 +28,6 @@ export default function Login() {
 
 
       if (statusError) {
-        console.error("Error checking user status:", statusError);
         // Fallback: proceed to login if check fails
       } else if (statusData && statusData.exists && statusData.account_active === false) {
         setLoading(false);
@@ -49,36 +49,45 @@ export default function Login() {
 
       // 3. Navigate to email OTP verification screen
       router.push({ pathname: "/(auth)/email-otp", params: { email: trimmed } });
-    } catch (error) {
-      console.error("Unexpected error in login:", error);
+    } catch {
       Alert.alert("Error", "An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <View style={styles.container}>
-      {/* Gradient Backgrounds - matching onboarding */}
-      <LinearGradient
-        colors={["rgba(238,189,43,0.65)", "rgba(10,10,10,0)"]}
-        style={[styles.gradientBase, styles.gradientTopLeft]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        colors={["rgba(10,10,10,0)", "rgba(238,189,43,0.55)"]}
-        style={[styles.gradientBase, styles.gradientBottomRight]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        pointerEvents="none"
-      />
 
-      {/* Logo at top */}
-      <View style={styles.logoContainer}>
-        <Logo variant="transparent" width={150} height={150} style="" />
-      </View>
+
+  return (
+      <View style={styles.container}>
+        {/* Gradient Backgrounds - matching onboarding */}
+        <LinearGradient
+          colors={["rgba(238,189,43,0.65)", "rgba(10,10,10,0)"]}
+          style={[styles.gradientBase, styles.gradientTopLeft]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          pointerEvents="none"
+        />
+        <LinearGradient
+          colors={["rgba(10,10,10,0)", "rgba(238,189,43,0.55)"]}
+          style={[styles.gradientBase, styles.gradientBottomRight]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          pointerEvents="none"
+        />
+
+        {/* Back Button */}
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        </Pressable>
+
+        {/* Logo at top */}
+        <View style={styles.logoContainer}>
+          <Logo variant="transparent" width={150} height={150} style="" />
+        </View>
 
       {/* Content */}
       <View style={styles.content}>
@@ -113,7 +122,7 @@ export default function Login() {
           </Text>
         </View>
       </View>
-    </View>
+      </View>
   );
 }
 
@@ -138,6 +147,18 @@ const styles = StyleSheet.create({
   gradientBottomRight: {
     bottom: -260,
     right: -220,
+  },
+  backButton: {
+    position: "absolute",
+    top: 60,
+    left: 20,
+    zIndex: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoContainer: {
     position: "absolute",
