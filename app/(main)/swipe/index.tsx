@@ -109,7 +109,7 @@ export default function SwipeScreen() {
   } | null>(null);
   const [loadingSpecificProfile, setLoadingSpecificProfile] = useState(false);
   const [existingSwipe, setExistingSwipe] = useState<{
-    action: "like" | "pass" | "superlike";
+    action: "like" | "pass" | "superlike" | "matched";
   } | null>(null);
   const [availableActions, setAvailableActions] = useState<{
     showLike: boolean;
@@ -241,6 +241,13 @@ export default function SwipeScreen() {
           .order("display_order", { ascending: true });
 
 
+        // Check if users are already matched
+        const { data: existingMatch } = await supabase
+          .from("matches")
+          .select("id")
+          .or(`and(user1.eq.${user.id},user2.eq.${targetUserId}),and(user1.eq.${targetUserId},user2.eq.${user.id})`)
+          .maybeSingle();
+
         const { data: existingSwipeData } = await supabase
           .from("swipes")
           .select("action")
@@ -267,6 +274,11 @@ export default function SwipeScreen() {
           .eq("swiped_id", user.id)
           .eq("action", "like")
           .maybeSingle();
+
+        // Store match status for use in determineAvailableActions
+        if (existingMatch) {
+          setExistingSwipe({ action: "matched" } as any);
+        }
 
         const profileWithPrompts = {
           ...profile,
@@ -518,6 +530,11 @@ export default function SwipeScreen() {
     source: string | undefined,
     existingSwipe: { action: string } | null
   ) => {
+    // If users are already matched, never show action buttons
+    if (existingSwipe?.action === "matched") {
+      return { showLike: false, showPass: false };
+    }
+
     if (source === "myLikes") return { showLike: false, showPass: true };
     if (source === "likedMe") return { showLike: true, showPass: true };
     if (source === "passedOn") return { showLike: true, showPass: false };
