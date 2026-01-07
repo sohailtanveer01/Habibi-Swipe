@@ -3,6 +3,7 @@ export default {
       name: "Habibi Swipe",
       slug: "habibi-swipe",
       scheme: "habibiswipe",
+      icon: "./assets/images/icon.png",
       extra: {
         eas: {
           projectId: "5401771d-589a-47b5-8e0c-e0850eea1cc3",
@@ -19,6 +20,7 @@ export default {
       ],
       ios: {
         bundleIdentifier: "com.habibiswipe.app",
+        icon: "./assets/images/icon.png",
         usesIcloudStorage: true,
         infoPlist: {
           NSPhotoLibraryUsageDescription:
@@ -27,6 +29,7 @@ export default {
             "Habibi Swipe needs access to your camera to take profile photos.",
           NSMicrophoneUsageDescription:
             "Habibi Swipe needs access to your microphone to send voice messages.",
+            "ITSAppUsesNonExemptEncryption": false
         },
       },
       android: {
