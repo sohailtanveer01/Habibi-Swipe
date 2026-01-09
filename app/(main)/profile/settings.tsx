@@ -192,7 +192,7 @@ export default function SettingsScreen() {
               Alert.alert(
                 "Account Deleted",
                 "Your account and all associated data have been permanently removed.",
-                [{ text: "OK", onPress: () => router.replace("/") }]
+                [{ text: "OK", onPress: () => router.replace("/") }] // Redirect to home screen
               );
             } catch (error: any) {
               console.error("Error deleting account:", error);
