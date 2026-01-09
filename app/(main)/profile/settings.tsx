@@ -237,12 +237,7 @@ export default function SettingsScreen() {
           onPress={() => router.push("/(main)/profile/notifications")}
         />
 
-        <SettingsItem
-          icon="lock-closed-outline"
-          title="Privacy"
-          subtitle="Profile visibility, blocking"
-          onPress={() => Alert.alert("Coming Soon", "This feature is coming soon.")}
-        />
+      
 
         <View className="flex-row items-center justify-between py-4 px-4 bg-white/5 rounded-2xl mb-3">
           <View className="flex-row items-center flex-1">
