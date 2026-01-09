@@ -2367,7 +2367,7 @@ export default function SwipeScreen() {
                 {/* About / Bio Section */}
                 {detailsBio ? (
                   <View style={detailsStyles.sectionCard}>
-                    <Text style={detailsStyles.sectionTitle}>About Me</Text>
+                    <Text style={detailsStyles.sectionTitle}>Bio</Text>
                     <Text style={detailsStyles.bioText}>{detailsBio}</Text>
                   </View>
                 ) : null}
