@@ -300,20 +300,7 @@ export default function ChatListScreen() {
         </Pressable>
       </View>
 
-      {/* Notification Banner */}
-      {showNotificationBanner && (
-        <View className="mx-4 mb-4 bg-[#B8860B] rounded-2xl px-4 py-3 flex-row items-center justify-between">
-          <View className="flex-row items-center flex-1">
-            <Text className="text-white text-xl mr-3">🔔</Text>
-            <Text className="text-white text-sm font-medium flex-1">
-              Get notified when someone great messages you
-            </Text>
-          </View>
-          <Pressable onPress={() => setShowNotificationBanner(false)}>
-            <Text className="text-white text-lg ml-2">→</Text>
-          </Pressable>
-        </View>
-      )}
+  
 
       <View className="flex-1 px-4">
 
@@ -323,7 +310,13 @@ export default function ChatListScreen() {
               <Logo variant="colored" width={120} height={120} style="" />
             </View>
             <Text className="text-white/60 text-base">No matches yet</Text>
-            <Text className="text-white/50 text-sm mt-2">Start swiping to find your Habibi! 💕</Text>
+            <Text className="text-white/50 text-sm mt-2 mb-6">Start swiping to find your Habibi! 💕</Text>
+            <Pressable
+              className="bg-[#B8860B] px-4 py-4 rounded-2xl items-center justify-center"
+              onPress={() => router.push("/(main)/swipe")}
+            >
+              <Text className="text-white font-semibold text-lg">Continue Swiping</Text>
+            </Pressable>
           </View>
         ) : (
           <FlatList
