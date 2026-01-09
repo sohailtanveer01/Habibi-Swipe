@@ -1,21 +1,21 @@
-import { View, Text, Pressable, ScrollView, TextInput, Platform, KeyboardAvoidingView, Keyboard } from "react-native";
-import { useRouter } from "expo-router";
-import { useOnboarding } from "../../../lib/onboardingStore";
-import { useEffect, useState } from "react";
-import { Ionicons } from "@expo/vector-icons";
 import OnboardingBackground from "@/components/OnboardingBackground";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useOnboarding } from "../../../lib/onboardingStore";
 
 const DEFAULT_PROMPTS = [
-  "My love language is…",
+  "Something I’m intentional about in a relationship is…",
   "One thing I'm proud of…",
   "The most spontaneous thing I've done…",
   "A green flag about me…",
-  "A red flag about me…",
+  "I hate it when people…",
   "My perfect weekend is…",
-  "My best habit is…",
+  "My best qualities are…",
   "A secret talent I have…",
   "My friends describe me as…",
-  "A dream I'm chasing…",
+  "A goal or dua I'm working towards is…",
 ];
 
 const TOTAL_STEPS = 8;
