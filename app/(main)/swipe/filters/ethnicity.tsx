@@ -1,21 +1,40 @@
 import { useState, useEffect } from "react";
-import { View, Text, Pressable, ActivityIndicator, ScrollView, Alert, StyleSheet } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, ScrollView, Alert, StyleSheet, TextInput } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 
-// Ethnicity options
+// Ethnicity options - matching onboarding (excluding "Other" and "Prefer not to say")
 const ETHNICITY_OPTIONS = [
   "Arab",
+  "Berber / Amazigh",
+  "Persian",
+  "Turkic",
+  "Kurdish",
   "South Asian",
-  "African",
+  "Punjabi",
+  "Sindhi",
+  "Pashtun",
+  "Baloch",
+  "Bengali",
+  "Tamil",
+  "Gujarati",
+  "Malayali",
   "East Asian",
+  "Southeast Asian",
   "Central Asian",
-  "European",
+  "West African",
+  "East African",
   "North African",
+  "Southern African",
+  "Horn of Africa",
+  "European",
+  "Eastern European",
+  "Western European",
+  "Latino / Hispanic",
+  "Caribbean",
+  "Native / Indigenous",
   "Mixed",
-  "Other",
-  "Prefer not to say",
 ];
 
 export default function EthnicityFilterScreen() {
@@ -23,6 +42,7 @@ export default function EthnicityFilterScreen() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedEthnicities, setSelectedEthnicities] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     loadPreferences();
@@ -166,39 +186,77 @@ export default function EthnicityFilterScreen() {
         {/* Ethnicity Filter */}
         <View className="mb-8">
           <Text className="text-white text-lg font-bold mb-4">Ethnicity</Text>
+          
+          {/* Search Input */}
+          <View className="mb-4">
+            <View className="flex-row items-center bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+              <Ionicons name="search" size={20} color="#9CA3AF" style={{ marginRight: 10 }} />
+              <TextInput
+                placeholder="Search ethnicity..."
+                placeholderTextColor="#666"
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 && (
+                <Pressable onPress={() => setSearchQuery("")} className="ml-2">
+                  <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                </Pressable>
+              )}
+            </View>
+          </View>
+
+          {/* Filtered Ethnicity List */}
           <ScrollView
             style={styles.ethnicityList}
             className="bg-white/5 rounded-2xl"
             contentContainerStyle={{ padding: 12 }}
             showsVerticalScrollIndicator={true}
           >
-            {ETHNICITY_OPTIONS.map((ethnicity) => {
-              const isSelected = selectedEthnicities.includes(ethnicity);
-              return (
-                <Pressable
-                  key={ethnicity}
-                  className={`p-4 rounded-xl mb-2 ${
-                    isSelected ? "bg-[#B8860B]" : "bg-white/5"
-                  }`}
-                  onPress={() => {
-                    if (isSelected) {
-                      setSelectedEthnicities(selectedEthnicities.filter((e) => e !== ethnicity));
-                    } else {
-                      setSelectedEthnicities([...selectedEthnicities, ethnicity]);
-                    }
-                  }}
-                  style={isSelected ? styles.selectedItem : styles.ethnicityItem}
-                >
-                  <Text
-                    className={`text-base ${
-                      isSelected ? "text-white font-bold" : "text-white/80 font-medium"
-                    }`}
-                  >
-                    {ethnicity}
-                  </Text>
-                </Pressable>
+            {(() => {
+              const filteredEthnicities = ETHNICITY_OPTIONS.filter((ethnicity) =>
+                ethnicity.toLowerCase().includes(searchQuery.toLowerCase())
               );
-            })}
+              
+              if (filteredEthnicities.length === 0) {
+                return (
+                  <View className="py-8 items-center">
+                    <Text className="text-white/50 text-base">No ethnicities found</Text>
+                    <Text className="text-white/40 text-sm mt-1">Try a different search term</Text>
+                  </View>
+                );
+              }
+              
+              return filteredEthnicities.map((ethnicity) => {
+                const isSelected = selectedEthnicities.includes(ethnicity);
+                return (
+                  <Pressable
+                    key={ethnicity}
+                    className={`p-4 rounded-xl mb-2 ${
+                      isSelected ? "bg-[#B8860B]" : "bg-white/5"
+                    }`}
+                    onPress={() => {
+                      if (isSelected) {
+                        setSelectedEthnicities(selectedEthnicities.filter((e) => e !== ethnicity));
+                      } else {
+                        setSelectedEthnicities([...selectedEthnicities, ethnicity]);
+                      }
+                    }}
+                    style={isSelected ? styles.selectedItem : styles.ethnicityItem}
+                  >
+                    <Text
+                      className={`text-base ${
+                        isSelected ? "text-white font-bold" : "text-white/80 font-medium"
+                      }`}
+                    >
+                      {ethnicity}
+                    </Text>
+                  </Pressable>
+                );
+              });
+            })()}
           </ScrollView>
           {selectedEthnicities.length > 0 && (
             <View className="mt-4 bg-[#B8860B]/20 border border-[#B8860B]/30 p-4 rounded-xl">
@@ -235,6 +293,12 @@ export default function EthnicityFilterScreen() {
 }
 
 const styles = StyleSheet.create({
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#FFFFFF",
+    padding: 0,
+  },
   ethnicityList: {
     maxHeight: 400,
   },
