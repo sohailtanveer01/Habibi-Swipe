@@ -23,9 +23,9 @@ This guide will help you configure Google OAuth for the Habibi Swipe app.
    - Name: Habibi Swipe Web Client
    - Authorized redirect URIs: Add the following:
      ```
-     https://YOUR_SUPABASE_PROJECT_REF.supabase.co/auth/v1/callback
+     https://api.habibiswipe.com/auth/v1/callback
      ```
-     Replace `YOUR_SUPABASE_PROJECT_REF` with your actual Supabase project reference (found in your Supabase dashboard URL)
+     **Note:** If you're using a custom domain (api.habibiswipe.com), use that instead of the default .supabase.co URL
 7. Click **Create**
 8. Copy the **Client ID** and **Client Secret**
 
@@ -83,8 +83,9 @@ Your `app.json` and `app.config.js` should already have the Google Sign-In plugi
 
 - Make sure you've added the Supabase callback URL to Google OAuth settings:
   ```
-  https://YOUR_SUPABASE_PROJECT_REF.supabase.co/auth/v1/callback
+  https://api.habibiswipe.com/auth/v1/callback
   ```
+  **Note:** If using a custom domain, use that instead of .supabase.co URL
 - Make sure you've added your app's deep link URLs to Supabase Redirect URLs:
   ```
   habibiswipe://

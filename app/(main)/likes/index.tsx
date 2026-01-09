@@ -283,6 +283,45 @@ export default function LikesScreen() {
     };
   }, [activeTab]);
 
+  // Real-time subscription for new likes - refresh "Liked me" tab when someone likes you
+  useEffect(() => {
+    if (activeTab !== "likedMe") return; // Only subscribe when on "Liked me" tab
+
+    let channel: any = null;
+
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      channel = supabase
+        .channel("new-likes-realtime-likes-page")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "swipes",
+            // Don't use filter - check in callback instead (more reliable)
+          },
+          (payload) => {
+            // Check if this swipe is for the current user and is a like action
+            if (payload.new.swiped_id === user.id && payload.new.action === "like") {
+              loadLikes(); // Refresh "Liked me" list
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [activeTab]); // Re-subscribe when tab changes
+
   // Real-time subscription for matches - refresh likes when a match is created
   useEffect(() => {
     let channel: any = null;

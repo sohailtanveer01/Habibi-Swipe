@@ -138,7 +138,7 @@ export default function SettingsScreen() {
     setLoggingOut(true);
     try {
       await supabase.auth.signOut();
-      router.replace("/(auth)/login");
+      router.replace("/");
     } catch (error) {
       console.error("Error logging out:", error);
       Alert.alert("Error", "Failed to log out. Please try again.");
@@ -192,7 +192,7 @@ export default function SettingsScreen() {
               Alert.alert(
                 "Account Deleted",
                 "Your account and all associated data have been permanently removed.",
-                [{ text: "OK", onPress: () => router.replace("/(auth)/login") }]
+                [{ text: "OK", onPress: () => router.replace("/") }]
               );
             } catch (error: any) {
               console.error("Error deleting account:", error);

@@ -37,10 +37,12 @@
    - Update with production **Client ID** and **Client Secret**
    - Add production redirect URLs:
      - `habibiswipe://auth/callback`
-     - `https://YOUR_SUPABASE_PROJECT_REF.supabase.co/auth/v1/callback`
+     - `https://api.habibiswipe.com/auth/v1/callback` (custom domain)
+     - OR `https://YOUR_SUPABASE_PROJECT_REF.supabase.co/auth/v1/callback` (if not using custom domain)
 
 4. **Update Google OAuth Console:**
-   - Add authorized redirect URI: `https://YOUR_SUPABASE_PROJECT_REF.supabase.co/auth/v1/callback`
+   - Add authorized redirect URI: `https://api.habibiswipe.com/auth/v1/callback` (if using custom domain)
+   - OR `https://YOUR_SUPABASE_PROJECT_REF.supabase.co/auth/v1/callback` (if not using custom domain)
    - Add authorized JavaScript origins if needed
 
 ---
@@ -55,7 +57,8 @@
 **Action Required:**
 1. **Verify Production Supabase Project:**
    - Ensure you're using production Supabase project (not development)
-   - Get production `EXPO_PUBLIC_SUPABASE_URL`
+   - Get production `EXPO_PUBLIC_SUPABASE_URL`: `https://api.habibiswipe.com` (if using custom domain)
+   - OR use `https://YOUR_PROJECT_REF.supabase.co` (if not using custom domain)
    - Get production `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 
 2. **Add Environment Variable Validation:**

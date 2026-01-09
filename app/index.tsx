@@ -189,7 +189,8 @@ export default function Home() {
           redirectTo: redirectUrl,
           queryParams: {
             access_type: "offline",
-            prompt: "consent",
+            // Removed prompt: "consent" to avoid showing consent screen every time
+            // This will use Google's default behavior (only show consent if needed)
           },
         },
       });

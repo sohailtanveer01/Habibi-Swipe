@@ -4,6 +4,12 @@ export default {
       slug: "habibi-swipe",
       scheme: "habibiswipe",
       icon: "./assets/images/icon.png",
+      // Custom notification icon (Android only - iOS uses app icon automatically)
+      // IMPORTANT: Android notification icons MUST be monochrome (white on transparent)
+      notification: {
+        icon: "./assets/images/android-icon-monochrome.png",
+        color: "#B8860B", // Gold color for notification icon
+      },
       extra: {
         eas: {
           projectId: "5401771d-589a-47b5-8e0c-e0850eea1cc3",
@@ -33,11 +39,18 @@ export default {
         },
       },
       android: {
+        package: "com.habibiswipe.app",
         permissions: [
           "READ_EXTERNAL_STORAGE",
           "WRITE_EXTERNAL_STORAGE",
           "CAMERA",
         ],
+        // Android notification icon configuration
+        icon: "./assets/images/icon.png",
+        adaptiveIcon: {
+          foregroundImage: "./assets/images/icon.png",
+          backgroundColor: "#000000", // Black background to match app theme
+        },
       },
     },
   };

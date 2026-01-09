@@ -60,7 +60,7 @@ export async function registerAndSyncPushToken(): Promise<void> {
       name: "default",
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#B8860B",
+      lightColor: "#B8860B", // Gold LED color for notifications
     });
   }
 

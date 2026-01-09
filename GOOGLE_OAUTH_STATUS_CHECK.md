@@ -52,9 +52,9 @@ Google Cloud Console doesn't mark individual OAuth Client IDs as "Testing" or "P
 - **Application type:** Should be "Web application"
 - **Authorized redirect URIs:** Should include:
   ```
-  https://YOUR_SUPABASE_PROJECT_REF.supabase.co/auth/v1/callback
+  https://api.habibiswipe.com/auth/v1/callback
   ```
-  (Replace with your actual Supabase project reference)
+  **Note:** If using a custom domain (api.habibiswipe.com), use that instead of the default .supabase.co URL
 
 ---
 
@@ -67,7 +67,8 @@ Google Cloud Console doesn't mark individual OAuth Client IDs as "Testing" or "P
 - `https://*.supabase.co/auth/v1/callback` (if using dev Supabase project)
 
 **Production URIs:**
-- `https://YOUR_PRODUCTION_SUPABASE_REF.supabase.co/auth/v1/callback`
+- `https://api.habibiswipe.com/auth/v1/callback` (custom domain)
+- OR `https://YOUR_PRODUCTION_SUPABASE_REF.supabase.co/auth/v1/callback` (default domain)
 - Should NOT include `localhost` or test URLs
 
 ---

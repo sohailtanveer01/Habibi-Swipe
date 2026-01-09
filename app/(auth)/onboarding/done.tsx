@@ -145,6 +145,25 @@ export default function OnboardingDone() {
         // Don't block the flow if preferences fail to save
       }
 
+      // Send welcome email (non-blocking - don't wait for it)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Call welcome email function asynchronously - don't await
+          supabase.functions.invoke("send-welcome-email", {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          }).catch((error) => {
+            // Silently fail - don't block onboarding completion
+            console.error("Failed to send welcome email:", error);
+          });
+        }
+      } catch (emailError) {
+        // Silently fail - don't block onboarding completion
+        console.error("Error calling welcome email function:", emailError);
+      }
+
       router.replace("/swipe");
     } catch (e: any) {
       alert(e.message || "Failed to save profile. Please try again.");
