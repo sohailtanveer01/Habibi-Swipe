@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, Alert, ActivityIndicator } from "react-native";
-import { supabase } from "../../../lib/supabase";
-import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { supabase } from "../../../lib/supabase";
 
 const HOBBIES = [
   { emoji: "📚", name: "Reading" },
@@ -546,7 +546,11 @@ export default function ProfileEditScreen() {
         <View className="h-1 w-16 bg-[#B8860B] rounded-full self-center mt-2" />
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 60 }}
+      >
         <View className="px-6 pt-6 pb-8">
           {/* About You Section */}
           <View className="bg-white/5 rounded-3xl p-6 mb-6 border border-white/10 shadow-lg">
