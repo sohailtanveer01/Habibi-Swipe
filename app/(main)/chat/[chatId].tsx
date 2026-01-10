@@ -1389,8 +1389,9 @@ export default function ChatScreen() {
               return;
             }
             // Normal behavior: navigate to profile preview
-            if (otherUser?.id) {
-              router.push(`/(main)/chat/user-profile?userId=${otherUser.id}`);
+            // Pass chatId so we can navigate back to the chat screen
+            if (otherUser?.id && chatId) {
+              router.push(`/(main)/chat/user-profile?userId=${otherUser.id}&chatId=${chatId}`);
             }
           }}
         >

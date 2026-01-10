@@ -20,7 +20,7 @@ function calculateAge(dob: string | null): number | null {
 
 export default function UserProfileScreen() {
   const router = useRouter();
-  const { userId } = useLocalSearchParams<{ userId: string }>();
+  const { userId, chatId } = useLocalSearchParams<{ userId: string; chatId?: string }>();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
 
@@ -155,7 +155,15 @@ export default function UserProfileScreen() {
           Profile not found
         </Text>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => {
+            // If opened from chat, navigate back to chat screen using replace
+            // This ensures we don't go back to swipe screen or likes tab
+            if (chatId) {
+              router.replace(`/(main)/chat/${chatId}`);
+            } else {
+              router.back();
+            }
+          }}
           style={{
             backgroundColor: '#B8860B',
             paddingHorizontal: 24,
@@ -241,7 +249,15 @@ export default function UserProfileScreen() {
                 {/* Back Button - Overlay on main photo */}
                 <View style={styles.topBar}>
                   <Pressable
-                    onPress={() => router.back()}
+                    onPress={() => {
+                      // If opened from chat, navigate back to chat screen using replace
+                      // This ensures we don't go back to swipe screen or likes tab
+                      if (chatId) {
+                        router.replace(`/(main)/chat/${chatId}`);
+                      } else {
+                        router.back();
+                      }
+                    }}
                     style={styles.backButton}
                   >
                     <Ionicons name="arrow-back" size={24} color="#FFFFFF" />

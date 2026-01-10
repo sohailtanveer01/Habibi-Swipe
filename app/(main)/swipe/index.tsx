@@ -1424,6 +1424,8 @@ export default function SwipeScreen() {
     if (navigateToChat && matchData?.matchId) {
       const matchIdToNavigate = matchData.matchId;
       setMatchData(null);
+      // Clear params before navigating to prevent going back to swipe screen with matched user
+      router.setParams({ userId: undefined, source: undefined });
       // Replace swipe screen with chat screen to remove swipe from stack
       // The chat screen's back button will navigate to chat list
       setTimeout(() => {
@@ -1431,6 +1433,8 @@ export default function SwipeScreen() {
       }, 100);
     } else {
       setMatchData(null);
+      // Clear params when not navigating to chat as well
+      router.setParams({ userId: undefined, source: undefined });
       if (userId) {
         setTimeout(() => {
           if (source === "chat") {
