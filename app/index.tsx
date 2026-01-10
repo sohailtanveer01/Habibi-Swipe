@@ -310,7 +310,7 @@ export default function Home() {
             <View style={styles.featureIcon}>
               <Ionicons name="heart" size={24} color="#B8860B" />
             </View>
-            <Text style={styles.featureText}>Find Your Match</Text>
+            <Text style={styles.featureText}>Find Your Better Half</Text>
           </View>
           <View style={styles.featureItem}>
             <View style={styles.featureIcon}>

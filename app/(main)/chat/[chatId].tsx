@@ -1368,7 +1368,9 @@ export default function ChatScreen() {
           onPress={() => {
             // Invalidate chat list cache to refresh unread counts
             queryClient.invalidateQueries({ queryKey: ["chat-list"] });
-            router.back();
+            // Always navigate to chat list instead of going back
+            // This ensures we don't go back to swipe screen or profile screen
+            router.replace("/(main)/chat");
           }}
           className="mr-3 mt-1"
         >
@@ -2075,7 +2077,7 @@ export default function ChatScreen() {
             </Pressable>
 
             {/* Mic Button (tap to start, tap again to stop; then send/cancel) */}
-            <Pressable
+            {/* <Pressable
               onPress={onPressMic}
               disabled={
                 uploadingMedia ||
@@ -2098,7 +2100,7 @@ export default function ChatScreen() {
                   />
                 </View>
               </Animated.View>
-            </Pressable>
+            </Pressable> */}
 
             {/* Message Input Field */}
             <TextInput

@@ -294,12 +294,17 @@ serve(async (req) => {
     }
 
     // ------------------------------------------------------------------------
-    // PUSH NOTIFICATION: notify the other participant when a TEXT message is sent
+    // PUSH NOTIFICATION: notify the other participant when a TEXT or IMAGE message is sent
     // ------------------------------------------------------------------------
     try {
       const recipientId = match.user1 === user.id ? match.user2 : match.user1;
 
-      if (messageData.content && recipientId) {
+      // Send notification if there's content OR if there's an image
+      // Check the inserted message to see if it has an image
+      const hasContent = content && content.trim();
+      const hasImage = message?.image_url || (mediaUrl && (mediaType === "image" || !mediaType)); // Check inserted message or request data
+
+      if (recipientId && (hasContent || hasImage)) {
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
         if (!serviceKey) {
           console.error("Missing SUPABASE_SERVICE_ROLE_KEY in Edge Function secrets; skipping push.");
@@ -308,6 +313,17 @@ serve(async (req) => {
         const tokenClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey, {
           auth: { persistSession: false },
         });
+
+        // Get sender's name for notification
+        const { data: senderProfile } = await tokenClient
+          .from("users")
+          .select("first_name, last_name, name")
+          .eq("id", user.id)
+          .single();
+
+        const senderName = senderProfile?.first_name && senderProfile?.last_name
+          ? `${senderProfile.first_name} ${senderProfile.last_name}`
+          : senderProfile?.name || "Someone";
 
         // Check recipient's notification preferences
         const { data: recipientPrefs, error: prefsError } = await tokenClient
@@ -336,14 +352,26 @@ serve(async (req) => {
             console.error("Error fetching push tokens:", tokenErr);
           } else {
             const tokens = (rows ?? []).map((r: any) => r.token).filter(Boolean);
-            const body = String(messageData.content).slice(0, 120);
+            
+            // Determine notification body based on message type
+            let notificationBody: string;
+            if (hasImage) {
+              // Image message
+              notificationBody = `${senderName} sent you an image`;
+            } else if (hasContent) {
+              // Text message
+              notificationBody = String(content).slice(0, 120);
+            } else {
+              // Shouldn't happen (both should be false means no content and no image), but fallback
+              notificationBody = `${senderName} sent you a message`;
+            }
+
             await sendExpoPush(tokens, {
               title: "New message",
-              body,
+              body: notificationBody,
               data: { type: "chat_message", chatId: matchId },
             });
           }
-        } else {
         }
       }
     } catch (e) {

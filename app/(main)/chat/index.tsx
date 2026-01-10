@@ -21,7 +21,6 @@ function cleanPhotoUrl(url: string | null | undefined): string | null {
 }
 
 export default function ChatListScreen() {
-  const [showNotificationBanner, setShowNotificationBanner] = useState(true);
   const [unmatchesNotificationCount, setUnmatchesNotificationCount] = useState(0);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -344,6 +343,18 @@ export default function ChatListScreen() {
 }
 
 function ChatItem({ item, router, queryClient }: { item: any; router: any; queryClient: any }) {
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+    fetchCurrentUser();
+  }, []);
+
   const mainPhoto = item.otherUser?.photos && item.otherUser.photos.length > 0
     ? cleanPhotoUrl(item.otherUser.photos[0])
     : null;
@@ -355,6 +366,9 @@ function ChatItem({ item, router, queryClient }: { item: any; router: any; query
   const hasUnread = unreadCount > 0;
   const otherUserLastActive = item.otherUser?.last_active_at;
   const isOtherUserActive = isUserActive(otherUserLastActive);
+
+  // Check if last message was sent by current user or other user
+  const isLastMessageFromOtherUser = item.lastMessage && currentUserId && item.lastMessage.sender_id !== currentUserId;
 
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -525,7 +539,13 @@ function ChatItem({ item, router, queryClient }: { item: any; router: any; query
             className={`text-sm mt-1 ${hasUnread ? 'text-white font-medium' : 'text-white/60'}`}
             numberOfLines={1}
           >
-            {item.lastMessage.content || item.lastMessage.message}
+            {item.lastMessage.image_url
+              ? (currentUserId && isLastMessageFromOtherUser
+                  ? `${fullName} sent you an image`
+                  : currentUserId
+                    ? "You sent an image"
+                    : "Image")
+              : item.lastMessage.content || item.lastMessage.message}
           </Text>
         ) : (
           <Text className="text-[#B8860B] text-sm mt-1 italic">

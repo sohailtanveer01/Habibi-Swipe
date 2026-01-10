@@ -28,6 +28,8 @@ export default {
         bundleIdentifier: "com.habibiswipe.app",
         icon: "./assets/images/icon.png",
         usesIcloudStorage: true,
+        // iOS automatically uses the app icon for push notifications
+        // Ensure icon.png is 1024x1024 PNG (currently verified)
         infoPlist: {
           NSPhotoLibraryUsageDescription:
             "Habibi Swipe needs access to your gallery to upload profile photos.",
@@ -35,7 +37,7 @@ export default {
             "Habibi Swipe needs access to your camera to take profile photos.",
           NSMicrophoneUsageDescription:
             "Habibi Swipe needs access to your microphone to send voice messages.",
-            "ITSAppUsesNonExemptEncryption": false
+          "ITSAppUsesNonExemptEncryption": false,
         },
       },
       android: {

@@ -1424,16 +1424,11 @@ export default function SwipeScreen() {
     if (navigateToChat && matchData?.matchId) {
       const matchIdToNavigate = matchData.matchId;
       setMatchData(null);
-      if (userId) {
-        setTimeout(() => {
-          router.push(`/(main)/chat/${matchIdToNavigate}`);
-        }, 100);
-      } else {
-        moveToNextCard();
-        setTimeout(() => {
-          router.push(`/(main)/chat/${matchIdToNavigate}`);
-        }, 400);
-      }
+      // Replace swipe screen with chat screen to remove swipe from stack
+      // The chat screen's back button will navigate to chat list
+      setTimeout(() => {
+        router.replace(`/(main)/chat/${matchIdToNavigate}`);
+      }, 100);
     } else {
       setMatchData(null);
       if (userId) {
