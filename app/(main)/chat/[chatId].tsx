@@ -2269,55 +2269,24 @@ export default function ChatScreen() {
 
             {/* Block Option */}
             <Pressable
-              onPress={async () => {
+              onPress={() => {
                 setShowOptionsModal(false);
-                Alert.alert(
-                  "Block User",
-                  `Are you sure you want to block ${fullName}? You won't be able to see each other's profiles or messages.`,
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Block",
-                      style: "destructive",
-                      onPress: async () => {
-                        try {
-                          const { error } = await supabase.functions.invoke(
-                            "block-user",
-                            {
-                              body: { userId: otherUser?.id, matchId: chatId },
-                            }
-                          );
-
-                          if (error) {
-                            Alert.alert(
-                              "Error",
-                              "Failed to block user. Please try again."
-                            );
-                            return;
-                          }
-
-                          // Navigate back to chat list
-                          queryClient.invalidateQueries({
-                            queryKey: ["chat-list"],
-                          });
-                          router.replace("/(main)/chat");
-                        } catch (error) {
-                          console.error("Error blocking user:", error);
-                          Alert.alert(
-                            "Error",
-                            "Failed to block user. Please try again."
-                          );
-                        }
-                      },
+                if (otherUser?.id) {
+                  router.push({
+                    pathname: "/(main)/chat/report-block",
+                    params: {
+                      userId: otherUser.id,
+                      userName: fullName,
+                      matchId: chatId,
                     },
-                  ]
-                );
+                  });
+                }
               }}
               className="py-4"
             >
-              <Text className="text-red-500 text-base">Block</Text>
+              <Text className="text-red-500 text-base">Report & Block</Text>
               <Text className="text-white/60 text-sm mt-1">
-                Block this user and remove the match
+                Report this user and block them
               </Text>
             </Pressable>
 
@@ -2333,6 +2302,7 @@ export default function ChatScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
     </KeyboardAvoidingView>
   );
 }

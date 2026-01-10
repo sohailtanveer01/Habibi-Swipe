@@ -2399,35 +2399,19 @@ export default function SwipeScreen() {
                       const currentProfile = current;
                       if (!currentProfile?.id) return;
 
-                      Alert.alert(
-                        "Block User",
-                        `Are you sure you want to block ${currentProfile.first_name || 'this user'}? They won't be able to see your profile or contact you.`,
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Block",
-                            style: "destructive",
-                            onPress: async () => {
-                              try {
-                                const { error } = await supabase.functions.invoke("block-user", {
-                                  body: { userId: currentProfile.id },
-                                });
-                                if (error) throw error;
+                      // Close details modal first
+                      closeDetails();
 
-                                // Close the modal
-                                closeDetails();
-
-                                // Remove from stack and move to next
-                                setTimeout(() => {
-                                  moveToNextCard();
-                                }, 300);
-                              } catch (err: any) {
-                                Alert.alert("Error", err.message || "Failed to block user.");
-                              }
-                            },
+                      // Navigate to report & block screen
+                      setTimeout(() => {
+                        router.push({
+                          pathname: "/(main)/chat/report-block",
+                          params: {
+                            userId: currentProfile.id,
+                            userName: currentProfile.first_name || "this user",
                           },
-                        ]
-                      );
+                        });
+                      }, 300);
                     }}
                     style={{
                       backgroundColor: '#EF4444',
@@ -2439,7 +2423,7 @@ export default function SwipeScreen() {
                     }}
                   >
                     <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
-                      Block User
+                      Report & Block
                     </Text>
                   </Pressable>
                   <Text style={{
@@ -2448,7 +2432,7 @@ export default function SwipeScreen() {
                     textAlign: 'center',
                     marginTop: 8
                   }}>
-                    Blocked users won't see your profile
+                    Report and block this user
                   </Text>
                 </View>
               </View>
@@ -2552,6 +2536,7 @@ export default function SwipeScreen() {
 
       {/* Keep gallery modal rendered LAST so it appears above the details sheet modal */}
       {renderGallery()}
+
     </View>
   );
 }
@@ -2636,13 +2621,13 @@ const matchModalStyles = {
   container: {
     flex: 1,
     backgroundColor: "#000000",
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
     paddingHorizontal: 24,
   },
   content: {
-    alignItems: "center",
-    width: "100%",
+    alignItems: "center" as const,
+    width: "100%" as const,
   },
   logoContainer: {
     marginBottom: 20,
@@ -2705,7 +2690,7 @@ const matchModalStyles = {
   },
   buttonContainer: {
     gap: 16,
-    width: "100%",
+    width: "100%" as const,
   },
   button: {
     paddingVertical: 16,

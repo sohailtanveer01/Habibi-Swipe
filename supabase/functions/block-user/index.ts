@@ -50,7 +50,7 @@ serve(async (req) => {
     }
 
     // Get request body
-    const { userId, matchId } = await req.json();
+    const { userId, matchId, reportReason, reportDetails } = await req.json();
 
     if (!userId) {
       return new Response(
@@ -85,7 +85,25 @@ serve(async (req) => {
     }
 
     if (existingBlock) {
-      // Already blocked
+      // Already blocked - update report if provided
+      if (reportReason) {
+        const { error: updateReportError } = await supabaseClient
+          .from("reports")
+          .upsert({
+            reporter_id: user.id,
+            reported_id: userId,
+            reason: reportReason,
+            details: reportDetails || null,
+            created_at: new Date().toISOString(),
+          }, {
+            onConflict: "reporter_id,reported_id",
+          });
+
+        if (updateReportError) {
+          console.error("❌ Error updating report:", updateReportError);
+          // Don't fail the request if report update fails
+        }
+      }
     } else {
       // Create block record
       const { error: insertError } = await supabaseClient
@@ -101,6 +119,23 @@ serve(async (req) => {
           JSON.stringify({ error: "Error blocking user" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      // Create report record if reason is provided
+      if (reportReason) {
+        const { error: reportError } = await supabaseClient
+          .from("reports")
+          .insert({
+            reporter_id: user.id,
+            reported_id: userId,
+            reason: reportReason,
+            details: reportDetails || null,
+          });
+
+        if (reportError) {
+          console.error("❌ Error inserting report:", reportError);
+          // Don't fail the request if report insertion fails
+        }
       }
     }
 

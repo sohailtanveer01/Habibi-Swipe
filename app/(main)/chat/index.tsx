@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Animated, FlatList, Image, Pressable, RefreshControl, Text, View } from "react-native";
 import { RectButton, Swipeable } from "react-native-gesture-handler";
 import DiamondIcon from "../../../components/DiamondIcon";
@@ -356,7 +356,10 @@ function ChatItem({ item, router, queryClient }: { item: any; router: any; query
   const otherUserLastActive = item.otherUser?.last_active_at;
   const isOtherUserActive = isUserActive(otherUserLastActive);
 
+  const swipeableRef = useRef<Swipeable>(null);
+
   const handleUnmatch = async () => {
+    swipeableRef.current?.close();
     Alert.alert(
       "Unmatch User",
       `Are you sure you want to unmatch with ${fullName}? You won't be able to message them anymore.`,
@@ -381,29 +384,19 @@ function ChatItem({ item, router, queryClient }: { item: any; router: any; query
     );
   };
 
-  const handleBlock = async () => {
-    Alert.alert(
-      "Block User",
-      `Are you sure you want to block ${fullName}? This will unmatch you and they won't be able to see your profile or message you again.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Block",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const { error } = await supabase.functions.invoke("block-user", {
-                body: { userId: item.otherUser?.id, matchId: item.id },
-              });
-              if (error) throw error;
-              queryClient.invalidateQueries({ queryKey: ["chat-list"] });
-            } catch (err: any) {
-              Alert.alert("Error", err.message || "Failed to block user.");
-            }
-          }
-        }
-      ]
-    );
+  const handleBlock = () => {
+    swipeableRef.current?.close();
+    // Navigate to report & block screen
+    if (item.otherUser?.id) {
+      router.push({
+        pathname: "/(main)/chat/report-block",
+        params: {
+          userId: item.otherUser.id,
+          userName: fullName,
+          matchId: item.id,
+        },
+      });
+    }
   };
 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
@@ -454,7 +447,7 @@ function ChatItem({ item, router, queryClient }: { item: any; router: any; query
           }}
         >
           <Animated.View style={{ transform: [{ scale }] }}>
-            <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Block</Text>
+            <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Report & Block</Text>
           </Animated.View>
         </RectButton>
       </Animated.View>
@@ -560,6 +553,7 @@ function ChatItem({ item, router, queryClient }: { item: any; router: any; query
 
   return (
     <Swipeable
+      ref={swipeableRef}
       renderRightActions={renderRightActions}
       rightThreshold={40}
       overshootRight={false}
